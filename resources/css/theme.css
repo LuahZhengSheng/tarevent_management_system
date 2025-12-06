@@ -1,0 +1,191 @@
+/* ===================================
+   TAREvent Management System - Theme Colors
+   =================================== */
+
+:root {
+    /* User Site - Primary Theme (Blue) */
+    --user-primary: #2563eb;
+    --user-primary-hover: #1d4ed8;
+    --user-primary-light: #dbeafe;
+    --user-secondary: #10b981;
+    --user-secondary-hover: #059669;
+    --user-accent: #f59e0b;
+    
+    /* Admin Site - Primary Theme (Purple) */
+    --admin-primary: #7c3aed;
+    --admin-primary-hover: #6d28d9;
+    --admin-primary-light: #ede9fe;
+    --admin-secondary: #ec4899;
+    --admin-secondary-hover: #db2777;
+    --admin-accent: #f97316;
+    
+    /* Light Mode - Common */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-tertiary: #f3f4f6;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-tertiary: #9ca3af;
+    --border-color: #e5e7eb;
+    --border-hover: #d1d5db;
+    
+    /* Status Colors */
+    --success: #10b981;
+    --success-light: #d1fae5;
+    --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --error: #ef4444;
+    --error-light: #fee2e2;
+    --info: #3b82f6;
+    --info-light: #dbeafe;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+    /* User Site - Dark Mode */
+    --user-primary: #3b82f6;
+    --user-primary-hover: #2563eb;
+    --user-primary-light: #1e3a8a;
+    --user-secondary: #34d399;
+    --user-secondary-hover: #10b981;
+    --user-accent: #fbbf24;
+    
+    /* Admin Site - Dark Mode */
+    --admin-primary: #8b5cf6;
+    --admin-primary-hover: #7c3aed;
+    --admin-primary-light: #4c1d95;
+    --admin-secondary: #f472b6;
+    --admin-secondary-hover: #ec4899;
+    --admin-accent: #fb923c;
+    
+    /* Dark Mode - Common */
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --bg-tertiary: #374151;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-tertiary: #9ca3af;
+    --border-color: #374151;
+    --border-hover: #4b5563;
+    
+    /* Status Colors - Dark Mode */
+    --success: #34d399;
+    --success-light: #064e3b;
+    --warning: #fbbf24;
+    --warning-light: #78350f;
+    --error: #f87171;
+    --error-light: #7f1d1d;
+    --info: #60a5fa;
+    --info-light: #1e3a8a;
+    
+    /* Shadows - Dark Mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+/* Base Styles */
+body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* User Site Theme Class */
+.user-site {
+    --primary: var(--user-primary);
+    --primary-hover: var(--user-primary-hover);
+    --primary-light: var(--user-primary-light);
+    --secondary: var(--user-secondary);
+    --secondary-hover: var(--user-secondary-hover);
+    --accent: var(--user-accent);
+}
+
+/* Admin Site Theme Class */
+.admin-site {
+    --primary: var(--admin-primary);
+    --primary-hover: var(--admin-primary-hover);
+    --primary-light: var(--admin-primary-light);
+    --secondary: var(--admin-secondary);
+    --secondary-hover: var(--admin-secondary-hover);
+    --accent: var(--admin-accent);
+}
+
+/* Common Button Styles */
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+    background-color: var(--secondary);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: var(--secondary-hover);
+    transform: translateY(-2px);
+}
+
+/* Card Styles */
+.card {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+}
+
+/* Input Styles */
+.form-control {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Dark Mode Toggle */
+.dark-mode-toggle {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    box-shadow: var(--shadow-xl);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.dark-mode-toggle:hover {
+    transform: scale(1.1) rotate(15deg);
+}
