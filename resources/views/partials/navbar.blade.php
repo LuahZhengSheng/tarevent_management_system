@@ -34,14 +34,14 @@
 
                 <!-- Clubs -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('clubs.index') }}">
+                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('home') }}">
                         <i class="bi bi-people me-1"></i>Clubs
                     </a>
                 </li>
 
                 <!-- Forum -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('forum.*') ? 'active' : '' }}" href="{{ route('forum.index') }}">
+                    <a class="nav-link {{ request()->routeIs('forum.*') ? 'active' : '' }}" href="{{ route('home') }}">
                         <i class="bi bi-chat-dots me-1"></i>Forum
                     </a>
                 </li>
@@ -106,12 +106,12 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item" href="{{ route('profile.show') }}">
+                                <a class="dropdown-item" href="{{ route('home') }}">
                                     <i class="bi bi-person me-2"></i>My Profile
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                                <a class="dropdown-item" href="{{ route('home') }}">
                                     <i class="bi bi-gear me-2"></i>Settings
                                 </a>
                             </li>
@@ -124,7 +124,7 @@
                             @endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <form action="{{ route('logout') }}" method="POST">
+                                <form action="{{ route('home') }}" method="POST">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger">
                                         <i class="bi bi-box-arrow-right me-2"></i>Logout
@@ -136,12 +136,12 @@
                 @else
                     <!-- Guest Links -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('login') }}">
+                        <a class="nav-link" href="{{ route('home') }}">
                             <i class="bi bi-box-arrow-in-right me-1"></i>Login
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('register') }}">
+                        <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('home') }}">
                             <i class="bi bi-person-plus me-1"></i>Register
                         </a>
                     </li>

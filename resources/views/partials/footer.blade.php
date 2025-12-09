@@ -41,12 +41,12 @@
                         <ul class="footer-links">
                             <li><a href="{{ route('home') }}">Home</a></li>
                             <li><a href="{{ route('events.index') }}">Events</a></li>
-                            <li><a href="{{ route('clubs.index') }}">Clubs</a></li>
-                            <li><a href="{{ route('forum.index') }}">Forum</a></li>
+                            <li><a href="{{ route('home') }}">Clubs</a></li>
+                            <li><a href="{{ route('home') }}">Forum</a></li>
                             @auth
                             <li><a href="{{ route('events.my') }}">My Events</a></li>
                             @else
-                            <li><a href="{{ route('login') }}">Login</a></li>
+                            <li><a href="{{ route('home') }}">Login</a></li>
                             @endauth
                         </ul>
                     </div>
@@ -306,7 +306,7 @@
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: var(--primary);
     color: white;
     border: none;
     box-shadow: var(--shadow-lg);

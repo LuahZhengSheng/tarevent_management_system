@@ -6,38 +6,42 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class CheckAdminRole
+class CheckUserRole
 {
     /**
      * Handle an incoming request.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-
     public function handle(Request $request, Closure $next): Response
     {
+        // 必须先登录
         if (!auth()->check()) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Authentication required.',
+                    'message' => 'Please login to continue.',
                 ], 401);
             }
-            
-            return redirect()->route('login')
-                           ->with('error', 'Please login to continue.')
-                           ->with('intended', $request->url());
+
+            // 你现在还没有 login 路由，可以先丢回 home 或预留
+            return redirect()->route('home')
+                             ->with('error', 'Please login to access this page.')
+                             ->with('intended', $request->url());
         }
 
-        if (!auth()->user()->isAdmin()) {
+        $user = auth()->user();
+
+        // 只允许 role = user
+        if (! $user->hasRole('user')) {   
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Administrator access required.',
+                    'message' => 'Only students can access this resource.',
                 ], 403);
             }
 
-            abort(403, 'This area is restricted to administrators only.');
+            abort(403, 'Only students can access this feature.');
         }
 
         return $next($request);

@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+//use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -103,7 +103,7 @@ class User extends Authenticatable
 
     public function isStudent(): bool
     {
-        return $this->role === 'student';
+        return $this->role === 'user';
     }
 
     public function isClub(): bool
@@ -205,12 +205,12 @@ class User extends Authenticatable
         return asset($avatars[$this->role] ?? $avatars['student']);
     }
 
-    public function getUnreadNotificationsCountAttribute()
-    {
-        return $this->notifications()
-                    ->whereNull('read_at')
-                    ->count();
-    }
+//    public function getUnreadNotificationsCountAttribute()
+//    {
+//        return $this->notifications()
+//                    ->whereNull('read_at')
+//                    ->count();
+//    }
 
     // Scopes
     public function scopeActive($query)

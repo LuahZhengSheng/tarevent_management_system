@@ -38,14 +38,14 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" 
-                       href="{{ route('admin.users.index') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-people"></i>
                         <span>All Users</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.admins.*') ? 'active' : '' }}" 
-                       href="{{ route('admin.admins.index') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-shield-check"></i>
                         <span>Administrators</span>
                     </a>
@@ -57,7 +57,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.clubs.*') ? 'active' : '' }}" 
-                       href="{{ route('admin.clubs.index') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-building"></i>
                         <span>All Clubs</span>
                     </a>
@@ -69,21 +69,21 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.reports.events') ? 'active' : '' }}" 
-                       href="{{ route('admin.reports.events') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-graph-up"></i>
                         <span>Event Reports</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.reports.registrations') ? 'active' : '' }}" 
-                       href="{{ route('admin.reports.registrations') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-person-check"></i>
                         <span>Registration Reports</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.reports.payments') ? 'active' : '' }}" 
-                       href="{{ route('admin.reports.payments') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-cash-coin"></i>
                         <span>Payment Reports</span>
                     </a>

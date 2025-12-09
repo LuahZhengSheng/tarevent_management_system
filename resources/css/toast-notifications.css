@@ -1,0 +1,81 @@
+/* ===================================
+   Toast Notifications
+   =================================== */
+
+.toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-color);
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(100px);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    min-width: 300px;
+    max-width: 500px;
+}
+
+.toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-notification i {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.toast-success {
+    border-left: 4px solid var(--success);
+}
+
+.toast-success i {
+    color: var(--success);
+}
+
+.toast-error {
+    border-left: 4px solid var(--error);
+}
+
+.toast-error i {
+    color: var(--error);
+}
+
+.toast-warning {
+    border-left: 4px solid var(--warning);
+}
+
+.toast-warning i {
+    color: var(--warning);
+}
+
+.toast-info {
+    border-left: 4px solid var(--info);
+}
+
+.toast-info i {
+    color: var(--info);
+}
+
+/* Mobile Responsive */
+@media (max-width: 576px) {
+    .toast-notification {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        min-width: auto;
+    }
+}
+
+/* Dark Mode */
+[data-theme="dark"] .toast-notification {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
