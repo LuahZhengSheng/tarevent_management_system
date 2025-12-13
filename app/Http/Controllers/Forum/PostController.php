@@ -16,7 +16,7 @@ use App\Decorators\ContentSanitizationDecorator;
 use App\Decorators\ValidationPostDecorator;
 use App\Decorators\MediaPostDecorator;
 use App\Decorators\TagsPostDecorator;
-use App\Support\MediaHelper;
+use App\Support\PostMediaHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -321,7 +321,7 @@ class PostController extends Controller {
             if ($request->boolean('replace_media', false)) {
                 // Delete old media files
                 if ($post->hasMedia()) {
-                    MediaHelper::deletePostMedia($post->media_paths);
+                    PostMediaHelper::deletePostMedia($post->media_paths);
                 }
                 // Use only new media
                 // $processedData['media_paths'] is already set by decorator
@@ -335,7 +335,7 @@ class PostController extends Controller {
                     $processedData['media_paths'] = array_slice(
                             $processedData['media_paths'],
                             0,
-                            MediaHelper::POST_MAX_MEDIA_COUNT
+                            PostMediaHelper::POST_MAX_MEDIA_COUNT
                     );
                 }
             }

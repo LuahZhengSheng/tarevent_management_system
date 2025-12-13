@@ -34,7 +34,7 @@
 
                 <!-- Clubs -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('clubs.index') }}">
+                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('home') }}">
                         <i class="bi bi-people me-1"></i>Clubs
                     </a>
                 </li>
@@ -64,97 +64,65 @@
                     </a>
                 </li>
 
-                <!-- Create Event (for club admins only) -->
-                @if(auth()->user()->hasRole('club'))
-                <li class="nav-item">
-                    <a class="nav-link text-primary fw-semibold" href="{{ route('events.create') }}">
-                        <i class="bi bi-plus-circle me-1"></i>Create Event
-                    </a>
-                </li>
-                @endif
-
-                <!-- Notifications -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" 
-                       data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-bell fs-5"></i>
-                        @if(auth()->user()->unread_notifications_count > 0)
-                        <span class="notification-badge">{{ auth()->user()->unread_notifications_count }}</span>
-                        @endif
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown">
-                        <li class="dropdown-header">
-                            <strong>Notifications</strong>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <!-- Notification items would go here -->
-                        <li>
-                            <a class="dropdown-item text-center small text-muted" href="#">
-                                View all notifications
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-
-                <!-- User Profile Dropdown -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
-                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="{{ auth()->user()->profile_photo_url }}" 
-                             alt="Profile" 
-                             class="rounded-circle me-2" 
-                             width="32" 
-                             height="32">
-                        <span class="d-none d-lg-inline">{{ auth()->user()->name }}</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                        <li>
-                            <div class="dropdown-header">
-                                <div class="fw-bold">{{ auth()->user()->name }}</div>
-                                <small class="text-muted">{{ auth()->user()->email }}</small>
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        {{--<li>
-                            <a class="dropdown-item" href="{{ route('profile.show') }}">
-                                <i class="bi bi-person me-2"></i>My Profile
-                            </a>
-                        </li>--}}
-                        {{--<li>
-                            <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                                <i class="bi bi-gear me-2"></i>Settings
-                            </a>
-                        </li>--}}
-                        @if(auth()->user()->hasRole('admin'))
-                        <li>
-                            <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Admin Dashboard
-                            </a>
-                        </li>
-                        @endif
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form action="{{ route('logout') }}" method="POST">
-                                @csrf
-                                <button type="submit" class="dropdown-item text-danger">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </li>
+                    <!-- User Profile Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="{{ auth()->user()->profile_photo_url }}" 
+                                 alt="Profile" 
+                                 class="rounded-circle me-2" 
+                                 width="32" 
+                                 height="32">
+                            <span class="d-none d-lg-inline">{{ auth()->user()->name }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <div class="dropdown-header">
+                                    <div class="fw-bold">{{ auth()->user()->name }}</div>
+                                    <small class="text-muted">{{ auth()->user()->email }}</small>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('home') }}">
+                                    <i class="bi bi-person me-2"></i>My Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('home') }}">
+                                    <i class="bi bi-gear me-2"></i>Settings
+                                </a>
+                            </li>
+                            @if(auth()->user()->hasRole('admin'))
+                            <li>
+                                <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
+                                    <i class="bi bi-speedometer2 me-2"></i>Admin Dashboard
+                                </a>
+                            </li>
+                            @endif
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{{ route('home') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
                 @else
-                <!-- Guest Links -->
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('login') }}">
-                        <i class="bi bi-box-arrow-in-right me-1"></i>Login
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('register') }}">
-                        <i class="bi bi-person-plus me-1"></i>Register
-                    </a>
-                </li>
+                    <!-- Guest Links -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('home') }}">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('home') }}">
+                            <i class="bi bi-person-plus me-1"></i>Register
+                        </a>
+                    </li>
                 @endauth
             </ul>
         </div>

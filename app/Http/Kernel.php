@@ -4,8 +4,8 @@ namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
-class Kernel extends HttpKernel
-{
+class Kernel extends HttpKernel {
+
     /**
      * The application's global HTTP middleware stack.
      */
@@ -31,10 +31,9 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
-
         'api' => [
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
@@ -56,11 +55,20 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        
         // Custom Middleware for TAREvent System
         'club' => \App\Http\Middleware\CheckClubRole::class,
         'admin' => \App\Http\Middleware\CheckAdminRole::class,
         'check.event.owner' => \App\Http\Middleware\CheckEventOwner::class,
         'check.active.user' => \App\Http\Middleware\CheckActiveUser::class,
     ];
+
+    public function __construct($app, $router) {
+        parent::__construct($app, $router);
+
+        \Log::info('KERNEL_BOOT', [
+            'file' => __FILE__,
+            'has_club' => array_key_exists('club', $this->middlewareAliases),
+            'club_target' => $this->middlewareAliases['club'] ?? null,
+        ]);
+    }
 }

@@ -346,11 +346,11 @@
                             <i class="bi bi-house"></i>
                             <span>Homepage</span>
                         </a>
-                        <a href="{{ route('clubs.index') }}" class="suggestion-link">
+                        <a href="{{ route('home') }}" class="suggestion-link">
                             <i class="bi bi-people"></i>
                             <span>View Clubs</span>
                         </a>
-                        <a href="{{ route('forum.index') }}" class="suggestion-link">
+                        <a href="{{ route('home') }}" class="suggestion-link">
                             <i class="bi bi-chat-dots"></i>
                             <span>Forum</span>
                         </a>

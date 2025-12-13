@@ -3,7 +3,7 @@
 
 namespace App\Decorators;
 
-use App\Support\MediaHelper;
+use App\Support\PostMediaHelper;
 use Illuminate\Support\Facades\Log;
 
 class MediaPostDecorator extends BasePostDecorator

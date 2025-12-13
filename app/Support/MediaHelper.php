@@ -1,5 +1,4 @@
 <?php
-// app/Helpers/MediaHelper.php
 
 namespace App\Support;
 
@@ -11,146 +10,199 @@ use Intervention\Image\Drivers\Gd\Driver;
 
 class MediaHelper
 {
-    // Constants for post media
-    const POST_IMAGE_MAX_SIZE = 10; // MB
-    const POST_VIDEO_MAX_SIZE = 100; // MB
-    const POST_MAX_MEDIA_COUNT = 10;
-    
-    const ALLOWED_IMAGE_TYPES = [
+    /**
+     * Allowed image MIME types
+     */
+    public const ALLOWED_IMAGE_TYPES = [
         'image/jpeg',
-        'image/png',
         'image/jpg',
-        'image/gif',
+        'image/png',
         'image/webp',
+        'image/gif',
     ];
-    
-    const ALLOWED_VIDEO_TYPES = [
+
+    /**
+     * Allowed video MIME types
+     */
+    public const ALLOWED_VIDEO_TYPES = [
         'video/mp4',
+        'video/mpeg',
         'video/quicktime',
         'video/x-msvideo',
-        'video/mpeg',
+        'video/webm',
     ];
 
     /**
-     * Process post media files (images to JPEG, videos to MP4)
+     * Default max file sizes (in MB)
      */
-    public static function processPostMedia(array $files): array
+    public const DEFAULT_IMAGE_MAX_SIZE = 5;
+    public const DEFAULT_VIDEO_MAX_SIZE = 50;
+
+    protected static function imageManager(): ImageManager
     {
-        $processedMedia = [];
-        $imageCount = 0;
-        $videoCount = 0;
-
-        foreach ($files as $file) {
-            if (count($processedMedia) >= self::POST_MAX_MEDIA_COUNT) {
-                break;
-            }
-
-            $mimeType = $file->getMimeType();
-            
-            if (str_starts_with($mimeType, 'image/')) {
-                $imageCount++;
-                if ($imageCount > self::POST_MAX_MEDIA_COUNT) continue;
-                
-                $result = self::processPostImage($file);
-                $processedMedia[] = $result;
-                
-            } elseif (str_starts_with($mimeType, 'video/')) {
-                $videoCount++;
-                if ($videoCount > self::POST_MAX_MEDIA_COUNT) continue;
-                
-                $result = self::processPostVideo($file);
-                $processedMedia[] = $result;
-            }
-        }
-
-        return $processedMedia;
+        return new ImageManager(new Driver());
     }
 
     /**
-     * Process and convert image to JPEG with UUID naming
+     * Process and store an uploaded image
+     *
+     * @param UploadedFile $file
+     * @param string $directory Directory within storage/public
+     * @param array $options
+     * @return array ['path' => string, 'url' => string, 'metadata' => array]
      */
-    public static function processPostImage(UploadedFile $file): array
-    {
-        // Validate image
-        self::validatePostImage($file);
-        
-        // Generate UUID filename
-        $uuid = Str::uuid()->toString();
-        $filename = $uuid . '.jpeg';
-        $path = 'posts/images/' . $filename;
-        
-        // Process image
-        $manager = new ImageManager(new Driver());
+    public static function processImage(
+        UploadedFile $file,
+        string $directory = 'images',
+        array $options = []
+    ): array {
+        $config = array_merge([
+            'max_size' => self::DEFAULT_IMAGE_MAX_SIZE,
+            'max_width' => 2000,
+            'max_height' => 2000,
+            'quality' => 85,
+            'format' => 'jpg', // jpg, png, webp
+            'disk' => 'public',
+            'compress' => true,
+            'thumbnail' => false,
+            'thumbnail_width' => 300,
+            'thumbnail_height' => 300,
+        ], $options);
+
+        self::validateImage($file, $config['max_size']);
+
+        $filename = self::generateFilename($file, $config['format']);
+        $path = $directory . '/' . $filename;
+
+        $manager = self::imageManager();
         $image = $manager->read($file);
-        
-        // Resize if too large (max 2000x2000)
-        if ($image->width() > 2000 || $image->height() > 2000) {
-            $image->scale(width: 2000, height: 2000);
+
+        if ($image->width() > $config['max_width'] || $image->height() > $config['max_height']) {
+            // 保持你原本的 resize 逻辑
+            $image->resize($config['max_width'], $config['max_height'], function ($constraint) {
+                $constraint->aspectRatio();
+                $constraint->upsize();
+            });
         }
-        
-        // Convert to JPEG and save
-        $encoded = $image->toJpeg(quality: 85);
-        Storage::disk('public')->put($path, (string) $encoded);
-        
-        return [
-            'type' => 'image',
+
+        if ($config['compress']) {
+            switch ($config['format']) {
+                case 'webp':
+                    $encoded = $image->toWebp($config['quality']);
+                    break;
+                case 'png':
+                    $encoded = $image->toPng(); // png 一般不带 quality
+                    break;
+                case 'jpg':
+                default:
+                    $encoded = $image->toJpeg($config['quality']);
+                    break;
+            }
+        } else {
+            $encoded = $image->toJpeg();
+        }
+
+        Storage::disk($config['disk'])->put($path, (string) $encoded);
+
+        $result = [
+            'filename' => $filename,
             'path' => $path,
-            'mime_type' => 'image/jpeg',
-            'size' => Storage::disk('public')->size($path),
-            'original_name' => $file->getClientOriginalName(),
-            'uuid' => $uuid,
+            'url' => Storage::disk($config['disk'])->url($path),
+            'metadata' => [
+                'width' => $image->width(),
+                'height' => $image->height(),
+                'size' => Storage::disk($config['disk'])->size($path),
+                'mime_type' => Storage::disk($config['disk'])->mimeType($path),
+            ],
         ];
+
+        if ($config['thumbnail']) {
+            $thumbnailPath = self::createThumbnail(
+                $image,
+                $directory,
+                $filename,
+                $config['thumbnail_width'],
+                $config['thumbnail_height'],
+                $config['disk']
+            );
+
+            $result['thumbnail_filename'] = basename($thumbnailPath);
+            $result['thumbnail_path'] = $thumbnailPath;
+            $result['thumbnail_url'] = Storage::disk($config['disk'])->url($thumbnailPath);
+        }
+
+        return $result;
     }
 
     /**
-     * Process video (convert to MP4 if needed, or just store with UUID)
+     * Process and store an uploaded video
+     *
+     * @param UploadedFile $file
+     * @param string $directory
+     * @param array $options
+     * @return array
      */
-    public static function processPostVideo(UploadedFile $file): array
-    {
-        // Validate video
-        self::validatePostVideo($file);
-        
-        // Generate UUID filename
-        $uuid = Str::uuid()->toString();
-        
-        // For now, we'll just rename to MP4 (actual conversion requires FFmpeg)
-        // In production, you should use FFmpeg to convert videos
-        $filename = $uuid . '.mp4';
-        $path = 'posts/videos/' . $filename;
-        
-        // Store video
-        $file->storeAs('posts/videos', $filename, 'public');
-        
-        return [
-            'type' => 'video',
+    public static function processVideo(
+        UploadedFile $file,
+        string $directory = 'videos',
+        array $options = []
+    ): array {
+        $config = array_merge([
+            'max_size' => self::DEFAULT_VIDEO_MAX_SIZE,
+            'disk' => 'public',
+            'generate_thumbnail' => true,
+        ], $options);
+
+        self::validateVideo($file, $config['max_size']);
+
+        $extension = $file->getClientOriginalExtension();
+        $filename = Str::random(40) . '.' . $extension;
+        $path = $directory . '/' . $filename;
+
+        $file->storeAs($directory, $filename, $config['disk']);
+
+        $result = [
             'path' => $path,
-            'mime_type' => 'video/mp4',
-            'size' => Storage::disk('public')->size($path),
-            'original_name' => $file->getClientOriginalName(),
-            'uuid' => $uuid,
+            'url' => Storage::disk($config['disk'])->url($path),
+            'metadata' => [
+                'size' => Storage::disk($config['disk'])->size($path),
+                'mime_type' => Storage::disk($config['disk'])->mimeType($path),
+                'extension' => $extension,
+            ],
         ];
+
+        // Generate video thumbnail (requires FFmpeg)
+        if ($config['generate_thumbnail'] && extension_loaded('ffmpeg')) {
+            // placeholder
+            $result['thumbnail_path'] = null;
+            $result['thumbnail_url'] = null;
+        }
+
+        return $result;
     }
 
     /**
-     * Validate image for posts
+     * Validate image file
      */
-    public static function validatePostImage(UploadedFile $file): void
+    public static function validateImage(UploadedFile $file, float $maxSizeMB = null): void
     {
+        $maxSizeMB = $maxSizeMB ?? self::DEFAULT_IMAGE_MAX_SIZE;
+
         if (!$file->isValid()) {
             throw new \Exception('Invalid file upload.');
         }
 
         if (!in_array($file->getMimeType(), self::ALLOWED_IMAGE_TYPES)) {
-            throw new \Exception('Invalid image type. Allowed: JPEG, PNG, JPG, GIF, WEBP.');
+            throw new \Exception('Invalid file type. Allowed types: ' . implode(', ', self::ALLOWED_IMAGE_TYPES));
         }
 
-        $maxSizeBytes = self::POST_IMAGE_MAX_SIZE * 1024 * 1024;
+        $maxSizeBytes = $maxSizeMB * 1024 * 1024;
         if ($file->getSize() > $maxSizeBytes) {
-            throw new \Exception('Image size exceeds ' . self::POST_IMAGE_MAX_SIZE . 'MB limit.');
+            throw new \Exception("File size exceeds {$maxSizeMB}MB limit.");
         }
 
         try {
-            $manager = new ImageManager(new Driver());
+            $manager = self::imageManager();
             $image = $manager->read($file);
             if (!$image) {
                 throw new \Exception('File is not a valid image.');
@@ -161,39 +213,95 @@ class MediaHelper
     }
 
     /**
-     * Validate video for posts
+     * Validate video file
      */
-    public static function validatePostVideo(UploadedFile $file): void
+    public static function validateVideo(UploadedFile $file, float $maxSizeMB = null): void
     {
+        $maxSizeMB = $maxSizeMB ?? self::DEFAULT_VIDEO_MAX_SIZE;
+
         if (!$file->isValid()) {
             throw new \Exception('Invalid file upload.');
         }
 
         if (!in_array($file->getMimeType(), self::ALLOWED_VIDEO_TYPES)) {
-            throw new \Exception('Invalid video type. Allowed: MP4, MOV, AVI, MPEG.');
+            throw new \Exception('Invalid video type. Allowed types: ' . implode(', ', self::ALLOWED_VIDEO_TYPES));
         }
 
-        $maxSizeBytes = self::POST_VIDEO_MAX_SIZE * 1024 * 1024;
+        $maxSizeBytes = $maxSizeMB * 1024 * 1024;
         if ($file->getSize() > $maxSizeBytes) {
-            throw new \Exception('Video size exceeds ' . self::POST_VIDEO_MAX_SIZE . 'MB limit.');
+            throw new \Exception("Video size exceeds {$maxSizeMB}MB limit.");
         }
     }
 
-    /**
-     * Delete post media files
-     */
-    public static function deletePostMedia(array $mediaPaths): void
+    protected static function generateFilename(UploadedFile $file, string $format = 'jpg'): string
     {
-        foreach ($mediaPaths as $media) {
-            if (isset($media['path']) && Storage::disk('public')->exists($media['path'])) {
-                Storage::disk('public')->delete($media['path']);
-            }
-        }
+        $timestamp = now()->format('Ymd_His');
+        $random = Str::random(8);
+        return "{$timestamp}_{$random}.{$format}";
+    }
+
+    protected static function createThumbnail(
+        $image,
+        string $directory,
+        string $filename,
+        int $width,
+        int $height,
+        string $disk
+    ): string {
+        $thumbnail = clone $image;
+
+        $thumbnail->cover($width, $height);
+
+        $thumbnailFilename = 'thumb_' . $filename;
+        $thumbnailPath = $directory . '/' . $thumbnailFilename;
+
+        Storage::disk($disk)->put($thumbnailPath, (string) $thumbnail->toJpeg(80));
+
+        return $thumbnailPath;
     }
 
     /**
-     * Format bytes to human readable
+     * Delete image and its thumbnail
      */
+    public static function deleteImage(string $path, string $disk = 'public'): bool
+    {
+        $deleted = Storage::disk($disk)->delete($path);
+
+        $directory = dirname($path);
+        $filename = basename($path);
+        $thumbnailPath = $directory . '/thumb_' . $filename;
+
+        if (Storage::disk($disk)->exists($thumbnailPath)) {
+            Storage::disk($disk)->delete($thumbnailPath);
+        }
+
+        return $deleted;
+    }
+
+    public static function getSupportedFormats(): array
+    {
+        return [
+            'jpg' => [
+                'mime' => 'image/jpeg',
+                'quality_range' => [60, 100],
+                'recommended_quality' => 85,
+                'supports_transparency' => false,
+            ],
+            'png' => [
+                'mime' => 'image/png',
+                'quality_range' => [0, 9],
+                'recommended_quality' => null,
+                'supports_transparency' => true,
+            ],
+            'webp' => [
+                'mime' => 'image/webp',
+                'quality_range' => [0, 100],
+                'recommended_quality' => 85,
+                'supports_transparency' => true,
+            ],
+        ];
+    }
+
     public static function formatBytes(int $bytes): string
     {
         if ($bytes >= 1073741824) {
@@ -203,6 +311,7 @@ class MediaHelper
         } elseif ($bytes >= 1024) {
             return number_format($bytes / 1024, 2) . ' KB';
         }
+
         return $bytes . ' bytes';
     }
 }

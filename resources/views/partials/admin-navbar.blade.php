@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-gradient-admin shadow-sm sticky-top">
+<nav class="navbar navbar-expand-lg navbar-light bg-gradient-admin shadow-sm sticky-top">
     <div class="container-fluid">
         <!-- Logo & Brand -->
         <a class="navbar-brand d-flex align-items-center" href="{{ route('admin.dashboard') }}">
@@ -37,7 +37,7 @@
                 <!-- Users Management -->
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" 
-                       href="{{ route('admin.users.index') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-people me-1"></i>Users
                     </a>
                 </li>
@@ -45,7 +45,7 @@
                 <!-- Clubs Management -->
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.clubs.*') ? 'active' : '' }}" 
-                       href="{{ route('admin.clubs.index') }}">
+                       href="{{ route('home') }}">
                         <i class="bi bi-building me-1"></i>Clubs
                     </a>
                 </li>
@@ -58,17 +58,17 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.reports.events') }}">
+                            <a class="dropdown-item" href="{{ route('home') }}">
                                 <i class="bi bi-calendar-event me-2"></i>Events Report
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.reports.registrations') }}">
+                            <a class="dropdown-item" href="{{ route('home') }}">
                                 <i class="bi bi-person-check me-2"></i>Registrations
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.reports.payments') }}">
+                            <a class="dropdown-item" href="{{ route('home') }}">
                                 <i class="bi bi-cash-coin me-2"></i>Payments
                             </a>
                         </li>
@@ -83,12 +83,12 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.admins.create') }}">
+                            <a class="dropdown-item" href="{{ route('home') }}">
                                 <i class="bi bi-person-plus me-2"></i>Add Admin
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.clubs.create') }}">
+                            <a class="dropdown-item" href="{{ route('home') }}">
                                 <i class="bi bi-building-add me-2"></i>Create Club
                             </a>
                         </li>
@@ -106,9 +106,11 @@
                     <a class="nav-link position-relative" href="#" id="adminNotificationDropdown" 
                        role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-bell fs-5"></i>
+                        {{-- 
                         @if(auth()->user()->unread_notifications_count > 0)
                         <span class="notification-badge-admin">{{ auth()->user()->unread_notifications_count }}</span>
                         @endif
+                        --}}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end notification-dropdown-admin">
                         <li class="dropdown-header">
@@ -124,6 +126,7 @@
                 </li>
 
                 <!-- Admin Profile -->
+                {{--
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" 
                        id="adminUserDropdown" role="button" data-bs-toggle="dropdown">
@@ -162,7 +165,7 @@
                             </form>
                         </li>
                     </ul>
-                </li>
+                </li> --}}
             </ul>
         </div>
     </div>
