@@ -1,3 +1,4 @@
+/* resources/css/theme.css */
 /* ===================================
    TAREvent Management System - Theme Colors
    =================================== */
@@ -10,7 +11,7 @@
     --user-secondary: #10b981;
     --user-secondary-hover: #059669;
     --user-accent: #f59e0b;
-    
+
     /* Admin Site - Primary Theme (Purple) */
     --admin-primary: #7c3aed;
     --admin-primary-hover: #6d28d9;
@@ -18,7 +19,7 @@
     --admin-secondary: #ec4899;
     --admin-secondary-hover: #db2777;
     --admin-accent: #f97316;
-    
+
     /* Light Mode - Common */
     --bg-primary: #ffffff;
     --bg-secondary: #f9fafb;
@@ -28,22 +29,49 @@
     --text-tertiary: #9ca3af;
     --border-color: #e5e7eb;
     --border-hover: #d1d5db;
-    
+
     /* Status Colors */
     --success: #10b981;
     --success-light: #d1fae5;
+    --success-hover: #059669;
     --warning: #f59e0b;
     --warning-light: #fef3c7;
+    --warning-hover: #d97706;
     --error: #ef4444;
     --error-light: #fee2e2;
+    --error-hover: #dc2626;
     --info: #3b82f6;
     --info-light: #dbeafe;
-    
+    --info-hover: #2563eb;
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+    /* Forum Specific Colors */
+    --forum-gradient-start: #2563eb;
+    --forum-gradient-end: #7c3aed;
+    --forum-card-hover: #f8fafc;
+    
+        /* Forum Post Specific */
+    --forum-header-bg: linear-gradient(135deg, #dbeafe, #f3f4f6);
+    --forum-card-bg: var(--bg-primary);
+    --forum-card-hover-bg: var(--bg-secondary);
+    
+    /* Author Card */
+    --author-card-gradient: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    
+    /* Stats Colors */
+    --stat-views-color: #3b82f6;
+    --stat-likes-color: #ef4444;
+    --stat-comments-color: #10b981;
+    --stat-time-color: #f59e0b;
+    
+    /* Overlay */
+    --overlay-bg: rgba(0, 0, 0, 0.75);
+    --overlay-light: rgba(0, 0, 0, 0.5);
 }
 
 /* Dark Mode Variables */
@@ -55,7 +83,7 @@
     --user-secondary: #34d399;
     --user-secondary-hover: #10b981;
     --user-accent: #fbbf24;
-    
+
     /* Admin Site - Dark Mode */
     --admin-primary: #8b5cf6;
     --admin-primary-hover: #7c3aed;
@@ -63,7 +91,7 @@
     --admin-secondary: #f472b6;
     --admin-secondary-hover: #ec4899;
     --admin-accent: #fb923c;
-    
+
     /* Dark Mode - Common */
     --bg-primary: #111827;
     --bg-secondary: #1f2937;
@@ -73,22 +101,49 @@
     --text-tertiary: #9ca3af;
     --border-color: #374151;
     --border-hover: #4b5563;
-    
+
     /* Status Colors - Dark Mode */
     --success: #34d399;
     --success-light: #064e3b;
+    --success-hover: #10b981;
     --warning: #fbbf24;
     --warning-light: #78350f;
+    --warning-hover: #f59e0b;
     --error: #f87171;
     --error-light: #7f1d1d;
+    --error-hover: #ef4444;
     --info: #60a5fa;
     --info-light: #1e3a8a;
-    
+    --info-hover: #3b82f6;
+
     /* Shadows - Dark Mode */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+
+    /* Forum Specific - Dark Mode */
+    --forum-gradient-start: #3b82f6;
+    --forum-gradient-end: #8b5cf6;
+    --forum-card-hover: #1f2937;
+    
+        /* Forum Post Specific - Dark */
+    --forum-header-bg: linear-gradient(135deg, #1e3a8a, #1f2937);
+    --forum-card-bg: var(--bg-primary);
+    --forum-card-hover-bg: var(--bg-secondary);
+    
+    /* Author Card - Dark */
+    --author-card-gradient: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    
+    /* Stats Colors - Dark */
+    --stat-views-color: #60a5fa;
+    --stat-likes-color: #f87171;
+    --stat-comments-color: #34d399;
+    --stat-time-color: #fbbf24;
+    
+    /* Overlay */
+    --overlay-bg: rgba(0, 0, 0, 0.85);
+    --overlay-light: rgba(0, 0, 0, 0.65);
 }
 
 /* Base Styles */
@@ -145,7 +200,7 @@ body {
 /* Card Styles */
 .card {
     background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    /*border: 1px solid var(--border-color);*/
     border-radius: 0.75rem;
     box-shadow: var(--shadow-md);
     transition: all 0.3s ease;
@@ -153,7 +208,7 @@ body {
 
 .card:hover {
     box-shadow: var(--shadow-lg);
-    transform: translateY(-4px);
+    /*transform: translateY(-4px);*/
 }
 
 /* Input Styles */
@@ -177,13 +232,17 @@ body {
     width: 3.5rem;
     height: 3.5rem;
     border-radius: 50%;
-    background-color: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     color: white;
     border: none;
     box-shadow: var(--shadow-xl);
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
 }
 
 .dark-mode-toggle:hover {

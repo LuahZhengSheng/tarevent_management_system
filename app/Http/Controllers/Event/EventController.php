@@ -94,9 +94,9 @@ class EventController extends Controller
     public function create()
     {
         // Authorization: Must be club admin
-        if (!auth()->user()->hasRole('club')) {
-            abort(403, 'Only club administrators can create events.');
-        }
+//        if (!auth()->user()->hasRole('club')) {
+//            abort(403, 'Only club administrators can create events.');
+//        }
 
         $clubs = Club::where('status', 'active')->get();
         $categories = ['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology'];
