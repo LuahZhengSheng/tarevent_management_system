@@ -304,12 +304,6 @@ class User extends Authenticatable {
         
         return false;
     }
-
-    public function getUnreadNotificationsCountAttribute() {
-        return $this->notifications()
-                        ->whereNull('read_at')
-                        ->count();
-    }
     
 //    public function getUnreadNotificationsCountAttribute()
 //    {
@@ -379,6 +373,9 @@ class User extends Authenticatable {
             'total_likes' => $this->posts()->sum('likes_count'),
             'total_comments' => $this->posts()->sum('comments_count'),
         ];
+    }
+    
+    /*
      * Notification helpers
      */
     // Get unread notifications count
