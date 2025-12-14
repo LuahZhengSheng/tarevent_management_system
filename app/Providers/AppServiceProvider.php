@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Pagination\Paginator;
+use App\Services\PostService;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Observers\EventObserver;
@@ -14,16 +16,23 @@ class AppServiceProvider extends ServiceProvider {
     /**
      * Register any application services.
      */
-    public function register(): void {
-        // Register services here if needed
+    public function register(): void
+    {
+        // Register PostService as singleton
+        $this->app->singleton(PostService::class, function ($app) {
+            return new PostService();
+        });
     }
+
 
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
-    {
-        // Register enhanced model observers with notification support
+    public function boot(): void {
+        // Use Bootstrap pagination
+        Paginator::useBootstrapFive();
+        
+        // Register model observers
         Event::observe(EventObserver::class);
         EventRegistration::observe(EventRegistrationObserver::class);
 

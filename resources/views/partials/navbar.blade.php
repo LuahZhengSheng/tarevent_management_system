@@ -41,7 +41,8 @@
 
                 <!-- Forum -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('forum.*') ? 'active' : '' }}" href="{{ route('home') }}">
+                    <a class="nav-link {{ request()->routeIs('forums.*') ? 'active' : '' }}" 
+                       href="{{ route('forums.index') }}">
                         <i class="bi bi-chat-dots me-1"></i>Forum
                     </a>
                 </li>
