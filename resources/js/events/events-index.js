@@ -183,6 +183,13 @@
         const posterUrl = event.poster_path ? `/storage/event-posters/${event.poster_path}` : null;
 
         let statusBadge = '';
+
+        const privateBadge = !event.is_public
+                ? `<span class="tag tag-private">
+               <i class="bi bi-lock-fill me-1"></i>Private
+           </span>`
+                : '';
+
         if (event.is_full) {
             statusBadge = `
                 <div class="status-badge status-full">
@@ -220,6 +227,7 @@
                         
                         <div class="event-tags">
                             <span class="tag tag-category">${event.category}</span>
+                            ${privateBadge}
                             ${event.is_paid ?
                 `<span class="tag tag-price">RM ${parseFloat(event.fee_amount).toFixed(2)}</span>` :
                 `<span class="tag tag-free">Free</span>`

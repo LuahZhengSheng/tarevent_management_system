@@ -67,25 +67,107 @@ class EventController extends Controller {
      * Display event details
      */
     public function show(Event $event) {
-        // Authorization check
-        if ($event->status !== 'published' && !$event->canBeEditedBy(auth()->user())) {
-            abort(403, 'This event is not available for viewing.');
+        // Check if user can view this event
+        if ($event->status === 'draft' || $event->status === 'pending') {
+            // Only organizer/admin can view draft/pending events
+            if (!auth()->check() || (!$event->isOrganizer(auth()->user()) && !auth()->user()->isAdmin())) {
+                abort(404);
+            }
         }
 
-        $event->load(['organizer', 'registrations', 'creator']);
-
-        // Check if current user is registered
+        // Check if user is registered
         $isRegistered = false;
         $userRegistration = null;
 
         if (auth()->check()) {
             $userRegistration = $event->registrations()
                     ->where('user_id', auth()->id())
+                    ->whereIn('status', ['confirmed', 'pending_payment', 'cancelled'])
                     ->first();
-            $isRegistered = $userRegistration !== null;
+            $isRegistered = $userRegistration !== null && $userRegistration->status !== 'cancelled';
         }
 
-        return view('events.show', compact('event', 'isRegistered', 'userRegistration'));
+        // Determine if user can manage this event
+        $canManageEvent = false;
+        $isManager = false;
+
+        if (auth()->check()) {
+            $user = auth()->user();
+            $isManager = $user->isAdmin() || $user->hasRole('club');
+
+            // 能不能看到管理按钮：管理员 或 这个 event 的 club 主办方
+            $canManageEvent = $user->isAdmin() ||
+                    ($user->hasRole('club') && $event->organizer_id === $user->club_id);
+        }
+
+        // Determine current stage
+        $now = now();
+        $stage = 'draft'; // default
+
+        if ($event->status === 'cancelled') {
+            $stage = 'cancelled';
+        } elseif ($event->status === 'draft') {
+            $stage = 'draft';
+        } elseif ($event->status === 'pending') {
+            $stage = 'pending';
+        } elseif ($event->status === 'published') {
+            if ($now < $event->registration_start_time) {
+                $stage = 'pre_registration';
+            } elseif ($now >= $event->registration_start_time && $now <= $event->registration_end_time) {
+                if ($now < $event->start_time) {
+                    $stage = 'registration_open';
+                } elseif ($now >= $event->start_time && $now <= $event->end_time) {
+                    $stage = 'ongoing';
+                } else {
+                    $stage = 'past';
+                }
+            } elseif ($now > $event->registration_end_time && $now < $event->start_time) {
+                $stage = 'registration_closed';
+            } elseif ($now >= $event->start_time && $now <= $event->end_time) {
+                $stage = 'ongoing';
+            } elseif ($now > $event->end_time) {
+                $stage = 'past';
+            }
+        }
+
+        // Calculate time differences for display
+        $timeInfo = [
+            'registration_starts_in' => $now < $event->registration_start_time ? $event->registration_start_time->diffForHumans() : null,
+            'registration_ends_in' => $now < $event->registration_end_time ? $event->registration_end_time->diffForHumans() : null,
+            'event_starts_in' => $now < $event->start_time ? $event->start_time->diffForHumans() : null,
+            'event_ends_in' => $now < $event->end_time && $now >= $event->start_time ? $event->end_time->diffForHumans() : null,
+            'event_ended' => $now > $event->end_time ? $event->end_time->diffForHumans() : null,
+        ];
+
+        // Check if user can register 
+        $canRegister = false;
+        $registrationBlockReason = null;
+
+        if (auth()->check()) {
+            $canRegister = $event->canUserRegister(auth()->user());
+
+            // Determine why user cannot register
+            if (!$canRegister && !$isRegistered) {
+                if (!$event->is_public && !$event->isUserClubMember(auth()->user())) {
+                    $registrationBlockReason = 'not_club_member';
+                } elseif (!$event->is_registration_open) {
+                    $registrationBlockReason = 'registration_closed';
+                } elseif ($event->is_full) {
+                    $registrationBlockReason = 'event_full';
+                }
+            }
+        }
+
+        return view('events.show', compact(
+                        'event',
+                        'isRegistered',
+                        'userRegistration',
+                        'canManageEvent',
+                        'canRegister',
+                        'registrationBlockReason',
+                        'stage',
+                        'timeInfo'
+        ));
     }
 
     /**
@@ -117,7 +199,7 @@ class EventController extends Controller {
      */
     public function store(StoreEventRequest $request) {
         // Authorization already checked in StoreEventRequest
-        
+
         try {
             DB::beginTransaction();
 
@@ -186,7 +268,7 @@ class EventController extends Controller {
             $data['created_by'] = auth()->id() ?? 1; // Temporary
             // Handle tags if present
             if ($request->has('tags') && is_array($request->tags)) {
-                $data['tags'] = json_encode($request->tags);
+                $data['tags'] = $request->tags;
             }
 
             $data['status'] = $request->input('status', 'draft');
@@ -336,6 +418,7 @@ class EventController extends Controller {
             'venue' => $event->venue,
             'venue_short' => Str::limit($event->venue, 20),
             'category' => $event->category,
+            'is_public' => $event->is_public,
             'is_paid' => $event->is_paid,
             'fee_amount' => $event->fee_amount,
             'max_participants' => $event->max_participants,
@@ -451,7 +534,7 @@ class EventController extends Controller {
 
             // Handle tags
             if ($request->has('tags') && is_array($request->tags)) {
-                $data['tags'] = json_encode($request->tags);
+                $data['tags'] = $request->tags;
             }
 
             // Handle custom fields based on stage
@@ -742,8 +825,18 @@ class EventController extends Controller {
      * Publish a draft event
      */
     public function publish(Request $request, Event $event) {
-        // Authorization check
-        if (!$event->canBeEditedBy(auth()->user())) {
+        $user = auth()->user();
+
+        // 1. 授权：只能 admin 或该 event 的 organizer club
+        if (
+                !$user ||
+                !(
+                $user->isAdmin() ||
+                ($user->hasRole('club') &&
+                $event->organizer_type === 'club' &&
+                $event->organizer_id === $user->club_id)
+                )
+        ) {
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => false,
@@ -753,24 +846,33 @@ class EventController extends Controller {
             abort(403, 'You do not have permission to publish this event.');
         }
 
-        // Can only publish drafts
-        if ($event->status !== 'draft') {
+        // 2. 只能从 draft/pending 状态发布（和前端按钮显示逻辑对应）
+        if (!in_array($event->status, ['draft', 'pending'], true)) {
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => false,
-                            'message' => 'Only draft events can be published.',
+                            'message' => 'Only draft or pending events can be published.',
                                 ], 422);
             }
 
-            return back()->withErrors(['error' => 'Only draft events can be published.']);
+            return back()->withErrors([
+                        'error' => 'Only draft or pending events can be published.',
+            ]);
         }
 
         try {
-            $event->publish();
+            // 如果你在 Event 模型里有 publish() 方法，可以用那一个
+            if (method_exists($event, 'publish')) {
+                $event->publish();
+            } else {
+                $event->status = 'published';
+                $event->published_at = now();
+                $event->save();
+            }
 
             Log::info('Event published', [
                 'event_id' => $event->id,
-                'user_id' => auth()->id(),
+                'user_id' => $user->id,
             ]);
 
             if ($request->expectsJson()) {
@@ -784,9 +886,10 @@ class EventController extends Controller {
             return redirect()
                             ->route('events.show', $event)
                             ->with('success', 'Event published successfully! 🎉');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Event publish failed', [
                 'event_id' => $event->id,
+                'user_id' => $user?->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -797,7 +900,9 @@ class EventController extends Controller {
                                 ], 500);
             }
 
-            return back()->withErrors(['error' => 'Failed to publish event.']);
+            return back()->withErrors([
+                        'error' => 'Failed to publish event.',
+            ]);
         }
     }
 

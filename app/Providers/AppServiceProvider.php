@@ -21,13 +21,22 @@ class AppServiceProvider extends ServiceProvider {
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void {
-        // Register model observers
+    public function boot(): void
+    {
+        // Register enhanced model observers with notification support
         Event::observe(EventObserver::class);
         EventRegistration::observe(EventRegistrationObserver::class);
+
+        // Morph map for polymorphic relationships
         Relation::morphMap([
             'club' => \App\Models\Club::class,
         ]);
-        // Other bootstrap logic can go here
+
+        // Share unread notification count with all views (for navbar badge)
+        view()->composer('*', function ($view) {
+            if (auth()->check()) {
+                $view->with('unreadNotificationsCount', auth()->user()->unread_notifications_count);
+            }
+        });
     }
 }

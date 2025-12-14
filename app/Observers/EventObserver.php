@@ -59,21 +59,31 @@ class EventObserver
      */
     public function updating(Event $event)
     {
-        // Set updated_by
-        if (auth()->check()) {
-            $event->updated_by = auth()->id();
+        // Track what fields are being changed
+        $dirtyFields = $event->getDirty();
+        $changes = [];
+
+        foreach ($dirtyFields as $field => $newValue) {
+            $oldValue = $event->getOriginal($field);
+            
+            // Skip if values are the same
+            if ($oldValue == $newValue) {
+                continue;
+            }
+
+            $changes[$field] = [
+                'old' => $oldValue,
+                'new' => $newValue,
+            ];
         }
 
-        // Check if status changed to published
-        if ($event->isDirty('status') && $event->status === 'published') {
-            Log::info('Event being published', ['id' => $event->id]);
-        }
-
-        // Check if status changed to cancelled
-        if ($event->isDirty('status') && $event->status === 'cancelled') {
-            Log::warning('Event being cancelled', [
-                'id' => $event->id,
-                'reason' => $event->cancelled_reason,
+        // Store changes in a temporary cache for the updated() event
+        if (!empty($changes)) {
+            Cache::put("event_changes_{$event->id}", $changes, now()->addMinutes(5));
+            
+            Log::info('Event being updated', [
+                'event_id' => $event->id,
+                'changes' => array_keys($changes),
             ]);
         }
     }
@@ -83,43 +93,40 @@ class EventObserver
      */
     public function updated(Event $event)
     {
-        Log::info('Event updated', ['id' => $event->id]);
+        // Retrieve tracked changes
+        $changes = Cache::pull("event_changes_{$event->id}");
+
+        if (empty($changes)) {
+            return;
+        }
 
         // Clear cache
         Cache::forget('events_upcoming');
         Cache::forget('events_public');
         Cache::forget('event_' . $event->id);
 
-        // If event was published, notify all potential attendees
-        if ($event->wasChanged('status') && $event->status === 'published') {
-            $this->notificationService->notifyUsersAboutNewEvent($event);
+        // Handle cancellation separately
+        if (isset($changes['status']) && $changes['status']['new'] === 'cancelled') {
+            $this->notificationService->notifyEventCancellation($event);
+            return;
         }
 
-        // If event was cancelled, notify all registered users
-        if ($event->wasChanged('status') && $event->status === 'cancelled') {
-            $this->notificationService->notifyRegisteredUsersAboutCancellation($event);
+        // Don't notify if event is past or cancelled
+        if ($event->end_time < now() || $event->status === 'cancelled') {
+            Log::info('Skipping notifications for past/cancelled event', [
+                'event_id' => $event->id,
+                'status' => $event->status,
+            ]);
+            return;
         }
 
-        // If event details changed significantly, notify registered users
-        if ($event->wasChanged(['start_time', 'end_time', 'venue']) && $event->status === 'published') {
-            $this->notificationService->notifyRegisteredUsersAboutChanges($event);
-        }
-    }
+        // Handle other updates
+        $this->notificationService->handleEventUpdate($event, $changes);
 
-    /**
-     * Handle the Event "deleting" event.
-     */
-    public function deleting(Event $event)
-    {
-        Log::warning('Event being deleted', [
-            'id' => $event->id,
-            'title' => $event->title,
+        Log::info('Event updated and notifications sent', [
+            'event_id' => $event->id,
+            'changes' => array_keys($changes),
         ]);
-
-        // Notify registered users if event has registrations
-        if ($event->registrations()->count() > 0) {
-            $this->notificationService->notifyRegisteredUsersAboutDeletion($event);
-        }
     }
 
     /**
@@ -129,30 +136,8 @@ class EventObserver
     {
         Log::info('Event deleted', ['id' => $event->id]);
 
-        // Clear cache
-        Cache::forget('events_upcoming');
-        Cache::forget('events_public');
-        Cache::forget('event_' . $event->id);
-    }
-
-    /**
-     * Handle the Event "restored" event.
-     */
-    public function restored(Event $event)
-    {
-        Log::info('Event restored', ['id' => $event->id]);
-
-        // Clear cache
-        Cache::forget('events_upcoming');
-        Cache::forget('events_public');
-    }
-
-    /**
-     * Handle the Event "force deleted" event.
-     */
-    public function forceDeleted(Event $event)
-    {
-        Log::warning('Event force deleted', ['id' => $event->id]);
+        // Unsubscribe all users
+        $this->notificationService->unsubscribeFromEvent(null, $event->id, 'event_deleted');
 
         // Clear cache
         Cache::forget('events_upcoming');

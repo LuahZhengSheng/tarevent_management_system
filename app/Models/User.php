@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+
 //use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
-{
-    use HasFactory, Notifiable;
+class User extends Authenticatable {
+
+    use HasFactory,
+        Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -20,15 +22,15 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',                    // student / club / admin
-        'club_id',                 // If user is club admin
+        'role', // student / club / admin
+        'club_id', // If user is club admin
         'profile_photo',
         'phone',
         'program',
         'student_id',
-        'interested_categories',   // JSON array
+        'interested_categories', // JSON array
         'email_verified_at',
-        'status',                  // active / inactive / suspended
+        'status', // active / inactive / suspended
         'last_login_at',
     ];
 
@@ -53,71 +55,91 @@ class User extends Authenticatable
         'password' => 'hashed',
         'interested_categories' => 'array',
     ];
-
     protected $attributes = [
         'role' => 'student',
         'status' => 'active',
     ];
 
     // Relationships
-    public function club()
-    {
+    public function club() {
         return $this->belongsTo(Club::class);
     }
 
-    public function eventRegistrations()
-    {
+    // 学生加入的 clubs（通过 club_user 中间表）
+    public function clubs() {
+        return $this->belongsToMany(Club::class, 'club_user')
+                        ->withPivot('role')
+                        ->withTimestamps();
+    }
+
+    // 判断是否是某个 club 的成员
+    public function isMemberOfClub($clubId): bool {
+        return $this->clubs()
+                        ->where('clubs.id', $clubId)
+                        ->exists();
+    }
+
+    public function eventRegistrations() {
         return $this->hasMany(EventRegistration::class);
     }
 
-    public function payments()
-    {
+    public function payments() {
         return $this->hasMany(Payment::class);
     }
 
-    public function posts()
-    {
+    public function posts() {
         return $this->hasMany(Post::class);
     }
 
-    public function comments()
-    {
+    public function comments() {
         return $this->hasMany(Comment::class);
     }
 
-    public function notifications()
-    {
-        return $this->hasMany(Notification::class);
+    // Notifications relationship
+    public function notifications() {
+        return $this->hasMany(Notification::class)->orderBy('created_at', 'desc');
+    }
+
+    // Event subscriptions relationship
+    public function eventSubscriptions() {
+        return $this->hasMany(EventSubscription::class);
+    }
+
+    // Active event subscriptions
+    public function activeEventSubscriptions() {
+        return $this->hasMany(EventSubscription::class)->where('is_active', true);
+    }
+
+    // Subscribed events
+    public function subscribedEvents() {
+        return $this->belongsToMany(Event::class, 'event_subscriptions')
+                        ->wherePivot('is_active', true)
+                        ->withPivot('subscribed_at', 'is_active')
+                        ->withTimestamps();
     }
 
     // Role checking methods
-    public function hasRole(string $role): bool
-    {
+    public function hasRole(string $role): bool {
         return $this->role === $role;
     }
 
-    public function hasAnyRole(array $roles): bool
-    {
+    public function hasAnyRole(array $roles): bool {
         return in_array($this->role, $roles);
     }
 
-    public function isStudent(): bool
-    {
+    public function isStudent(): bool {
         return $this->role === 'user';
     }
 
-    public function isClub(): bool
-    {
+    public function isClub(): bool {
         return $this->role === 'club';
     }
 
-    public function isAdmin(): bool
-    {
+    public function isAdmin(): bool {
         return $this->role === 'admin';
     }
 
-    public function isClubAdmin(int $clubId = null): bool
-    {
+    public function isClubAdmin(int $clubId = null): bool {
         if (!$this->isClub()) {
             return false;
         }
@@ -130,24 +152,20 @@ class User extends Authenticatable
     }
 
     // Status checking methods
-    public function isActive(): bool
-    {
+    public function isActive(): bool {
         return $this->status === 'active';
     }
 
-    public function isSuspended(): bool
-    {
+    public function isSuspended(): bool {
         return $this->status === 'suspended';
     }
 
     // Permission checking
-    public function canCreateEvent(): bool
-    {
+    public function canCreateEvent(): bool {
         return $this->isClub() || $this->isAdmin();
     }
 
-    public function canEditEvent(Event $event): bool
-    {
+    public function canEditEvent(Event $event): bool {
         if ($this->isAdmin()) {
             return true;
         }
@@ -159,13 +177,11 @@ class User extends Authenticatable
         return false;
     }
 
-    public function canDeleteEvent(Event $event): bool
-    {
+    public function canDeleteEvent(Event $event): bool {
         return $this->canEditEvent($event);
     }
 
-    public function canRegisterForEvent(Event $event): bool
-    {
+    public function canRegisterForEvent(Event $event): bool {
         // Check if user is active
         if (!$this->isActive()) {
             return false;
@@ -180,17 +196,15 @@ class User extends Authenticatable
         return $event->is_registration_open;
     }
 
-    public function isRegisteredForEvent(Event $event): bool
-    {
+    public function isRegisteredForEvent(Event $event): bool {
         return $this->eventRegistrations()
-                    ->where('event_id', $event->id)
-                    ->whereIn('status', ['confirmed', 'pending_payment'])
-                    ->exists();
+                        ->where('event_id', $event->id)
+                        ->whereIn('status', ['confirmed', 'pending_payment'])
+                        ->exists();
     }
 
     // Accessors
-    public function getProfilePhotoUrlAttribute()
-    {
+    public function getProfilePhotoUrlAttribute() {
         if ($this->profile_photo) {
             return asset('storage/' . $this->profile_photo);
         }
@@ -205,53 +219,84 @@ class User extends Authenticatable
         return asset($avatars[$this->role] ?? $avatars['student']);
     }
 
-//    public function getUnreadNotificationsCountAttribute()
-//    {
-//        return $this->notifications()
-//                    ->whereNull('read_at')
-//                    ->count();
-//    }
-
     // Scopes
-    public function scopeActive($query)
-    {
+    public function scopeActive($query) {
         return $query->where('status', 'active');
     }
 
-    public function scopeByRole($query, $role)
-    {
+    public function scopeByRole($query, $role) {
         return $query->where('role', $role);
     }
 
-    public function scopeClubs($query)
-    {
+    public function scopeClubs($query) {
         return $query->where('role', 'club');
     }
 
-    public function scopeStudents($query)
-    {
+    public function scopeStudents($query) {
         return $query->where('role', 'student');
     }
 
     // Methods
-    public function updateLastLogin()
-    {
+    public function updateLastLogin() {
         $this->update(['last_login_at' => now()]);
     }
 
-    public function suspend(string $reason = null)
-    {
+    public function suspend(string $reason = null) {
         $this->update([
             'status' => 'suspended',
             'suspended_reason' => $reason,
         ]);
     }
 
-    public function activate()
-    {
+    public function activate() {
         $this->update([
             'status' => 'active',
             'suspended_reason' => null,
         ]);
+    }
+
+    /**
+     * Notification helpers
+     */
+    // Get unread notifications count
+    public function getUnreadNotificationsCountAttribute() {
+        return $this->notifications()->unread()->count();
+    }
+
+    // Get recent unread notifications
+    public function getRecentUnreadNotificationsAttribute() {
+        return $this->notifications()
+                        ->unread()
+                        ->recent()
+                        ->limit(5)
+                        ->get();
+    }
+
+    // Mark all notifications as read
+    public function markAllNotificationsAsRead() {
+        return $this->notifications()
+                        ->whereNull('read_at')
+                        ->update(['read_at' => now()]);
+    }
+
+    /**
+     * Event subscription helpers
+     */
+    // Check if user is subscribed to an event
+    public function isSubscribedToEvent($eventId) {
+        return $this->eventSubscriptions()
+                        ->where('event_id', $eventId)
+                        ->where('is_active', true)
+                        ->exists();
+    }
+
+    // Subscribe to event
+    public function subscribeToEvent($eventId) {
+        return EventSubscription::subscribe($this->id, $eventId);
+    }
+
+    // Unsubscribe from event
+    public function unsubscribeFromEvent($eventId, $reason = null) {
+        EventSubscription::unsubscribeFromEvent($this->id, $eventId, $reason);
     }
 }

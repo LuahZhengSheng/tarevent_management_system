@@ -31,6 +31,19 @@ class EventRegistrationController extends Controller {
                             ->with('error', 'Registration is not currently open for this event.');
         }
 
+        // Check if user can register (handles public/private logic)
+        if (!$event->canUserRegister(auth()->user())) {
+            if (!$event->is_public && !$event->isUserClubMember(auth()->user())) {
+                return redirect()
+                                ->route('events.show', $event)
+                                ->with('error', 'This is a private event. Only club members can register.');
+            }
+
+            return redirect()
+                            ->route('events.show', $event)
+                            ->with('error', 'You cannot register for this event at this time.');
+        }
+
         // Check if user already registered
         if (auth()->check()) {
             $existingRegistration = EventRegistration::where('event_id', $event->id)
@@ -116,6 +129,15 @@ class EventRegistrationController extends Controller {
      */
     public function store(Request $request, Event $event) {
         try {
+            // Check if user can register for this event
+            if (!$event->canUserRegister(auth()->user())) {
+                if (!$event->is_public && !$event->isUserClubMember(auth()->user())) {
+                    return back()->with('error', 'This is a private event. Only club members can register.');
+                }
+
+                return back()->with('error', 'You cannot register for this event.');
+            }
+
             // 统一 trim 文本字段
             $input = $request->all();
             foreach (['full_name', 'email', 'phone', 'student_id', 'program',
@@ -129,9 +151,9 @@ class EventRegistrationController extends Controller {
             // Build validation rules dynamically
             $rules = [
                 'full_name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
+//                'email' => 'required|email|max:255',
                 'phone' => 'required|string',
-                'student_id' => 'required|string|max:50',
+//                'student_id' => 'required|string|max:50',
                 'program' => 'required|string|max:255',
                 'terms_accepted' => 'required|accepted',
             ];
@@ -249,6 +271,8 @@ class EventRegistrationController extends Controller {
                     }
                 }
             }
+            
+            $user = auth()->user();
 
             // Create registration with SQL injection protection (using Eloquent)
             $registrationInput = [
@@ -256,9 +280,9 @@ class EventRegistrationController extends Controller {
                 'user_id' => auth()->id(),
                 'status' => $status,
                 'full_name' => strip_tags($request->full_name),
-                'email' => filter_var($request->email, FILTER_SANITIZE_EMAIL),
+                'email' => $user->email,  // 从 DB 拿
                 'phone' => PhoneHelper::formatForStorage($request->phone),
-                'student_id' => strip_tags($request->student_id),
+                'student_id' => $user->student_id,  // 从 DB 拿
                 'program' => strip_tags($request->program),
                 'registration_data' => $registrationData,
             ];
@@ -372,46 +396,247 @@ class EventRegistrationController extends Controller {
     }
 
     /**
-     * My Events page
+     * Display user's registered events (My Events page)
      */
     public function myEvents() {
-        $registrations = EventRegistration::with('event', 'payment')
-                ->orderByDesc('created_at')
-                ->paginate(10);
+        return view('events.my-events');
+    }
 
-        return view('events.my-events', compact('registrations'));
+    /**
+     * Fetch user's registered events via AJAX
+     */
+    public function fetchMyEvents(Request $request) {
+        try {
+            $user = auth()->user();
+
+            // Get user's registrations with related event data
+            $registrations = $user->eventRegistrations()
+                    ->with(['event' => function ($query) {
+                            $query->with('organizer');
+                        }, 'payment'])
+                    ->whereHas('event') // Only include registrations with existing events
+                    ->whereIn('status', ['confirmed', 'pending_payment', 'waitlisted'])
+                    ->get();
+
+            $now = now();
+            $events = [];
+
+            foreach ($registrations as $registration) {
+                $event = $registration->event;
+
+                // Skip if event is null (soft deleted)
+                if (!$event) {
+                    continue;
+                }
+
+                // Determine event status
+                $status = 'upcoming';
+                if ($event->status === 'cancelled') {
+                    $status = 'cancelled';
+                } elseif ($now >= $event->start_time && $now <= $event->end_time) {
+                    $status = 'ongoing';
+                } elseif ($now > $event->end_time) {
+                    $status = 'past';
+                }
+
+                // Check if user can cancel registration
+                $canCancel = false;
+                if ($event->allow_cancellation &&
+                        $registration->status === 'confirmed' &&
+                        $status !== 'past' &&
+                        $status !== 'cancelled') {
+
+                    // Check cancellation deadline (e.g., 24 hours before event)
+                    $cancellationDeadline = $event->start_time->subHours(24);
+                    if ($now < $cancellationDeadline) {
+                        $canCancel = true;
+                    }
+                }
+
+                $events[] = [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'description' => $event->description,
+                    'venue' => $event->venue,
+                    'venue_short' => Str::limit($event->venue, 30),
+                    'category' => $event->category,
+                    'is_paid' => $event->is_paid,
+                    'fee_amount' => $event->fee_amount,
+                    'poster_path' => $event->poster_path,
+                    'start_time' => $event->start_time->toISOString(),
+                    'end_time' => $event->end_time->toISOString(),
+                    'status' => $status,
+                    'registration_id' => $registration->id,
+                    'registration_status' => $registration->status,
+                    'registered_at' => $registration->created_at->toISOString(),
+                    'payment_status' => $registration->payment ? $registration->payment->status : null,
+                    'organizer_name' => $event->organizer->name ?? 'TARCampus',
+                    'can_cancel' => $canCancel,
+                ];
+            }
+
+            // Calculate statistics
+            $stats = [
+                'ongoing' => collect($events)->where('status', 'ongoing')->count(),
+                'upcoming' => collect($events)->where('status', 'upcoming')->count(),
+                'past' => collect($events)->where('status', 'past')->count(),
+                'cancelled' => collect($events)->where('status', 'cancelled')->count(),
+                'total' => count($events),
+            ];
+
+            return response()->json([
+                        'success' => true,
+                        'events' => $events,
+                        'stats' => $stats,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Fetch my events error', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to fetch your events.',
+                        'error' => config('app.debug') ? $e->getMessage() : null,
+                            ], 500);
+        }
     }
 
     /**
      * Cancel registration
      */
     public function destroy(EventRegistration $registration) {
+        // Authorization: Must be the registration owner
+        if (!$registration->belongsToUser(auth()->id())) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                            'success' => false,
+                            'message' => 'You can only cancel your own registration.',
+                                ], 403);
+            }
+
+            abort(403, 'You can only cancel your own registration.');
+        }
+
         // Check if event allows cancellation
         if (!$registration->event->allow_cancellation) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                            'success' => false,
+                            'message' => 'This event does not allow registration cancellation.',
+                                ], 422);
+            }
+
             return back()->with('error', 'This event does not allow registration cancellation.');
         }
 
-        // Check if cancellation is allowed
+        // Check if cancellation is allowed (time-based)
         if (!$registration->can_be_cancelled) {
-            return back()->with('error', 'This registration cannot be cancelled.');
+            $reason = $this->getCancellationBlockReason($registration);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                            'success' => false,
+                            'message' => $reason,
+                                ], 422);
+            }
+
+            return back()->with('error', $reason);
         }
 
         try {
+            DB::beginTransaction();
+
+            // Cancel the registration (soft cancel - update status)
             $registration->cancel('Cancelled by user');
+
+            // If paid event and refund available, initiate refund
+            if ($registration->event->is_paid &&
+                    $registration->event->refund_available &&
+                    $registration->payment) {
+
+                $registration->update([
+                    'refund_status' => 'pending',
+                    'refund_requested_at' => now(),
+                ]);
+
+                // TODO: Integrate with payment gateway for refund
+                // For now, just mark as pending
+            }
+
+            DB::commit();
 
             Log::info('Registration cancelled by user', [
                 'registration_id' => $registration->id,
+                'user_id' => auth()->id(),
+                'event_id' => $registration->event_id,
             ]);
 
-            return back()->with('success', 'Registration cancelled successfully.');
+            if (request()->expectsJson()) {
+                return response()->json([
+                            'success' => true,
+                            'message' => 'Registration cancelled successfully.',
+                            'redirect' => route('events.show', $registration->event),
+                ]);
+            }
+
+            return redirect()
+                            ->route('events.show', $registration->event)
+                            ->with('success', 'Registration cancelled successfully. ' .
+                                    ($registration->refund_status === 'pending' ?
+                                    'Your refund request has been submitted.' : ''));
         } catch (\Exception $e) {
+            DB::rollBack();
+
             Log::error('Registration cancellation failed', [
                 'registration_id' => $registration->id,
+                'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->with('error', 'Failed to cancel registration.');
+            if (request()->expectsJson()) {
+                return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to cancel registration. Please try again.',
+                                ], 500);
+            }
+
+            return back()->with('error', 'Failed to cancel registration. Please try again.');
         }
+    }
+
+    /**
+     * Get human-readable cancellation block reason
+     */
+    private function getCancellationBlockReason(EventRegistration $registration) {
+        $now = now();
+        $event = $registration->event;
+
+        if ($registration->status === 'cancelled') {
+            return 'This registration has already been cancelled.';
+        }
+
+        if (!in_array($registration->status, ['confirmed', 'pending_payment'])) {
+            return 'Only confirmed registrations can be cancelled.';
+        }
+
+        if ($now < $event->registration_start_time) {
+            return 'Registration period has not started yet.';
+        }
+
+        if ($now > $event->registration_end_time) {
+            return 'The cancellation deadline has passed. Registration period ended on ' .
+                    $event->registration_end_time->format('d M Y, h:i A') . '.';
+        }
+
+        if ($now >= $event->start_time) {
+            return 'Cannot cancel after the event has started.';
+        }
+
+        return 'This registration cannot be cancelled at this time.';
     }
 
     /**
@@ -424,9 +649,9 @@ class EventRegistrationController extends Controller {
 
         $rules = [
             'full_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+//            'email' => 'required|email|max:255',
             'phone' => 'required|string|regex:/^[0-9\+\-\(\)\s]+$/|max:20',
-            'student_id' => 'required|string|max:50',
+//            'student_id' => 'required|string|max:50',
             'program' => 'required|string|max:255',
             'emergency_contact_name' => 'required|string|max:255',
             'emergency_contact_phone' => 'required|string|regex:/^[0-9\+\-\(\)\s]+$/|max:20',
