@@ -18,7 +18,7 @@ class Club extends Model {
         'created_by',
         'approved_at',
         'approved_by',
-        
+        'club_user_id',
     ];
 
     protected $casts = [
