@@ -11,6 +11,8 @@ use App\Http\Controllers\Notification\NotificationController;
 //use App\Http\Controllers\User\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Club\ClubController;
+
 
 if (app()->environment('local')) {
     Route::get('/__debug-which-app__', function () {
@@ -46,6 +48,50 @@ if (app()->environment('local')) {
     });
 }
 
+// Test routes for club creation form
+Route::get('/test/clubs/create', function () {
+    return view('clubs.test_create');
+})->name('test.clubs.create');
+
+// Test route for admin club creation form
+Route::get('/test/admin/clubs/create', function () {
+    return view('clubs.test_admin_create');
+})->name('test.admin.clubs.create');
+
+// Test route for adding member to club
+Route::get('/test/clubs/add-member', function () {
+    return view('clubs.test_add_member');
+})->name('test.clubs.add-member');
+
+// Test route for adding member action
+Route::middleware(['auth', 'club'])->post('/test/clubs/{club}/members/{user}/add', function (\App\Models\Club $club, \App\Models\User $user, \App\Services\ClubFacade $facade) {
+    $facade->addMember($club, $user);
+    return redirect()->back()->with('success', 'Member added successfully.');
+})->name('test.clubs.members.add');
+
+// Removed: Test routes for club approval (admin-created clubs are now immediately active)
+
+// Test route for club deactivation form
+Route::get('/test/clubs/{club}/deactivate', function ($clubId) {
+    return view('clubs.test_deactivate', ['clubId' => $clubId]);
+})->name('test.clubs.deactivate');
+
+// Test route for club deactivation action
+Route::put('/test/clubs/{club}/deactivate', function ($clubId, \App\Services\ClubFacade $facade, \Illuminate\Http\Request $request) {
+    $club = \App\Models\Club::findOrFail($clubId);
+    $deactivatedBy = auth()->user() ?? \App\Models\User::first();
+    $reason = $request->input('reason');
+    
+    $facade->deactivateClub($club, $deactivatedBy, $reason);
+    
+    return redirect()->back()->with('success', 'Club deactivated successfully.');
+})->name('test.clubs.deactivate.store');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::middleware(['auth'])->get('/test/clubs/all', function () {
+    return view('clubs.test_all');
+})->name('clubs.test_all');
+
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
 
@@ -56,9 +102,7 @@ use App\Http\Controllers\Forum\MyPostController;
  */
 
 // Public Routes
-Route::get('/', function () {
-    return view('events.index');
-})->name('home');
+Route::redirect('/', '/events')->name('home');
 
 Route::get('/login', function () {
     // 简单占位，可以改成你的登录页面
@@ -343,6 +387,19 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
         Route::get('/', [ClubEventsController::class, 'index'])->name('index');
         Route::get('/fetch', [ClubEventsController::class, 'fetch'])->name('fetch');
     });
+});
+
+// Club Management Routes
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::post('/clubs', [ClubController::class, 'store'])
+        ->name('clubs.store');
+});
+
+Route::middleware(['auth', 'club'])->group(function () {
+    Route::put(
+        '/clubs/{club}/members/{user}',
+        [ClubController::class, 'updateMemberRole']
+    )->name('clubs.members.updateRole');
 });
 
 /*

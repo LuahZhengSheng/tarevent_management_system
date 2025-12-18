@@ -1,0 +1,765 @@
+================================================================================
+                    TAR EVENT MANAGEMENT SYSTEM
+                        PROJECT STRUCTURE DOCUMENTATION
+================================================================================
+
+1. PROJECT OVERVIEW
+================================================================================
+
+The TAR Event Management System is a comprehensive web application built using
+the Laravel framework (version 12.0) and PHP 8.2. The system is designed to
+facilitate event management for educational institutions, specifically targeting
+student clubs and organizations. The application provides functionality for
+event creation, registration, payment processing, forum discussions, and
+notification management.
+
+The system implements a role-based access control mechanism with three primary
+user roles: administrators, club administrators, and regular users (students).
+This multi-tenant architecture allows different user groups to interact with
+the system according to their assigned permissions and responsibilities.
+
+================================================================================
+2. ARCHITECTURAL PATTERN
+================================================================================
+
+The application follows the Model-View-Controller (MVC) architectural pattern,
+which is the standard approach for Laravel applications. This pattern separates
+the application into three main components:
+
+- Models: Represent data structures and business logic
+- Views: Handle presentation and user interface
+- Controllers: Manage user input and coordinate between models and views
+
+Additionally, the system incorporates several design patterns including:
+- Service Layer Pattern: Business logic encapsulation in service classes
+- Decorator Pattern: Post processing and validation through decorators
+- Observer Pattern: Event-driven notifications and model lifecycle management
+- Repository Pattern: Data access abstraction through Eloquent ORM
+
+================================================================================
+3. DIRECTORY STRUCTURE AND ORGANIZATION
+================================================================================
+
+3.1 ROOT DIRECTORY
+--------------------------------------------------------------------------------
+
+The root directory contains configuration files, dependency management files,
+and entry points for the application:
+
+- artisan: Command-line interface for Laravel framework operations
+- composer.json: PHP dependency management configuration
+- package.json: JavaScript and frontend dependency management
+- vite.config.js: Build tool configuration for asset compilation
+- phpunit.xml: Testing framework configuration
+- README.md: Project documentation and setup instructions
+
+3.2 APPLICATION DIRECTORY (app/)
+--------------------------------------------------------------------------------
+
+The app directory contains the core application logic and follows Laravel's
+conventional structure:
+
+3.2.1 Console Directory
+Contains command-line commands and the kernel for scheduled tasks:
+- Commands/: Custom Artisan commands (e.g., CleanupNotifications)
+- Kernel.php: Console kernel configuration for scheduled tasks
+
+3.2.2 Decorators Directory
+Implements the Decorator design pattern for post processing:
+- PostDecoratorInterface.php: Interface defining decorator contract
+- BasePostDecorator.php: Base implementation for decorators
+- ValidationPostDecorator.php: Input validation decorator
+- ContentSanitizationDecorator.php: Content cleaning and sanitization
+- MediaPostDecorator.php: Media file handling and processing
+- TagsPostDecorator.php: Tag association and management
+
+3.2.3 Http Directory
+Contains HTTP-related components following Laravel's request lifecycle:
+
+Controllers Subdirectory:
+Organized by feature domain:
+- Event/: Event management controllers
+  - EventController.php: Main event CRUD operations
+  - EventRegistrationController.php: Registration management
+- Club/: Club-related controllers
+  - ClubEventsController.php: Club event management
+- Forum/: Forum functionality controllers
+  - PostController.php: Post management
+  - MyPostController.php: User's personal posts
+  - CommentController.php: Comment handling
+  - LikeController.php: Like/unlike functionality
+- Notification/: Notification management
+  - NotificationController.php: Notification operations
+
+Middleware Subdirectory:
+Request filtering and authentication:
+- Authenticate.php: Authentication verification
+- RedirectIfAuthenticated.php: Guest user redirection
+- CheckUserRole.php: User role verification
+- CheckClubRole.php: Club administrator verification
+- CheckAdminRole.php: Administrator verification
+- CheckActiveUser.php: Active user status verification
+- ValidateSignature.php: Signed URL validation
+
+Requests Subdirectory:
+Form request validation classes:
+- Event/: Event-specific validation rules
+  - StoreEventRequest.php: Event creation validation
+  - UpdateEventRequest.php: Event update validation
+
+Kernel.php: HTTP kernel configuration for middleware registration
+
+3.2.4 Mail Directory
+Email notification classes:
+- EventCancelledMail.php: Event cancellation notifications
+- EventTimeChangedMail.php: Time change notifications
+- EventVenueChangedMail.php: Venue change notifications
+- EventUpdatedMail.php: General event update notifications
+
+3.2.5 Models Directory
+Eloquent ORM model classes representing database entities:
+- User.php: User account model
+- Event.php: Event entity model
+- EventRegistration.php: Registration records
+- EventRegistrationField.php: Custom registration fields
+- EventSubscription.php: Event subscription tracking
+- Payment.php: Payment transaction records
+- Club.php: Club organization model
+- Category.php: Content categorization
+- Post.php: Forum post model
+- PostComment.php: Post comments
+- PostLike.php: Post likes/reactions
+- Tag.php: Content tagging system
+- Notification.php: User notification records
+
+3.2.6 Observers Directory
+Model event observers for lifecycle management:
+- EventObserver.php: Event model lifecycle hooks
+- EventRegistrationObserver.php: Registration lifecycle hooks
+
+3.2.7 Providers Directory
+Service provider classes for dependency injection:
+- AppServiceProvider.php: Application-level service registration
+
+3.2.8 Services Directory
+Business logic service classes:
+- NotificationService.php: Notification generation and delivery
+- PostService.php: Post processing and management logic
+
+3.2.9 Support Directory
+Helper classes and utility functions:
+- Helpers.php: Global helper functions
+- DateFormatter.php: Date formatting utilities
+- MediaHelper.php: Media file handling utilities
+- PhoneHelper.php: Phone number formatting
+- PostHelper.php: Post-related utility functions
+
+3.3 BOOTSTRAP DIRECTORY (bootstrap/)
+--------------------------------------------------------------------------------
+
+Contains application initialization files:
+- app.php: Application bootstrap configuration
+- cache/: Compiled service providers and packages
+- providers.php: Service provider registration
+
+3.4 CONFIG DIRECTORY (config/)
+--------------------------------------------------------------------------------
+
+Application configuration files:
+- app.php: Application settings and environment configuration
+- auth.php: Authentication and authorization configuration
+- cache.php: Caching system configuration
+- database.php: Database connection settings
+- filesystems.php: File storage configuration
+- logging.php: Logging system configuration
+- mail.php: Email service configuration
+- queue.php: Background job queue configuration
+- services.php: Third-party service integrations
+- session.php: Session management configuration
+
+3.5 DATABASE DIRECTORY (database/)
+--------------------------------------------------------------------------------
+
+Database-related files including migrations, seeders, and factories:
+
+3.5.1 Migrations Subdirectory
+Database schema version control files:
+- Core system tables: users, cache, jobs
+- Event management: events, event_registrations, payments,
+  event_registration_fields
+- Club system: clubs, club_user (pivot table)
+- Forum system: categories, posts, tags, post_tag (pivot),
+  post_comments, post_likes
+- Notification system: notifications
+- User extensions: Additional user profile fields
+
+3.5.2 Seeders Subdirectory
+Database seeding classes for initial data:
+- DatabaseSeeder.php: Main seeder coordinator
+- CategorySeeder.php: Category data seeding
+- TagSeeder.php: Tag data seeding
+
+3.5.3 Factories Subdirectory
+Model factory classes for testing:
+- UserFactory.php: User model factory for test data generation
+
+3.6 PUBLIC DIRECTORY (public/)
+--------------------------------------------------------------------------------
+
+Web-accessible files and entry point:
+- index.php: Application entry point for web requests
+- css/: Compiled stylesheets
+- js/: Compiled JavaScript files
+- favicon.ico: Site favicon
+- robots.txt: Search engine crawler instructions
+
+3.7 RESOURCES DIRECTORY (resources/)
+--------------------------------------------------------------------------------
+
+Source files for frontend assets and views:
+
+3.7.1 Views Subdirectory
+Blade template files organized by feature:
+- layouts/: Base layout templates (app.blade.php, admin.blade.php)
+- partials/: Reusable components (navbar, footer, flash messages)
+- events/: Event-related views (index, create, edit, show, register, payment)
+- forums/: Forum views (index, create, edit, show, my-posts)
+- notifications/: Notification views (index, show)
+- emails/: Email templates (event notifications)
+- errors/: Error pages (403, 404)
+- welcome.blade.php: Landing page
+
+3.7.2 CSS Subdirectory
+Source stylesheet files (12 CSS files)
+
+3.7.3 JS Subdirectory
+Source JavaScript files (14 JS files including forum helpers and theme toggle)
+
+3.8 ROUTES DIRECTORY (routes/)
+--------------------------------------------------------------------------------
+
+Route definition files:
+- web.php: Web application routes (HTTP routes)
+- console.php: Artisan command routes
+
+3.9 STORAGE DIRECTORY (storage/)
+--------------------------------------------------------------------------------
+
+Application storage for various file types:
+- app/: Application-specific storage
+  - private/: Private file storage
+  - public/: Public file storage
+- framework/: Framework-generated files
+  - cache/: Compiled views and configuration cache
+  - sessions/: Session data
+  - views/: Compiled Blade templates
+  - testing/: Test-specific storage
+- logs/: Application log files
+
+3.10 TESTS DIRECTORY (tests/)
+--------------------------------------------------------------------------------
+
+Automated testing files:
+- TestCase.php: Base test case class
+- Feature/: Feature/integration tests
+- Unit/: Unit tests
+
+3.11 VENDOR DIRECTORY (vendor/)
+--------------------------------------------------------------------------------
+
+Third-party PHP packages installed via Composer (not analyzed in detail as
+it contains external dependencies)
+
+================================================================================
+4. KEY TECHNOLOGIES AND DEPENDENCIES
+================================================================================
+
+4.1 Backend Technologies
+- PHP 8.2: Server-side programming language
+- Laravel Framework 12.0: Web application framework
+- Laravel Sanctum 4.2: API authentication
+- Intervention Image Laravel 1.5: Image processing library
+
+4.2 Frontend Technologies
+- Vite 7.0.7: Build tool and development server
+- Tailwind CSS 4.0: Utility-first CSS framework
+- Axios 1.11.0: HTTP client for API requests
+
+4.3 Development Tools
+- PHPUnit 11.5.3: Testing framework
+- Laravel Pint 1.24: Code style fixer
+- Laravel Pail 1.2.2: Log viewer
+- Faker 1.23: Test data generation
+
+================================================================================
+5. APPLICATION FEATURES AND MODULES
+================================================================================
+
+5.1 Event Management Module
+The core functionality for creating, managing, and viewing events. Includes
+features for event registration, custom registration fields, payment processing,
+and event status management (draft, published, cancelled).
+
+5.2 Club Management Module
+Enables club administrators to manage their organization's events, view
+registrations, and export registration data. Supports club-user associations
+through a many-to-many relationship.
+
+5.3 Forum Module
+Provides discussion capabilities with posts, comments, likes, tags, and
+categories. Implements content moderation and user interaction features.
+
+5.4 Notification System
+Real-time notification delivery for event updates, cancellations, time changes,
+and venue modifications. Includes notification management interface for users.
+
+5.5 User Management
+Role-based access control with three user types: administrators, club
+administrators, and regular users. Each role has distinct permissions and
+access levels.
+
+5.6 Payment Processing
+Integration with payment systems for event registration fees. Tracks payment
+status and transaction records.
+
+================================================================================
+6. SECURITY AND AUTHENTICATION
+================================================================================
+
+The application implements multiple layers of security:
+
+- Authentication middleware ensures only logged-in users access protected
+  routes
+- Role-based middleware (CheckUserRole, CheckClubRole, CheckAdminRole)
+  enforces authorization
+- Form request validation classes ensure data integrity
+- Content sanitization decorators prevent XSS attacks
+- Signed URL validation for secure resource access
+- Session management and CSRF protection
+
+================================================================================
+7. DATA FLOW ARCHITECTURE
+================================================================================
+
+The application follows a standard request-response cycle:
+
+1. HTTP requests enter through public/index.php
+2. Requests are routed via routes/web.php to appropriate controllers
+3. Middleware filters requests for authentication and authorization
+4. Controllers process requests, interact with models, and utilize services
+5. Models interact with the database through Eloquent ORM
+6. Observers trigger side effects (notifications, logging) on model events
+7. Services encapsulate complex business logic
+8. Decorators process and validate data before persistence
+9. Views are rendered using Blade templating engine
+10. Responses are returned to the client
+
+================================================================================
+8. DESIGN PATTERNS IMPLEMENTATION
+================================================================================
+
+8.1 Decorator Pattern
+The Decorators directory implements a chain of responsibility for post
+processing, allowing multiple decorators to wrap post creation/update
+operations with validation, sanitization, media handling, and tag management.
+
+8.2 Observer Pattern
+Model observers automatically trigger notifications and other side effects when
+events or registrations are created, updated, or deleted.
+
+8.3 Service Layer Pattern
+Business logic is encapsulated in service classes (NotificationService,
+PostService) to maintain separation of concerns and improve testability.
+
+8.4 Repository Pattern
+Eloquent ORM provides an abstraction layer over database operations, allowing
+models to interact with the database without direct SQL queries.
+
+================================================================================
+9. DEVELOPMENT WORKFLOW
+================================================================================
+
+The project includes several Composer scripts for development:
+
+- setup: Initial project setup (install dependencies, generate keys, migrate)
+- dev: Development server with concurrent processes (server, queue, logs, vite)
+- test: Run automated tests
+
+The application uses Vite for frontend asset compilation and hot module
+replacement during development.
+
+================================================================================
+10. CONCLUSION
+================================================================================
+
+The TAR Event Management System demonstrates a well-structured Laravel
+application following industry best practices. The modular organization,
+separation of concerns, and implementation of design patterns contribute to
+maintainability and scalability. The role-based access control and comprehensive
+feature set make it suitable for managing events in an educational institution
+context.
+
+The architecture supports future enhancements through its service layer,
+observer pattern implementation, and modular controller organization. The use
+of migrations ensures database schema versioning, while the testing directory
+structure indicates a commitment to quality assurance.
+
+================================================================================
+11. DATABASE STRUCTURE AND SCHEMA
+================================================================================
+
+The database schema is designed using Laravel migrations, ensuring version
+control and consistency across environments. The database follows a relational
+model with proper normalization, foreign key constraints, and indexing for
+optimal performance.
+
+11.1 CORE SYSTEM TABLES
+--------------------------------------------------------------------------------
+
+11.1.1 Users Table
+The central authentication and user management table:
+- Primary Key: id (auto-increment)
+- Authentication: name, email (unique), password, email_verified_at
+- Role Management: role (default: 'user') - supports 'admin', 'club', 'user'
+- Profile Information: profile_photo, phone, program, student_id
+- Club Association: club_id (foreign key to clubs table, nullable)
+- Preferences: interested_categories (JSON array)
+- Status Tracking: status (default: 'active'), last_login_at
+- Framework Fields: remember_token, timestamps (created_at, updated_at)
+
+11.1.2 Sessions Table
+Laravel session management:
+- Primary Key: id (string)
+- User Association: user_id (foreign key, nullable, indexed)
+- Session Data: ip_address, user_agent, payload (longText)
+- Activity Tracking: last_activity (indexed)
+
+11.1.3 Password Reset Tokens Table
+Password recovery mechanism:
+- Primary Key: email
+- Token Storage: token (string)
+- Timestamp: created_at
+
+11.2 EVENT MANAGEMENT TABLES
+--------------------------------------------------------------------------------
+
+11.2.1 Events Table
+Comprehensive event information storage:
+- Primary Key: id
+- Basic Information: title, description, slug (unique, nullable)
+- Organizer (Polymorphic): organizer_id, organizer_type (default: 'club')
+  Supports both club and user organizers
+- DateTime Fields: start_time, end_time, registration_start_time,
+  registration_end_time (all indexed)
+- Location: venue, location_map_url (nullable)
+- Classification: category (indexed), tags (JSON array)
+- Visibility & Status: is_public (indexed, default: true),
+  status enum: 'draft', 'published', 'cancelled', 'completed' (indexed)
+- Cancellation: cancelled_reason (text, nullable)
+- Payment Configuration: is_paid (default: false),
+  fee_amount (decimal 10,2, nullable), refund_available (default: false)
+- Capacity: max_participants (integer, nullable)
+- Media: poster_path (nullable)
+- Contact: contact_email, contact_phone (nullable)
+- Configuration: requirements (JSON), registration_fields (JSON)
+- Registration Rules: allow_cancellation, require_emergency_contact,
+  require_dietary_info, require_special_requirements,
+  registration_instructions (text)
+- Audit Trail: created_by, updated_by (foreign keys to users, set null on delete)
+- Timestamps: created_at, updated_at, deleted_at (soft deletes)
+- Indexes: Multiple composite indexes for query optimization
+
+11.2.2 Event Registrations Table
+User registration records for events:
+- Primary Key: id
+- Foreign Keys: event_id (cascade delete), user_id (set null on delete)
+- Registration Details: registration_number (unique, indexed, 50 chars),
+  status enum: 'pending_payment', 'confirmed', 'cancelled', 'waitlisted'
+  (indexed, default: 'pending_payment')
+- Personal Information: full_name, email, phone (20 chars),
+  student_id (indexed, 50 chars), program
+- Emergency Contact: emergency_contact_name, emergency_contact_phone (20 chars)
+- Custom Data: registration_data (JSON, nullable) - stores dynamic field values
+- Attendance: attended (boolean, indexed, default: false),
+  checked_in_at (timestamp, nullable)
+- Cancellation: cancelled_at, cancellation_reason
+- Refund Management: refund_status enum: 'pending', 'processed', 'rejected',
+  refund_processed_at
+- Admin Notes: notes (text, nullable)
+- Timestamps: created_at, updated_at, deleted_at (soft deletes)
+- Composite Indexes: (event_id, status), (user_id, status),
+  (event_id, attended), created_at
+
+11.2.3 Event Registration Fields Table
+Dynamic form field definitions for event registration:
+- Primary Key: id
+- Foreign Key: event_id (cascade delete)
+- Field Definition: name (indexed, 100 chars), label (string),
+  type enum: 'text', 'textarea', 'select', 'radio', 'checkbox', 'date',
+  'number', 'email', 'tel' (default: 'text')
+- Configuration: required (boolean, default: false),
+  options (JSON, nullable) - for select/radio/checkbox,
+  order (indexed, default: 0), placeholder, help_text
+- Validation: validation_rules (string, nullable),
+  min_length, max_length, min_value, max_value
+- Default Value: default_value (text, nullable)
+- Conditional Logic: depends_on_field, depends_on_value (nullable)
+- Composite Index: (event_id, order)
+
+11.2.4 Payments Table
+Payment transaction records:
+- Primary Key: id
+- Foreign Keys: event_id (cascade delete), user_id (cascade delete),
+  event_registration_id (cascade delete)
+- Payment Details: amount (decimal 8,2), method (string: 'paypal'/'stripe'),
+  transaction_id (unique string), status (default: 'pending')
+- Timestamps: paid_at (nullable), created_at, updated_at
+
+11.2.5 Event Subscriptions Table
+User subscriptions to event notifications:
+- Primary Key: id
+- Foreign Keys: user_id (cascade delete), event_id (cascade delete)
+- Subscription: is_active (boolean, default: true),
+  subscribed_at (timestamp), unsubscribed_at (nullable),
+  reason (nullable string)
+- Unique Constraint: (user_id, event_id) - one subscription per user per event
+- Composite Index: (event_id, is_active)
+
+11.3 CLUB MANAGEMENT TABLES
+--------------------------------------------------------------------------------
+
+11.3.1 Clubs Table
+Student club/organization information:
+- Primary Key: id
+- Basic Information: name (string), description (text, nullable)
+- Status: status (string, default: 'active') - supports 'active', 'inactive'
+- Timestamps: created_at, updated_at
+
+11.3.2 Club User Table (Pivot)
+Many-to-many relationship between clubs and users:
+- Primary Key: id
+- Foreign Keys: club_id (cascade delete), user_id (cascade delete)
+- Role: role (string, nullable) - user's role within the club
+- Unique Constraint: (club_id, user_id) - prevents duplicate memberships
+- Timestamps: created_at, updated_at
+
+11.4 FORUM MODULE TABLES
+--------------------------------------------------------------------------------
+
+11.4.1 Categories Table
+Hierarchical category system for forum posts:
+- Primary Key: id
+- Category Information: name (unique, 100 chars), slug (unique, indexed, 100 chars),
+  description (text, nullable), icon (50 chars, nullable),
+  color (default: '#6c757d', 20 chars)
+- Hierarchy: parent_id (nullable, foreign key to categories, cascade delete)
+- Statistics: post_count (unsigned integer, default: 0)
+- Display: order (integer, default: 0), is_active (boolean, default: true)
+- Composite Index: (is_active, order)
+
+11.4.2 Posts Table
+Forum post content:
+- Primary Key: id
+- Foreign Keys: user_id (cascade delete), category_id (restrict delete),
+  club_id (nullable, set null on delete)
+- Content: title (255 chars), slug (unique, 255 chars), content (longText)
+- Visibility: visibility enum: 'public', 'club_only' (default: 'public')
+- Status: status enum: 'draft', 'published' (default: 'published')
+- Media: media_paths (JSON array, nullable)
+- Counters: views_count, likes_count, comments_count (all unsigned integers,
+  default: 0, indexed)
+- Publishing: published_at (timestamp, nullable)
+- Timestamps: created_at, updated_at, deleted_at (soft deletes)
+- Multiple Indexes: slug, (user_id, status), (category_id, status),
+  (status, published_at), created_at, views_count, likes_count
+
+11.4.3 Tags Table
+Tag management system with approval workflow:
+- Primary Key: id
+- Tag Information: name (unique, 50 chars, indexed), slug (unique, indexed, 50 chars)
+- Type: type enum: 'official', 'community' (default: 'community')
+- Status: status enum: 'active', 'pending', 'merged', 'banned' (default: 'pending')
+- Statistics: usage_count (unsigned integer, default: 0)
+- Merging: merged_into_tag_id (nullable, foreign key to tags, set null on delete)
+- Approval: created_by, approved_by (nullable, foreign keys to users, set null),
+  approved_at (timestamp, nullable)
+- Composite Index: (status, usage_count)
+
+11.4.4 Post Tag Table (Pivot)
+Many-to-many relationship between posts and tags:
+- Primary Key: id
+- Foreign Keys: post_id (cascade delete), tag_id (cascade delete),
+  tagged_by (nullable, foreign key to users, set null on delete)
+- Metadata: source enum: 'user_manual', 'system_suggested' (default: 'user_manual'),
+  order (integer, default: 0), is_confirmed (boolean, default: true)
+- Unique Constraint: (post_id, tag_id) - prevents duplicate tag associations
+- Indexes: post_id, tag_id, tagged_by, (post_id, order)
+
+11.4.5 Post Comments Table
+Nested comment system for forum posts:
+- Primary Key: id
+- Foreign Keys: post_id (cascade delete), user_id (cascade delete),
+  parent_id (nullable, self-referencing, cascade delete) - enables threading
+- Content: content (text)
+- Statistics: likes_count (integer, default: 0)
+- Timestamps: created_at, updated_at, deleted_at (soft deletes)
+- Composite Index: (post_id, parent_id)
+
+11.4.6 Post Likes Table
+User likes/reactions for posts:
+- Primary Key: id
+- Foreign Keys: post_id (cascade delete), user_id (cascade delete)
+- Unique Constraint: (post_id, user_id) - one like per user per post
+- Timestamps: created_at, updated_at
+
+11.5 NOTIFICATION SYSTEM TABLES
+--------------------------------------------------------------------------------
+
+11.5.1 Notifications Table
+User notification records:
+- Primary Key: id
+- Foreign Key: user_id (cascade delete)
+- Notification Content: type (string, indexed), title (string),
+  message (text), data (JSON, nullable) - additional context data
+- Delivery: channel (default: 'database') - 'database', 'email', 'both',
+  priority (default: 'normal') - 'low', 'normal', 'high', 'urgent'
+- Status Tracking: read_at (timestamp, nullable), sent_at (timestamp, nullable)
+- Timestamps: created_at, updated_at
+- Composite Indexes: (user_id, read_at), (user_id, created_at), type
+
+11.6 LARAVEL FRAMEWORK TABLES
+--------------------------------------------------------------------------------
+
+11.6.1 Cache Tables
+Laravel caching system:
+- cache: key (primary), value (mediumText), expiration (integer)
+- cache_locks: key (primary), owner (string), expiration (integer)
+
+11.6.2 Jobs Tables
+Background job processing:
+- jobs: id, queue (indexed), payload (longText), attempts (tinyInteger),
+  reserved_at, available_at, created_at (all unsigned integers)
+- job_batches: id (string, primary), name, total_jobs, pending_jobs,
+  failed_jobs, failed_job_ids (longText), options (mediumText, nullable),
+  cancelled_at, created_at, finished_at (all integers)
+- failed_jobs: id, uuid (unique), connection (text), queue (text),
+  payload (longText), exception (longText), failed_at (timestamp)
+
+================================================================================
+12. DATABASE RELATIONSHIPS AND CONSTRAINTS
+================================================================================
+
+12.1 PRIMARY RELATIONSHIPS
+--------------------------------------------------------------------------------
+
+12.1.1 User Relationships
+- One-to-Many: Users → Events (as organizer via polymorphic)
+- One-to-Many: Users → Event Registrations
+- One-to-Many: Users → Payments
+- One-to-Many: Users → Posts
+- One-to-Many: Users → Post Comments
+- One-to-Many: Users → Post Likes
+- One-to-Many: Users → Notifications
+- One-to-Many: Users → Event Subscriptions
+- Many-to-Many: Users ↔ Clubs (via club_user pivot)
+- Many-to-One: Users → Clubs (via club_id, nullable)
+
+12.1.2 Event Relationships
+- One-to-Many: Events → Event Registrations (cascade delete)
+- One-to-Many: Events → Event Registration Fields (cascade delete)
+- One-to-Many: Events → Payments (cascade delete)
+- One-to-Many: Events → Event Subscriptions (cascade delete)
+- Polymorphic: Events ← Organizers (clubs or users)
+
+12.1.3 Club Relationships
+- One-to-Many: Clubs → Users (via club_id, nullable)
+- One-to-Many: Clubs → Events (as organizer)
+- One-to-Many: Clubs → Posts (nullable)
+- Many-to-Many: Clubs ↔ Users (via club_user pivot)
+
+12.1.4 Forum Relationships
+- Many-to-One: Posts → Users (cascade delete)
+- Many-to-One: Posts → Categories (restrict delete)
+- Many-to-One: Posts → Clubs (nullable, set null)
+- Many-to-Many: Posts ↔ Tags (via post_tag pivot, cascade delete)
+- One-to-Many: Posts → Post Comments (cascade delete)
+- One-to-Many: Posts → Post Likes (cascade delete)
+- Self-Referencing: Post Comments → Post Comments (parent_id, cascade delete)
+- Self-Referencing: Categories → Categories (parent_id, cascade delete)
+- Self-Referencing: Tags → Tags (merged_into_tag_id, set null)
+
+12.2 REFERENTIAL INTEGRITY
+--------------------------------------------------------------------------------
+
+The database implements comprehensive foreign key constraints with appropriate
+cascade behaviors:
+
+- Cascade Delete: Used when child records should be removed with parent
+  (e.g., event_registrations when event is deleted)
+- Set Null: Used when child records should remain but reference should be cleared
+  (e.g., posts when club is deleted)
+- Restrict Delete: Prevents parent deletion if children exist
+  (e.g., categories cannot be deleted if posts reference them)
+
+12.3 INDEXING STRATEGY
+--------------------------------------------------------------------------------
+
+The schema includes strategic indexing for query optimization:
+
+- Primary Keys: All tables use auto-incrementing integer primary keys
+- Foreign Key Indexes: All foreign keys are indexed for join performance
+- Unique Constraints: Email addresses, slugs, registration numbers, transaction IDs
+- Composite Indexes: Frequently queried column combinations
+  (e.g., (event_id, status), (user_id, read_at))
+- Status Indexes: Enum fields used in WHERE clauses are indexed
+- Timestamp Indexes: Created_at fields for chronological queries
+
+12.4 DATA TYPES AND CONSTRAINTS
+--------------------------------------------------------------------------------
+
+- Strings: Used for names, emails, slugs with appropriate length limits
+- Text/LongText: Used for descriptions, content, messages
+- JSON: Used for flexible data storage (tags, requirements, registration_data)
+- Enums: Used for status fields, types, and fixed value sets
+- Decimals: Used for monetary values (fee_amount, amount) with precision
+- Booleans: Used for flags and binary states
+- Timestamps: Used for date/time tracking with timezone support
+- Soft Deletes: Events, event_registrations, posts, post_comments use soft deletes
+
+================================================================================
+13. DATABASE DESIGN PATTERNS
+================================================================================
+
+13.1 POLYMORPHIC RELATIONSHIPS
+The events table uses a polymorphic relationship (organizer_id, organizer_type)
+to support both clubs and users as event organizers, providing flexibility
+without requiring separate tables.
+
+13.2 PIVOT TABLES
+Many-to-many relationships are implemented through pivot tables:
+- club_user: Club membership with role information
+- post_tag: Post tagging with metadata (source, order, confirmation status)
+
+13.3 SOFT DELETES
+Critical tables implement soft deletes (deleted_at timestamp) to maintain
+data integrity and enable recovery while preserving referential constraints.
+
+13.4 AUDIT TRAILS
+The events table includes created_by and updated_by fields to track user
+actions, supporting accountability and debugging.
+
+13.5 JSON FIELDS
+Flexible data storage using JSON columns for:
+- Dynamic registration fields (registration_data)
+- Event requirements and configuration
+- Media paths arrays
+- User preferences (interested_categories)
+
+13.6 STATUS ENUMS
+Consistent use of enum types for status management across tables ensures
+data integrity and simplifies querying.
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
+
