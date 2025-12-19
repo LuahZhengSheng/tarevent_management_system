@@ -92,6 +92,11 @@ Route::middleware(['auth'])->get('/test/clubs/all', function () {
     return view('clubs.test_all');
 })->name('clubs.test_all');
 
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::get('/test/club-api', function () {
+    return view('test.club_api_test');
+})->name('test.club.api');
+
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
 

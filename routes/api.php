@@ -3,7 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ClubApiController;
 
-Route::middleware(['auth:sanctum'])->group(function () {
+// For testing: Using 'auth' middleware with web session support
+// Note: API routes don't have session middleware by default
+// For production, use 'auth:sanctum' with proper token authentication
+Route::middleware(['web', 'auth'])->group(function () {
     // Club API Routes
     Route::prefix('clubs')->group(function () {
         // Create club
