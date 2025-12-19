@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * Author: Tang Lit Xuan
+ */
 namespace App\Mail;
 
 use App\Models\User;

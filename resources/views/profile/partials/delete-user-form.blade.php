@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 <div class="profile-section-header">
     <h2 class="profile-section-title" style="color: var(--error);">Delete Account</h2>
     <p class="profile-section-subtitle">

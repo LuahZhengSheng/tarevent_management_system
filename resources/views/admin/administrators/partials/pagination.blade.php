@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 @if($admins->hasPages())
 <nav aria-label="Administrator pagination">
     <ul class="pagination justify-content-center">

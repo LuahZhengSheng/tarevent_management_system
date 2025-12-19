@@ -166,12 +166,12 @@
                 @else
                 <!-- Guest Links -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('home') }}">
+                    <a class="nav-link" href="{{ route('login') }}">
                         <i class="bi bi-box-arrow-in-right me-1"></i>Login
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('home') }}">
+                    <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('register') }}">
                         <i class="bi bi-person-plus me-1"></i>Register
                     </a>
                 </li>

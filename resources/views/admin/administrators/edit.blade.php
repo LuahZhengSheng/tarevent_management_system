@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 @extends('layouts.admin')
 
 @section('title', 'Edit Administrator')

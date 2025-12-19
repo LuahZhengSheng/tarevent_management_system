@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 <div class="profile-section-header">
     <h2 class="profile-section-title">Update Password</h2>
     <p class="profile-section-subtitle">Ensure your account is using a long, complex password to stay secure.</p>

@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 @extends('layouts.app')
 
 @section('title', 'Login - TAREvent')
