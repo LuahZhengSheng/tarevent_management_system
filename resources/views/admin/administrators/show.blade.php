@@ -466,7 +466,7 @@
 
         $.ajax({
             url: `/admin/administrators/${adminId}/toggle-status`,
-            type: 'POST',
+            type: 'PATCH',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'

@@ -1,5 +1,29 @@
 <aside class="admin-sidebar">
     <div class="sidebar-content">
+        <!-- User Info Section -->
+        @auth
+        <div class="sidebar-user-info">
+            <a href="{{ route('admin.profile.edit') }}" class="user-info-link">
+                <div class="user-avatar-container">
+                    <img src="{{ auth()->user()->profile_photo_url }}" 
+                         alt="{{ auth()->user()->name }}" 
+                         class="user-avatar"
+                         onerror="this.onerror=null; this.src='{{ asset('images/avatar/default-student-avatar.png') }}';">
+                    <div class="online-indicator"></div>
+                </div>
+                <div class="user-info-content">
+                    <h6 class="user-name">{{ auth()->user()->name }}</h6>
+                    @if(auth()->user()->isSuperAdmin())
+                        <span class="user-badge badge-super">Super Admin</span>
+                    @else
+                        <span class="user-badge badge-admin">Admin</span>
+                    @endif
+                </div>
+                <i class="bi bi-chevron-right user-arrow"></i>
+            </a>
+        </div>
+        @endauth
+
         <!-- Navigation Menu -->
         <nav class="sidebar-nav">
             <ul class="nav flex-column">
@@ -38,18 +62,32 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" 
-                       href="{{ route('home') }}">
+                       href="{{ route('admin.users.index') }}">
                         <i class="bi bi-people"></i>
                         <span>All Users</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.admins.*') ? 'active' : '' }}" 
-                       href="{{ route('home') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.administrators.*') ? 'active' : '' }}" 
+                       href="{{ route('admin.administrators.index') }}">
                         <i class="bi bi-shield-check"></i>
                         <span>Administrators</span>
                     </a>
                 </li>
+
+                <!-- Permission Management (Super Admin Only) -->
+                @if(auth()->check() && auth()->user()->isSuperAdmin())
+                <li class="nav-item">
+                    <div class="nav-section-title">Permission Management</div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.permissions.*') ? 'active' : '' }}" 
+                       href="{{ route('admin.permissions.index') }}">
+                        <i class="bi bi-key"></i>
+                        <span>Manage Permissions</span>
+                    </a>
+                </li>
+                @endif
 
                 <!-- Club Management -->
                 <li class="nav-item">
@@ -86,6 +124,18 @@
                        href="{{ route('home') }}">
                         <i class="bi bi-cash-coin"></i>
                         <span>Payment Reports</span>
+                    </a>
+                </li>
+
+                <!-- Admin Profile -->
+                <li class="nav-item">
+                    <div class="nav-section-title">Account</div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.profile.*') ? 'active' : '' }}" 
+                       href="{{ route('admin.profile.edit') }}">
+                        <i class="bi bi-person"></i>
+                        <span>My Profile</span>
                     </a>
                 </li>
 
@@ -155,6 +205,175 @@
 
 .sidebar-content {
     padding: 1.5rem 1rem;
+}
+
+/* ========================================
+   User Info Section - 简约高级感设计
+   ======================================== */
+.sidebar-user-info {
+    position: relative;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border-radius: 1rem;
+    border: 1px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-user-info::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--border-color), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-user-info:hover {
+    border-color: rgba(79, 70, 229, 0.1);
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.08);
+}
+
+.sidebar-user-info:hover::before {
+    opacity: 0;
+}
+
+.user-info-link {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+}
+
+/* Avatar Container with Online Status */
+.user-avatar-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid var(--bg-secondary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.user-info-link:hover .user-avatar {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15);
+    border-color: rgba(79, 70, 229, 0.2);
+}
+
+/* Online Indicator */
+.online-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: 2px solid var(--bg-primary);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    animation: pulse-online 2s ease-in-out infinite;
+}
+
+@keyframes pulse-online {
+    0%, 100% {
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    }
+}
+
+/* User Info Content */
+.user-info-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.user-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    transition: color 0.2s ease;
+}
+
+.user-info-link:hover .user-name {
+    color: var(--primary);
+}
+
+/* Badge Styles */
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-radius: 6px;
+    width: fit-content;
+    transition: all 0.2s ease;
+}
+
+.badge-super {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.badge-admin {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(79, 70, 229, 0.05));
+    color: var(--primary);
+    border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+.user-info-link:hover .badge-super {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    border-color: #dc3545;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.25);
+}
+
+.user-info-link:hover .badge-admin {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+/* Arrow Icon */
+.user-arrow {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+}
+
+.user-info-link:hover .user-arrow {
+    opacity: 1;
+    transform: translateX(2px);
+    color: var(--primary);
 }
 
 .sidebar-nav .nav-link {

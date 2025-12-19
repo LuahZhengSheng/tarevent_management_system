@@ -1,6 +1,6 @@
 <?php
 /**
- * @author Tang Lit Xuan
+ * Author: Tang Lit Xuan
  */
 namespace App\Contracts;
 

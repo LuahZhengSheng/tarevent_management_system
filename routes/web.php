@@ -6,6 +6,10 @@ use App\Http\Controllers\Event\EventController;
 use App\Http\Controllers\Event\EventRegistrationController;
 use App\Http\Controllers\Club\ClubEventsController;
 use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\ProfileController;
 //use App\Http\Controllers\Forum\ForumController;
 //use App\Http\Controllers\Club\ClubController;
 //use App\Http\Controllers\User\UserController;
@@ -413,28 +417,46 @@ Route::middleware(['auth', 'club'])->group(function () {
   |--------------------------------------------------------------------------
   | Only accessible by users with 'admin' role
  */
-//Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     // Dashboard
     Route::get('/dashboard', function () {
         return view('admin.dashboard');
     })->name('dashboard');
 
     // User Management
-//    Route::prefix('users')->name('users.')->group(function () {
-//        Route::get('/', [UserController::class, 'index'])->name('index');
-//        Route::get('/{user}', [UserController::class, 'adminShow'])->name('show');
-//        Route::put('/{user}/suspend', [UserController::class, 'suspend'])->name('suspend');
-//        Route::put('/{user}/activate', [UserController::class, 'activate'])->name('activate');
-//        Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
-//    });
-    // Admin Management
-//    Route::prefix('admins')->name('admins.')->group(function () {
-//        Route::get('/', [UserController::class, 'adminsIndex'])->name('index');
-//        Route::get('/create', [UserController::class, 'createAdmin'])->name('create');
-//        Route::post('/', [UserController::class, 'storeAdmin'])->name('store');
-//        Route::delete('/{user}', [UserController::class, 'destroyAdmin'])->name('destroy');
-//    });
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::get('/create', [UserController::class, 'create'])->name('create');
+        Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::get('/{user}', [UserController::class, 'show'])->name('show');
+        Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+        Route::put('/{user}', [UserController::class, 'update'])->name('update');
+        Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('toggle-status');
+    });
+
+    // Administrator Management
+    Route::prefix('administrators')->name('administrators.')->group(function () {
+        Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/create', [AdminController::class, 'create'])->name('create');
+        Route::post('/', [AdminController::class, 'store'])->name('store');
+        Route::get('/{admin}', [AdminController::class, 'show'])->name('show');
+        Route::get('/{admin}/edit', [AdminController::class, 'edit'])->name('edit');
+        Route::put('/{admin}', [AdminController::class, 'update'])->name('update');
+        Route::patch('/{admin}/toggle-status', [AdminController::class, 'toggleStatus'])->name('toggle-status');
+    });
+
+    // Permission Management (Super Admin Only)
+    Route::middleware('super_admin')->prefix('permissions')->name('permissions.')->group(function () {
+        Route::get('/', [PermissionController::class, 'index'])->name('index');
+        Route::get('/{admin}/edit', [PermissionController::class, 'edit'])->name('edit');
+        Route::put('/{admin}', [PermissionController::class, 'update'])->name('update');
+    });
+
+    // Admin Profile
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+        Route::patch('/update', [ProfileController::class, 'update'])->name('update');
+    });
     // All Events Management
     Route::prefix('events')->name('events.')->group(function () {
         Route::get('/', [EventController::class, 'adminIndex'])->name('index');

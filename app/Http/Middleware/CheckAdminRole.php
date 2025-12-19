@@ -29,7 +29,8 @@ class CheckAdminRole
                            ->with('intended', $request->url());
         }
 
-        if (!auth()->user()->isAdmin()) {
+        $user = auth()->user();
+        if (!$user->isAdmin() && !$user->isSuperAdmin()) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,

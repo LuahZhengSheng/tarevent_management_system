@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\CheckUserRole;
 use App\Http\Middleware\CheckClubRole;
 use App\Http\Middleware\CheckAdminRole;
+use App\Http\Middleware\CheckSuperAdminRole;
 use App\Http\Middleware\CheckActiveUser;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
                         'user' => CheckUserRole::class,
                         'club' => CheckClubRole::class,
                         'admin' => CheckAdminRole::class,
+                        'super_admin' => CheckSuperAdminRole::class,
                         'check.event.owner' => \App\Http\Middleware\CheckEventOwner::class,
                         'check.active.user' => CheckActiveUser::class,
                     ]);

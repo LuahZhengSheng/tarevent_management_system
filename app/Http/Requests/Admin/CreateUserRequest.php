@@ -27,7 +27,7 @@ class CreateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'student_id' => ['required', 'string', 'max:50', 'unique:users'],
-            'phone' => ['required', 'string', 'max:50'],
+            'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['required', 'in:student,club'],
             'program' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'in:active,inactive,suspended'],

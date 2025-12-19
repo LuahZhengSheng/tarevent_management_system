@@ -69,8 +69,14 @@
                         <span class="badge bg-secondary">No Permissions (Profile Only)</span>
                         @else
                         <div class="permissions-list">
+                            @php
+                                $allPermissions = [];
+                                foreach($permissions as $modulePermissions) {
+                                    $allPermissions = array_merge($allPermissions, $modulePermissions);
+                                }
+                            @endphp
                             @foreach($admin->permissions as $permission)
-                            <span class="permission-badge">{{ $permissions[$permission] ?? $permission }}</span>
+                            <span class="permission-badge">{{ $allPermissions[$permission] ?? $permission }}</span>
                             @endforeach
                         </div>
                         @endif

@@ -6,11 +6,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 //use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable {
+class User extends Authenticatable implements MustVerifyEmail {
 
     use HasFactory,
         Notifiable;
@@ -24,7 +25,7 @@ class User extends Authenticatable {
         'name',
         'email',
         'password',
-        'role', // student / club / admin
+        'role', // student / club / admin / super_admin
         'club_id', // If user is club admin
         'profile_photo', // 存储路径如: avatars/abc123.jpg
         'phone',
@@ -34,6 +35,7 @@ class User extends Authenticatable {
         'email_verified_at',
         'status', // active / inactive / suspended
         'last_login_at',
+        'permissions', // JSON array of permissions for admin users
     ];
 
     /**
@@ -56,6 +58,7 @@ class User extends Authenticatable {
         'last_login_at' => 'datetime',
         'password' => 'hashed',
         'interested_categories' => 'array',
+        'permissions' => 'array',
     ];
     
     protected $attributes = [
@@ -170,6 +173,10 @@ class User extends Authenticatable {
         return $this->role === 'admin';
     }
 
+    public function isSuperAdmin(): bool {
+        return $this->role === 'super_admin';
+    }
+
     public function isClubAdmin(int $clubId = null): bool {
         if (!$this->isClub()) {
             return false;
@@ -195,7 +202,73 @@ class User extends Authenticatable {
     }
 
     // =============================
-    // Permission checking
+    // Permission checking (for admin users)
+    // =============================
+
+    /**
+     * Check if user has a specific permission
+     * Super admin always returns true
+     * Admin users check their permissions array
+     * If permissions is null, admin can only manage own profile
+     */
+    public function hasPermission(string $permission): bool
+    {
+        // Super admin has all permissions
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        // Only admin users have permissions
+        if (!$this->isAdmin()) {
+            return false;
+        }
+
+        // If permissions is null, admin can only manage own profile
+        if ($this->permissions === null) {
+            return false;
+        }
+
+        // Check if permission exists in permissions array
+        return in_array($permission, $this->permissions ?? []);
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if user has all of the given permissions
+     */
+    public function hasAllPermissions(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Check if user can only manage their own profile
+     * Returns true if admin has null permissions
+     */
+    public function canOnlyManageOwnProfile(): bool
+    {
+        return $this->isAdmin() && !$this->isSuperAdmin() && $this->permissions === null;
+    }
+
+    // =============================
+    // Event permission checking
     // =============================
 
     public function canCreateEvent(): bool {
@@ -258,9 +331,10 @@ class User extends Authenticatable {
 
         // 返回默认头像（基于角色）
         $defaultAvatars = [
-            'student' => 'images/default-student-avatar.png',
-            'club' => 'images/default-club-avatar.png',
-            'admin' => 'images/default-admin-avatar.png',
+            'student' => 'images/avatar/default-student-avatar.png',
+            'club' => 'images/avatar/default-student-avatar.png', // 暂时使用 student 默认头像
+            'admin' => 'images/avatar/default-student-avatar.png', // 暂时使用 student 默认头像
+            'super_admin' => 'images/avatar/default-student-avatar.png', // 暂时使用 student 默认头像
         ];
 
         return asset($defaultAvatars[$this->role] ?? $defaultAvatars['student']);
