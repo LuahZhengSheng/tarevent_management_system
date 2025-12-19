@@ -490,7 +490,7 @@
 
         $.ajax({
             url: `/admin/users/${userId}/toggle-status`,
-            type: 'POST',
+            type: 'PATCH',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'

@@ -24,7 +24,7 @@
     <div class="admin-edit-card">
         <form method="POST" action="{{ route('admin.permissions.update', $admin) }}">
             @csrf
-            @method('PATCH')
+            @method('PUT')
 
             <!-- Administrator Info -->
             <div class="form-section mb-4">
@@ -52,21 +52,28 @@
                     Select the permissions to grant to this administrator. If no permissions are selected, the administrator will only be able to view and edit their own profile.
                 </p>
 
-                <div class="permissions-grid">
-                    @foreach($permissions as $key => $label)
-                    <div class="permission-item">
-                        <label class="permission-checkbox">
-                            <input 
-                                type="checkbox" 
-                                name="permissions[]" 
-                                value="{{ $key }}"
-                                {{ in_array($key, $admin->permissions ?? []) ? 'checked' : '' }}
-                            >
-                            <span class="permission-label">{{ $label }}</span>
-                        </label>
+                @foreach($permissions as $module => $modulePermissions)
+                <div class="permission-module">
+                    <h4 class="permission-module-title">
+                        <i class="bi bi-folder me-2"></i>{{ $module }}
+                    </h4>
+                    <div class="permissions-grid">
+                        @foreach($modulePermissions as $key => $label)
+                        <div class="permission-item">
+                            <label class="permission-checkbox">
+                                <input 
+                                    type="checkbox" 
+                                    name="permissions[]" 
+                                    value="{{ $key }}"
+                                    {{ in_array($key, $admin->permissions ?? []) ? 'checked' : '' }}
+                                >
+                                <span class="permission-label">{{ $label }}</span>
+                            </label>
+                        </div>
+                        @endforeach
                     </div>
-                    @endforeach
                 </div>
+                @endforeach
             </div>
 
             <!-- Form Actions -->
@@ -191,6 +198,31 @@
     .admin-info-email {
         font-size: 0.9375rem;
         color: var(--text-secondary);
+    }
+
+    .permission-module {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: var(--bg-secondary);
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .permission-module:last-child {
+        margin-bottom: 0;
+    }
+
+    .permission-module-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .permission-module-title i {
+        color: var(--primary);
     }
 
     .permissions-grid {

@@ -58,6 +58,7 @@ class Kernel extends HttpKernel {
         // Custom Middleware for TAREvent System
         'club' => \App\Http\Middleware\CheckClubRole::class,
         'admin' => \App\Http\Middleware\CheckAdminRole::class,
+        'super_admin' => \App\Http\Middleware\CheckSuperAdminRole::class,
         'check.event.owner' => \App\Http\Middleware\CheckEventOwner::class,
         'check.active.user' => \App\Http\Middleware\CheckActiveUser::class,
     ];

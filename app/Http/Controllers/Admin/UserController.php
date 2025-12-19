@@ -36,6 +36,9 @@ class UserController extends Controller
      */
     public function create(): View
     {
+        // Check permission using AuthorizationService
+        $this->authorizationService->authorizeCreateUserOrAbort();
+
         $programOptions = $this->programProvider->getOptions();
         return view('admin.users.create', compact('programOptions'));
     }
@@ -46,7 +49,7 @@ class UserController extends Controller
     public function store(CreateUserRequest $request): RedirectResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeManageStudentsOrAbort('You do not have permission to create users.');
+        $this->authorizationService->authorizeCreateUserOrAbort('You do not have permission to create users.');
 
         try {
             // Use AdminCreatedStudentStrategy for admin-created students/clubs
@@ -67,7 +70,7 @@ class UserController extends Controller
     public function index(Request $request): View|JsonResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeManageStudentsOrAbort();
+        $this->authorizationService->authorizeViewUsersOrAbort();
 
         $query = $this->queryService->buildUserListQuery($request);
         $users = $this->queryService->paginate($query, $request);
@@ -89,11 +92,12 @@ class UserController extends Controller
     public function show(User $user): View
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeViewOrAbort($user);
+        $this->authorizationService->authorizeViewUserDetailsOrAbort($user);
 
         $user->load(['club', 'eventRegistrations', 'posts']);
+        $programOptions = $this->programProvider->getOptions();
 
-        return view('admin.users.show', compact('user'));
+        return view('admin.users.show', compact('user', 'programOptions'));
     }
 
     /**
@@ -102,9 +106,10 @@ class UserController extends Controller
     public function edit(User $user): View
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeUpdateOrAbort($user);
+        $this->authorizationService->authorizeUpdateUserOrAbort($user);
 
-        return view('admin.users.edit', compact('user'));
+        $programOptions = $this->programProvider->getOptions();
+        return view('admin.users.edit', compact('user', 'programOptions'));
     }
 
     /**
@@ -113,7 +118,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeUpdateOrAbort($user);
+        $this->authorizationService->authorizeUpdateUserOrAbort($user);
 
         try {
             // Update user data
@@ -137,7 +142,7 @@ class UserController extends Controller
     public function toggleStatus(Request $request, User $user): JsonResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeUpdateOrAbort($user);
+        $this->authorizationService->authorizeToggleUserStatusOrAbort($user);
 
         // Use UserStatusService to toggle status
         $newStatus = $this->statusService->toggleStatus($user);

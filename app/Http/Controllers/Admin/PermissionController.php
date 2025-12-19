@@ -6,25 +6,24 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuthorizationService;
+use App\Constants\PermissionConstants;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 
 class PermissionController extends Controller
 {
+    public function __construct(
+        private AuthorizationService $authorizationService
+    ) {}
+
     /**
-     * Get available permissions list
+     * Get available permissions list grouped by module
      */
     private function getAvailablePermissions(): array
     {
-        return [
-            'manage_students' => 'Manage Students',
-            'manage_administrators' => 'Manage Administrators',
-            'manage_events' => 'Manage Events',
-            'manage_clubs' => 'Manage Clubs',
-            'view_reports' => 'View Reports',
-            'manage_settings' => 'Manage System Settings',
-        ];
+        return PermissionConstants::getAllPermissionsByModule();
     }
 
     /**
@@ -32,10 +31,8 @@ class PermissionController extends Controller
      */
     public function index(): View
     {
-        // Only super admin can access
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only super administrators can manage permissions.');
-        }
+        // Check permission using AuthorizationService
+        $this->authorizationService->authorizeManagePermissionsOrAbort();
 
         $admins = User::whereIn('role', ['admin', 'super_admin'])
             ->orderBy('role', 'desc')
@@ -52,10 +49,8 @@ class PermissionController extends Controller
      */
     public function edit(User $admin): View
     {
-        // Only super admin can access
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only super administrators can manage permissions.');
-        }
+        // Check permission using AuthorizationService
+        $this->authorizationService->authorizeManagePermissionsOrAbort();
 
         // Cannot edit super admin permissions
         if ($admin->isSuperAdmin()) {
@@ -68,8 +63,9 @@ class PermissionController extends Controller
         }
 
         $permissions = $this->getAvailablePermissions();
+        $allPermissionKeys = PermissionConstants::getPermissionKeys();
 
-        return view('admin.permissions.edit', compact('admin', 'permissions'));
+        return view('admin.permissions.edit', compact('admin', 'permissions', 'allPermissionKeys'));
     }
 
     /**
@@ -77,10 +73,8 @@ class PermissionController extends Controller
      */
     public function update(Request $request, User $admin): RedirectResponse
     {
-        // Only super admin can access
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only super administrators can manage permissions.');
-        }
+        // Check permission using AuthorizationService
+        $this->authorizationService->authorizeManagePermissionsOrAbort();
 
         // Cannot edit super admin permissions
         if ($admin->isSuperAdmin()) {
@@ -92,9 +86,10 @@ class PermissionController extends Controller
             abort(403, 'Can only edit administrator permissions.');
         }
 
+        $allPermissionKeys = PermissionConstants::getPermissionKeys();
         $validated = $request->validate([
             'permissions' => ['nullable', 'array'],
-            'permissions.*' => ['string', 'in:' . implode(',', array_keys($this->getAvailablePermissions()))],
+            'permissions.*' => ['string', 'in:' . implode(',', $allPermissionKeys)],
         ]);
 
         // Update permissions

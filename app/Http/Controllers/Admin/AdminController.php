@@ -34,7 +34,7 @@ class AdminController extends Controller
     public function index(Request $request): View|JsonResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeManageAdministratorsOrAbort();
+        $this->authorizationService->authorizeViewAdministratorsOrAbort();
 
         $query = $this->queryService->buildAdminListQuery($request);
         $admins = $this->queryService->paginate($query, $request);
@@ -55,6 +55,9 @@ class AdminController extends Controller
      */
     public function create(): View
     {
+        // Check permission using AuthorizationService
+        $this->authorizationService->authorizeCreateAdministratorOrAbort();
+
         return view('admin.administrators.create');
     }
 
@@ -64,7 +67,7 @@ class AdminController extends Controller
     public function store(CreateAdminRequest $request): RedirectResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeManageAdministratorsOrAbort('You do not have permission to create administrators.');
+        $this->authorizationService->authorizeCreateAdministratorOrAbort('You do not have permission to create administrators.');
 
         try {
             // Use AdminCreatedAdminStrategy for admin-created administrators
@@ -84,7 +87,7 @@ class AdminController extends Controller
     public function show(User $admin): View
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeViewOrAbort($admin);
+        $this->authorizationService->authorizeViewAdministratorDetailsOrAbort($admin);
 
         return view('admin.administrators.show', compact('admin'));
     }
@@ -95,7 +98,7 @@ class AdminController extends Controller
     public function edit(User $admin): View
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeUpdateOrAbort($admin);
+        $this->authorizationService->authorizeUpdateAdministratorOrAbort($admin);
 
         return view('admin.administrators.edit', compact('admin'));
     }
@@ -106,7 +109,7 @@ class AdminController extends Controller
     public function update(UpdateAdminRequest $request, User $admin): RedirectResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeUpdateOrAbort($admin);
+        $this->authorizationService->authorizeUpdateAdministratorOrAbort($admin);
 
         try {
             // Update admin data
@@ -130,7 +133,7 @@ class AdminController extends Controller
     public function toggleStatus(Request $request, User $admin): JsonResponse
     {
         // Check permission using AuthorizationService
-        $this->authorizationService->authorizeUpdateOrAbort($admin);
+        $this->authorizationService->authorizeToggleAdministratorStatusOrAbort($admin);
 
         // Use UserStatusService to toggle status
         $newStatus = $this->statusService->toggleStatus($admin);

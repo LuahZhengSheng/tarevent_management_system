@@ -94,7 +94,15 @@
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Program</div>
-                        <div class="detail-value">{{ $user->program ?? '–' }}</div>
+                        <div class="detail-value">
+                            @if($user->program && isset($programOptions[$user->program]))
+                                {{ $programOptions[$user->program] }}
+                            @elseif($user->program)
+                                {{ $user->program }}
+                            @else
+                                –
+                            @endif
+                        </div>
                     </div>
                     @if($user->role === 'club' && $user->club)
                     <div class="detail-row">
@@ -388,7 +396,7 @@
 
         $.ajax({
             url: `/admin/users/${userId}/toggle-status`,
-            type: 'POST',
+            type: 'PATCH',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'

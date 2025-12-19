@@ -13,7 +13,7 @@ class Authenticate extends Middleware
     {
         if (! $request->expectsJson()) {
             // 你目前没有 login 路由，就先回首页
-            return route('home');
+            return route('login');
             // 将来有登录页可以改成：return route('login');
         }
 

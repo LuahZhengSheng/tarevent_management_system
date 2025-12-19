@@ -35,7 +35,20 @@ class AuthenticatedSessionController extends Controller
             Auth::user()->updateLastLogin();
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Redirect based on user role
+        $user = Auth::user();
+        
+        // Check email verification for students and clubs
+        if (in_array($user->role, ['student', 'club']) && !$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+        
+        if ($user->isAdmin() || $user->isSuperAdmin()) {
+            return redirect()->intended(route('admin.dashboard', absolute: false));
+        }
+
+        // For students and club organizers, redirect to home (events)
+        return redirect()->intended(route('home', absolute: false));
     }
 
     /**

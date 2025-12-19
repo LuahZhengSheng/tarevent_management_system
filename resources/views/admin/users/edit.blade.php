@@ -132,13 +132,18 @@
 
                         <div class="mb-3">
                             <label for="program" class="form-label">Program</label>
-                            <input 
-                                type="text" 
+                            <select 
                                 id="program" 
                                 name="program" 
                                 class="form-control-modern @error('program') is-invalid @enderror"
-                                value="{{ old('program', $user->program) }}"
                             >
+                                <option value="">-- Select Program --</option>
+                                @foreach($programOptions as $code => $name)
+                                <option value="{{ $code }}" {{ old('program', $user->program) === $code ? 'selected' : '' }}>
+                                    {{ $name }}
+                                </option>
+                                @endforeach
+                            </select>
                             @error('program')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
