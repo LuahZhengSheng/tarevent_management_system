@@ -51,6 +51,26 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Check if user account is suspended or inactive
+        $user = Auth::user();
+        if ($user->isSuspended()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been suspended due to policy violations. Please contact support for assistance.',
+            ]);
+        }
+
+        if ($user->isInactive()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account is currently inactive. Please contact support to reactivate your account.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

@@ -132,8 +132,8 @@ class AdminController extends Controller
      */
     public function toggleStatus(Request $request, User $admin): JsonResponse
     {
-        // Check permission using AuthorizationService
-        $this->authorizationService->authorizeToggleAdministratorStatusOrAbort($admin);
+        // Use unified authorization method (automatically determines user type)
+        $this->authorizationService->authorizeToggleStatusOrAbort($admin);
 
         // Use UserStatusService to toggle status
         $newStatus = $this->statusService->toggleStatus($admin);

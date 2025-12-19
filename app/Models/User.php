@@ -8,13 +8,29 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
-//use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements MustVerifyEmail {
+// Import all traits
+use App\Models\Traits\HasRoles;
+use App\Models\Traits\HasPermissions;
+use App\Models\Traits\HasProfilePhoto;
+use App\Models\Traits\HasStatus;
+use App\Models\Traits\HasNotifications;
+use App\Models\Traits\HasEventSubscriptions;
+use App\Models\Traits\HasEventPermissions;
+use App\Models\Traits\HasForumActivity;
 
+class User extends Authenticatable implements MustVerifyEmail
+{
     use HasFactory,
-        Notifiable;
+        Notifiable,
+        HasRoles,
+        HasPermissions,
+        HasProfilePhoto,
+        HasStatus,
+        HasNotifications,
+        HasEventSubscriptions,
+        HasEventPermissions,
+        HasForumActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -150,251 +166,8 @@ class User extends Authenticatable implements MustVerifyEmail {
     }
 
     // =============================
-    // Role checking methods
-    // =============================
-
-    public function hasRole(string $role): bool {
-        return $this->role === $role;
-    }
-
-    public function hasAnyRole(array $roles): bool {
-        return in_array($this->role, $roles);
-    }
-
-    public function isStudent(): bool {
-        return $this->role === 'user';
-    }
-
-    public function isClub(): bool {
-        return $this->role === 'club';
-    }
-
-    public function isAdmin(): bool {
-        return $this->role === 'admin';
-    }
-
-    public function isSuperAdmin(): bool {
-        return $this->role === 'super_admin';
-    }
-
-    public function isClubAdmin(int $clubId = null): bool {
-        if (!$this->isClub()) {
-            return false;
-        }
-
-        if ($clubId === null) {
-            return $this->club_id !== null;
-        }
-
-        return $this->club_id === $clubId;
-    }
-
-    // =============================
-    // Status checking methods
-    // =============================
-
-    public function isActive(): bool {
-        return $this->status === 'active';
-    }
-
-    public function isSuspended(): bool {
-        return $this->status === 'suspended';
-    }
-
-    // =============================
-    // Permission checking (for admin users)
-    // =============================
-
-    /**
-     * Check if user has a specific permission
-     * Super admin always returns true
-     * Admin users check their permissions array
-     * If permissions is null, admin can only manage own profile
-     */
-    public function hasPermission(string $permission): bool
-    {
-        // Super admin has all permissions
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
-
-        // Only admin users have permissions
-        if (!$this->isAdmin()) {
-            return false;
-        }
-
-        // If permissions is null, admin can only manage own profile
-        if ($this->permissions === null) {
-            return false;
-        }
-
-        // Check if permission exists in permissions array
-        return in_array($permission, $this->permissions ?? []);
-    }
-
-    /**
-     * Check if user has any of the given permissions
-     */
-    public function hasAnyPermission(array $permissions): bool
-    {
-        foreach ($permissions as $permission) {
-            if ($this->hasPermission($permission)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Check if user has all of the given permissions
-     */
-    public function hasAllPermissions(array $permissions): bool
-    {
-        foreach ($permissions as $permission) {
-            if (!$this->hasPermission($permission)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Check if user can only manage their own profile
-     * Returns true if admin has null permissions
-     */
-    public function canOnlyManageOwnProfile(): bool
-    {
-        return $this->isAdmin() && !$this->isSuperAdmin() && $this->permissions === null;
-    }
-
-    // =============================
-    // Event permission checking
-    // =============================
-
-    public function canCreateEvent(): bool {
-        return $this->isClub() || $this->isAdmin();
-    }
-
-    public function canEditEvent(Event $event): bool {
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        if ($this->isClub() && $event->organizer_type === 'club') {
-            return $event->organizer_id === $this->club_id;
-        }
-
-        return false;
-    }
-
-    public function canDeleteEvent(Event $event): bool {
-        return $this->canEditEvent($event);
-    }
-
-    public function canRegisterForEvent(Event $event): bool {
-        // Check if user is active
-        if (!$this->isActive()) {
-            return false;
-        }
-
-        // Check if already registered
-        if ($this->isRegisteredForEvent($event)) {
-            return false;
-        }
-
-        // Check if event is open for registration
-        return $event->is_registration_open;
-    }
-
-    public function isRegisteredForEvent(Event $event): bool {
-        return $this->eventRegistrations()
-                        ->where('event_id', $event->id)
-                        ->whereIn('status', ['confirmed', 'pending_payment'])
-                        ->exists();
-    }
-
-    // =============================
-    // Accessors
-    // =============================
-
-    /**
-     * Get the user's profile photo URL
-     * 
-     * @return string
-     */
-    public function getProfilePhotoUrlAttribute()
-    {
-        // 如果有上传的头像且文件存在
-        if ($this->profile_photo && Storage::disk('public')->exists($this->profile_photo)) {
-            return asset('storage/' . $this->profile_photo);
-        }
-
-        // 返回默认头像（基于角色）
-        $defaultAvatars = [
-            'student' => 'images/avatar/default-student-avatar.png',
-            'club' => 'images/avatar/default-student-avatar.png', // 暂时使用 student 默认头像
-            'admin' => 'images/avatar/default-student-avatar.png', // 暂时使用 student 默认头像
-            'super_admin' => 'images/avatar/default-student-avatar.png', // 暂时使用 student 默认头像
-        ];
-
-        return asset($defaultAvatars[$this->role] ?? $defaultAvatars['student']);
-    }
-
-    /**
-     * Get the storage path for profile photo
-     * 
-     * @return string|null
-     */
-    public function getProfilePhotoPathAttribute()
-    {
-        if ($this->profile_photo) {
-            return storage_path('app/public/' . $this->profile_photo);
-        }
-        
-        return null;
-    }
-
-    /**
-     * Check if user has uploaded profile photo
-     * 
-     * @return bool
-     */
-    public function hasProfilePhoto(): bool
-    {
-        return $this->profile_photo && Storage::disk('public')->exists($this->profile_photo);
-    }
-
-    /**
-     * Delete user's profile photo
-     * 
-     * @return bool
-     */
-    public function deleteProfilePhoto(): bool
-    {
-        if ($this->hasProfilePhoto()) {
-            Storage::disk('public')->delete($this->profile_photo);
-            $this->profile_photo = null;
-            $this->save();
-            return true;
-        }
-        
-        return false;
-    }
-    
-//    public function getUnreadNotificationsCountAttribute()
-//    {
-//        return $this->notifications()
-//                    ->whereNull('read_at')
-//                    ->count();
-//    }
-
-    // =============================
     // Scopes
     // =============================
-
-    public function scopeActive($query) {
-        return $query->where('status', 'active');
-    }
 
     public function scopeByRole($query, $role) {
         return $query->where('role', $role);
@@ -408,91 +181,4 @@ class User extends Authenticatable implements MustVerifyEmail {
         return $query->where('role', 'student');
     }
 
-    // =============================
-    // Methods
-    // =============================
-
-    public function updateLastLogin() {
-        $this->update(['last_login_at' => now()]);
-    }
-
-    public function suspend(string $reason = null) {
-        $this->update([
-            'status' => 'suspended',
-            'suspended_reason' => $reason,
-        ]);
-    }
-
-    public function activate() {
-        $this->update([
-            'status' => 'active',
-            'suspended_reason' => null,
-        ]);
-    }
-
-    /**
-     * Check if user can create posts
-     */
-    public function canCreatePost(): bool {
-        return $this->isActive();
-    }
-
-    /**
-     * Get user's post statistics
-     * ✅ 修复：现在使用正确的 user_id 外键
-     */
-    public function getPostStatsAttribute(): array {
-        return [
-            'total_posts' => $this->posts()->count(),
-            'published_posts' => $this->posts()->published()->count(),
-            'draft_posts' => $this->posts()->draft()->count(),
-            'total_likes' => $this->posts()->sum('likes_count'),
-            'total_comments' => $this->posts()->sum('comments_count'),
-        ];
-    }
-    
-    /*
-     * Notification helpers
-     */
-    // Get unread notifications count
-    public function getUnreadNotificationsCountAttribute() {
-        return $this->notifications()->unread()->count();
-    }
-
-    // Get recent unread notifications
-    public function getRecentUnreadNotificationsAttribute() {
-        return $this->notifications()
-                        ->unread()
-                        ->recent()
-                        ->limit(5)
-                        ->get();
-    }
-
-    // Mark all notifications as read
-    public function markAllNotificationsAsRead() {
-        return $this->notifications()
-                        ->whereNull('read_at')
-                        ->update(['read_at' => now()]);
-    }
-
-    /**
-     * Event subscription helpers
-     */
-    // Check if user is subscribed to an event
-    public function isSubscribedToEvent($eventId) {
-        return $this->eventSubscriptions()
-                        ->where('event_id', $eventId)
-                        ->where('is_active', true)
-                        ->exists();
-    }
-
-    // Subscribe to event
-    public function subscribeToEvent($eventId) {
-        return EventSubscription::subscribe($this->id, $eventId);
-    }
-
-    // Unsubscribe from event
-    public function unsubscribeFromEvent($eventId, $reason = null) {
-        EventSubscription::unsubscribeFromEvent($this->id, $eventId, $reason);
-    }
 }

@@ -124,6 +124,22 @@ class AuthorizationService
         $this->authorizeOrAbort('toggleUserStatus', $user, $message ?? 'You do not have permission to toggle this user\'s status.');
     }
 
+    /**
+     * Authorize toggling status for any user (automatically determines user type)
+     * 
+     * @param User $user The user whose status will be toggled
+     * @param string|null $message Custom error message
+     * @throws \Illuminate\Http\Exceptions\HttpResponseException
+     */
+    public function authorizeToggleStatusOrAbort(User $user, ?string $message = null): void
+    {
+        if ($user->isAdministrator()) {
+            $this->authorizeToggleAdministratorStatusOrAbort($user, $message);
+        } else {
+            $this->authorizeToggleUserStatusOrAbort($user, $message);
+        }
+    }
+
     // ============================================
     // Administrator Management Permissions
     // ============================================

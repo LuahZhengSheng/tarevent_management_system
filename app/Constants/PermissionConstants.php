@@ -1,9 +1,6 @@
 <?php
 /**
  * Author: Tang Lit Xuan
- * 
- * Permission Constants - 权限常量定义
- * 按模块分类组织所有权限
  */
 namespace App\Constants;
 

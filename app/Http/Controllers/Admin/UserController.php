@@ -141,8 +141,8 @@ class UserController extends Controller
      */
     public function toggleStatus(Request $request, User $user): JsonResponse
     {
-        // Check permission using AuthorizationService
-        $this->authorizationService->authorizeToggleUserStatusOrAbort($user);
+        // Use unified authorization method (automatically determines user type)
+        $this->authorizationService->authorizeToggleStatusOrAbort($user);
 
         // Use UserStatusService to toggle status
         $newStatus = $this->statusService->toggleStatus($user);

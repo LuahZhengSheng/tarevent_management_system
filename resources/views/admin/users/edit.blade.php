@@ -22,7 +22,7 @@
     <div class="admin-edit-card">
         <form method="POST" action="{{ route('admin.users.update', $user) }}" enctype="multipart/form-data">
             @csrf
-            @method('PATCH')
+            @method('PUT')
 
             <div class="row g-4">
                 <!-- Basic Information -->
