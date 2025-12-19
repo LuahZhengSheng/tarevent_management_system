@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * Author: Tang Lit Xuan
+ */
 namespace App\Http\Middleware;
 
 use Closure;

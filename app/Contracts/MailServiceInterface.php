@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * @author Tang Lit Xuan
+ */
 namespace App\Contracts;
 
 use App\Models\User;

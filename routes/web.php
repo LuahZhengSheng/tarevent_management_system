@@ -81,9 +81,9 @@ Route::put('/test/clubs/{club}/deactivate', function ($clubId, \App\Services\Clu
     $club = \App\Models\Club::findOrFail($clubId);
     $deactivatedBy = auth()->user() ?? \App\Models\User::first();
     $reason = $request->input('reason');
-    
+
     $facade->deactivateClub($club, $deactivatedBy, $reason);
-    
+
     return redirect()->back()->with('success', 'Club deactivated successfully.');
 })->name('test.clubs.deactivate.store');
 
@@ -94,6 +94,8 @@ Route::middleware(['auth'])->get('/test/clubs/all', function () {
 
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
+use App\Http\Controllers\Forum\CommentController;
+use App\Http\Controllers\Forum\LikeController;
 
 /*
   |--------------------------------------------------------------------------
@@ -101,25 +103,28 @@ use App\Http\Controllers\Forum\MyPostController;
   |--------------------------------------------------------------------------
  */
 
+// Load authentication routes (login, register, password reset, etc.)
+require __DIR__.'/auth.php';
+
 // Public Routes
 Route::redirect('/', '/events')->name('home');
 
-Route::get('/login', function () {
-    // 简单占位，可以改成你的登录页面
-    return view('welcome'); // 确保有 resources/views/auth/login.blade.php
-})->name('login');
+// Route::get('/login', function () {
+//     // 简单占位，可以改成你的登录页面
+//     return view('welcome'); // 确保有 resources/views/auth/login.blade.php
+// })->name('login');
 
-// Authentication Routes
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [LoginController::class, 'login']);
-    Route::get('/register', [UserController::class, 'showRegistrationForm'])->name('register');
-    Route::post('/register', [UserController::class, 'register']);
-});
+// // Authentication Routes
+// Route::middleware('guest')->group(function () {
+//     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+//     Route::post('/login', [LoginController::class, 'login']);
+//     Route::get('/register', [UserController::class, 'showRegistrationForm'])->name('register');
+//     Route::post('/register', [UserController::class, 'register']);
+// });
 
-Route::post('/logout', [LoginController::class, 'logout'])
-    ->middleware('auth')
-    ->name('logout');
+// Route::post('/logout', [LoginController::class, 'logout'])
+//     ->middleware('auth')
+//     ->name('logout');
 
 // Public Event Browsing (No Auth Required)
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
@@ -140,7 +145,7 @@ Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('even
   |--------------------------------------------------------------------------
  */
 
-// Notification Routes 
+// Notification Routes
 Route::middleware(['auth'])->group(function () {
 
     // Notification management
@@ -187,7 +192,7 @@ Route::middleware(['auth'])->group(function () {
   |--------------------------------------------------------------------------
  */
 Route::middleware(['auth', 'user'])->group(function () {
-//    
+//
 //    // User Profile Management
 //    Route::prefix('profile')->name('profile.')->group(function () {
 //        Route::get('/', [UserController::class, 'show'])->name('show');
@@ -231,7 +236,7 @@ Route::middleware(['auth', 'user'])->group(function () {
 //        Route::post('/posts', [ForumController::class, 'store'])->name('posts.store');
 //        Route::put('/posts/{post}', [ForumController::class, 'update'])->name('posts.update');
 //        Route::delete('/posts/{post}', [ForumController::class, 'destroy'])->name('posts.destroy');
-//        
+//
 //        Route::post('/posts/{post}/comments', [ForumController::class, 'storeComment'])->name('comments.store');
 //        Route::delete('/comments/{comment}', [ForumController::class, 'destroyComment'])->name('comments.destroy');
 //    });
@@ -239,13 +244,13 @@ Route::middleware(['auth', 'user'])->group(function () {
 
 //// Forum Routes - Require Authentication
 //Route::middleware(['auth', 'check.active.user'])->group(function () {
-//    
+//
 //    // Forum Main Routes
 //    Route::prefix('forums')->name('forums.')->group(function () {
-//        
+//
 //        // Public forum index (all users can view)
 //        Route::get('/', [PostController::class, 'index'])->name('index');
-//        
+//
 //        // Post CRUD Operations
 //        Route::prefix('posts')->name('posts.')->group(function () {
 //            Route::get('/create', [PostController::class, 'create'])->name('create');
@@ -256,7 +261,7 @@ Route::middleware(['auth', 'user'])->group(function () {
 //            Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
 //            Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
 //        });
-//        
+//
 //        // My Posts Routes
 //        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
 //        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
@@ -265,10 +270,10 @@ Route::middleware(['auth', 'user'])->group(function () {
 
 // Forum Routes - Public Access (No Authentication Required)
 Route::prefix('forums')->name('forums.')->group(function () {
-    
+
     // Public Forum Index
     Route::get('/', [PostController::class, 'index'])->name('index');
-    
+
     // Post CRUD Operations
     Route::prefix('posts')->name('posts.')->group(function () {
         Route::get('/create', [PostController::class, 'create'])->name('create');
@@ -278,30 +283,30 @@ Route::prefix('forums')->name('forums.')->group(function () {
         Route::put('/{post}', [PostController::class, 'update'])->name('update');
         Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
         Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-        
+
         // Comment Routes
         Route::post('/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
-        
+
         // Like Routes
         Route::post('/{post}/like', [LikeController::class, 'toggle'])->name('like.toggle');
         Route::get('/{post}/likes', [LikeController::class, 'users'])->name('likes.users');
     });
-    
+
     // Tag Management Routes
     Route::prefix('tags')->name('tags.')->group(function () {
         // Search tags for autocomplete (AJAX)
         Route::get('/search', [PostController::class, 'searchTags'])->name('search');
-        
+
         // Request new tag creation (requires authentication)
         Route::post('/request', [PostController::class, 'requestTag'])
             ->middleware('auth')
             ->name('request');
     });
-    
+
     // My Posts Routes
     Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
     Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-    
+
     // Comment Delete Route
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 });
@@ -310,10 +315,10 @@ Route::prefix('forums')->name('forums.')->group(function () {
 //// 1) 公开的论坛首页（不需登录）
 //// 论坛所有路由暂时公开（测试用）
 //Route::prefix('forums')->name('forums.')->group(function () {
-//    
+//
 //    // 论坛首页
 //    Route::get('/', [PostController::class, 'index'])->name('index');
-//    
+//
 //    // 帖子相关路由
 //    Route::prefix('posts')->name('posts.')->group(function () {
 //        Route::get('/create', [PostController::class, 'create'])->name('create');
@@ -324,7 +329,7 @@ Route::prefix('forums')->name('forums.')->group(function () {
 //        Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
 //        Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
 //    });
-//    
+//
 //    // 我的帖子
 //    Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
 //    Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');

@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 @if($admins->count() > 0)
 <table class="admin-table">
     <thead>

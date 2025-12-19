@@ -7,7 +7,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
-
+/**
+ * Author: Tang Lit Xuan
+ */
 class PasswordController extends Controller
 {
     /**

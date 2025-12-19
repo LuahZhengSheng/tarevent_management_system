@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 <div class="profile-section-header">
     <h2 class="profile-section-title">Profile Information</h2>
     <p class="profile-section-subtitle">Update your account's profile information and preferences.</p>

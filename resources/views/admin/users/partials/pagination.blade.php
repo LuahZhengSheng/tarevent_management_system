@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 @if($users->hasPages())
 <nav aria-label="User pagination">
     <ul class="pagination justify-content-center">

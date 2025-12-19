@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * Author: Tang Lit Xuan
+ */
 namespace App\Http\Requests\Auth;
 
 use App\Support\PhoneHelper;
@@ -30,9 +32,9 @@ class RegisterUserRequest extends FormRequest
                 'required',
                 'confirmed',
                 Rules\Password::min(8)
-                    ->mixedCase()      // 必须包含大小写字母
-                    ->numbers()        // 必须包含数字
-                    ->symbols()       // 必须包含符号
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
             ],
             'avatar' => ['nullable', 'image', 'max:2048'],
             'phone' => ['required', 'string', 'max:50'],

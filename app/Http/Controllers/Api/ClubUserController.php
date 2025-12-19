@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * Author: Tang Lit Xuan
+ */
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;

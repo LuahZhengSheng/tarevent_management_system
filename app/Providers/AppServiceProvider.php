@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use App\Services\PostService;
+use App\Contracts\MailServiceInterface;
+use App\Services\MailService;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Observers\EventObserver;
@@ -22,6 +24,9 @@ class AppServiceProvider extends ServiceProvider {
         $this->app->singleton(PostService::class, function ($app) {
             return new PostService();
         });
+
+        // Bind MailServiceInterface to MailService implementation
+        $this->app->singleton(MailServiceInterface::class, MailService::class);
     }
 
 
