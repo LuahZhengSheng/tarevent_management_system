@@ -2,12 +2,19 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ClubApiController;
+use App\Http\Controllers\Api\ClubUserController;
 
-// For testing: Using 'auth' middleware with web session support
-// Note: API routes don't have session middleware by default
-// For production, use 'auth:sanctum' with proper token authentication
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+
+// Club API Routes (requires authentication)
+// Note: Using ['web','auth'] instead of 'auth:sanctum' for development/testing
+// This allows web session authentication to work with API routes
+// For production, consider using 'auth:sanctum' with proper token authentication
 Route::middleware(['web', 'auth'])->group(function () {
-    // Club API Routes
     Route::prefix('clubs')->group(function () {
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);
@@ -26,3 +33,17 @@ Route::middleware(['web', 'auth'])->group(function () {
     });
 });
 
+// Club User API Routes (v1)
+Route::prefix('v1')->group(function () {
+    // Create club user
+    Route::post('/club-users', [ClubUserController::class, 'store'])
+        ->name('api.v1.club-users.store');
+    
+    // Get club user
+    Route::get('/club-users/{user}', [ClubUserController::class, 'show'])
+        ->name('api.v1.club-users.show');
+    
+    // List club users
+    Route::get('/club-users', [ClubUserController::class, 'index'])
+        ->name('api.v1.club-users.index');
+});
