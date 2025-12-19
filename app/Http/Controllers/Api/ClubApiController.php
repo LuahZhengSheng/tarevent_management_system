@@ -19,7 +19,25 @@ class ClubApiController extends Controller
      */
     public function store(Request $request, ClubFacade $facade)
     {
-        $club = $facade->createClub($request->all(), auth()->user());
+        // Validate input
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'email' => ['nullable', 'string', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'club_user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        // Handle logo file upload if present
+        if ($request->hasFile('logo')) {
+            $logoFile = $request->file('logo');
+            $logoPath = $logoFile->store('clubs/logos', 'public');
+            $validated['logo'] = $logoPath;
+        }
+
+        // Pass validated data to ClubFacade
+        $club = $facade->createClub($validated, auth()->user());
 
         return response()->json([
             'success' => true,
@@ -29,20 +47,73 @@ class ClubApiController extends Controller
     }
 
     /**
+     * Update a club.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function update(Request $request, Club $club)
+    {
+        // Validate input
+        $validated = $request->validate([
+            'club_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'email' => ['nullable', 'string', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        // Update club
+        $club->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Club updated successfully.',
+            'data' => $club->fresh(),
+        ], 200);
+    }
+
+    /**
      * Request to join a club.
      *
+     * @param Request $request
      * @param Club $club
      * @param ClubFacade $facade
      * @return \Illuminate\Http\JsonResponse
      */
-    public function requestJoin(Club $club, ClubFacade $facade)
+    public function requestJoin(Request $request, Club $club, ClubFacade $facade)
     {
-        $facade->requestJoin($club, auth()->user());
+        try {
+            // Validate optional parameters from modal
+            $validated = $request->validate([
+                'reason' => ['nullable', 'string', 'max:500'],
+                'agree' => ['required', 'boolean'],
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Join request submitted successfully.',
-        ], 200);
+            // Map 'reason' from modal to 'description' for database
+            $description = $validated['reason'] ?? null;
+
+            $joinRequest = $facade->requestJoin($club, auth()->user(), $description);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Join request submitted successfully.',
+                'data' => [
+                    'id' => $joinRequest->id,
+                    'club_id' => $joinRequest->club_id,
+                    'user_id' => $joinRequest->user_id,
+                    'status' => $joinRequest->status,
+                    'description' => $joinRequest->description,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
+            ], 400);
+        }
     }
 
     /**

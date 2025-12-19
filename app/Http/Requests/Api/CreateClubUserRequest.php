@@ -26,6 +26,8 @@ class CreateClubUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['nullable', 'string'],
             'student_id' => ['required', 'string', 'max:50', 'unique:users'],
             'phone' => ['required', 'string', 'max:50'],
             'program' => ['nullable', 'string', 'max:255'],

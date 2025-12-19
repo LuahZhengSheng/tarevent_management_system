@@ -19,6 +19,9 @@ Route::middleware(['web', 'auth'])->group(function () {
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);
 
+        // Update club
+        Route::put('/{club}', [ClubApiController::class, 'update']);
+
         // Join request routes
         Route::prefix('{club}')->group(function () {
             // Request to join a club
@@ -34,7 +37,8 @@ Route::middleware(['web', 'auth'])->group(function () {
 });
 
 // Club User API Routes (v1)
-Route::prefix('v1')->group(function () {
+// Note: Using ['web','auth'] for development/testing to allow web session authentication
+Route::middleware(['web', 'auth'])->prefix('v1')->group(function () {
     // Create club user
     Route::post('/club-users', [ClubUserController::class, 'store'])
         ->name('api.v1.club-users.store');
@@ -46,4 +50,11 @@ Route::prefix('v1')->group(function () {
     // List club users
     Route::get('/club-users', [ClubUserController::class, 'index'])
         ->name('api.v1.club-users.index');
+});
+
+// Internal API route for club user creation (no auth required for internal calls)
+// This route is used by ClubFacade for internal club user creation
+Route::prefix('v1/internal')->group(function () {
+    Route::post('/club-users', [ClubUserController::class, 'store'])
+        ->name('api.v1.internal.club-users.store');
 });
