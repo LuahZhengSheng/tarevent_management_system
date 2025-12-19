@@ -151,5 +151,52 @@ class ClubApiController extends Controller
             'message' => 'Join request rejected successfully.',
         ], 200);
     }
+
+    /**
+     * Get all clubs for a specific user.
+     *
+     * @param User $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserClubs(User $user)
+    {
+        $clubs = $user->clubs()
+            ->with(['creator', 'clubUser'])
+            ->get()
+            ->map(function ($club) use ($user) {
+                return [
+                    'id' => $club->id,
+                    'name' => $club->name,
+                    'slug' => $club->slug,
+                    'description' => $club->description,
+                    'email' => $club->email,
+                    'phone' => $club->phone,
+                    'logo' => $club->logo,
+                    'status' => $club->status,
+                    'member_role' => $club->pivot->role ?? null,
+                    'joined_at' => $club->pivot->created_at ?? null,
+                    'creator' => $club->creator ? [
+                        'id' => $club->creator->id,
+                        'name' => $club->creator->name,
+                    ] : null,
+                    'club_user' => $club->clubUser ? [
+                        'id' => $club->clubUser->id,
+                        'name' => $club->clubUser->name,
+                        'email' => $club->clubUser->email,
+                    ] : null,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Clubs retrieved successfully.',
+            'data' => [
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'total_clubs' => $clubs->count(),
+                'clubs' => $clubs,
+            ],
+        ], 200);
+    }
 }
 
