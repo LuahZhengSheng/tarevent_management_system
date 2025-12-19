@@ -34,6 +34,9 @@ Route::middleware(['web', 'auth'])->group(function () {
             });
         });
     });
+
+    // Get all clubs for a user
+    Route::get('/users/{user}/clubs', [ClubApiController::class, 'getUserClubs']);
 });
 
 // Club User API Routes (v1)

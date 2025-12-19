@@ -103,6 +103,11 @@ Route::middleware(['auth'])->get('/test/join-club-modal-simple', function () {
 })->name('test.join.club.modal.simple');
 
 // TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::middleware(['auth'])->get('/test/user-clubs-api', function () {
+    return view('test.user_clubs_api_test');
+})->name('test.user.clubs.api');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
 Route::get('/test/club-user-api', function () {
     return view('test.club_user_api_test');
 })->name('test.club.user.api');
