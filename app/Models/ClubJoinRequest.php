@@ -10,6 +10,7 @@ class ClubJoinRequest extends Model
         'club_id',
         'user_id',
         'status',
+        'description',
     ];
 }
 

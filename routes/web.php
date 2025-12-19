@@ -96,6 +96,21 @@ Route::middleware(['auth'])->get('/test/clubs/all', function () {
     return view('clubs.test_all');
 })->name('clubs.test_all');
 
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::get('/test/club-api', function () {
+    return view('test.club_api_test');
+})->name('test.club.api');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION (Simple Version)
+Route::middleware(['auth'])->get('/test/join-club-modal-simple', function () {
+    return view('test.join_club_modal_simple');
+})->name('test.join.club.modal.simple');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::get('/test/club-user-api', function () {
+    return view('test.club_user_api_test');
+})->name('test.club.user.api');
+
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
 use App\Http\Controllers\Forum\CommentController;
@@ -400,6 +415,10 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
 
 // Club Management Routes
 Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/admin/clubs/create', function () {
+        return view('admin.clubs.create');
+    })->name('admin.clubs.create');
+    
     Route::post('/clubs', [ClubController::class, 'store'])
         ->name('clubs.store');
 });
