@@ -116,17 +116,19 @@
 <style>
 /* ========================================
    Join Club Modal - Stripe Style
+   Uses CSS Variables for Light/Dark Mode Support
 ======================================== */
 
 .join-club-modal-content {
     border: none;
     border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-xl);
     overflow: hidden;
+    background: var(--bg-primary);
 }
 
 .join-club-modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--user-primary) 0%, var(--admin-primary) 100%);
     color: white;
     border: none;
     padding: 1.5rem 2rem;
@@ -150,39 +152,42 @@
 
 .join-club-modal-body {
     padding: 2rem;
-    background: #ffffff;
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .join-club-message {
-    background: #f8f9fa;
-    border-left: 4px solid #667eea;
+    background: var(--bg-secondary);
+    border-left: 4px solid var(--user-primary);
     padding: 1rem 1.25rem;
     border-radius: 8px;
     margin-bottom: 1.5rem;
-    color: #495057;
+    color: var(--text-secondary);
     font-size: 0.95rem;
 }
 
 .join-club-textarea {
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
     transition: all 0.2s ease;
     resize: vertical;
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .join-club-textarea:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--user-primary);
+    box-shadow: 0 0 0 3px var(--user-primary-light);
     outline: none;
 }
 
 .join-club-checkbox {
     padding: 1rem;
-    background: #f8f9fa;
+    background: var(--bg-secondary);
     border-radius: 8px;
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--border-color);
     transition: all 0.2s ease;
     display: flex;
     align-items: flex-start;
@@ -193,8 +198,8 @@
 }
 
 .join-club-checkbox:hover {
-    background: #f1f3f5;
-    border-color: #dee2e6;
+    background: var(--bg-tertiary);
+    border-color: var(--border-hover);
 }
 
 .join-club-checkbox .form-check-input {
@@ -204,22 +209,23 @@
     margin-left: 0;
     margin-right: 0;
     cursor: pointer;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--border-color);
     flex-shrink: 0;
+    background-color: var(--bg-primary);
 }
 
 .join-club-checkbox .form-check-input:checked {
-    background-color: #667eea;
-    border-color: #667eea;
+    background-color: var(--user-primary);
+    border-color: var(--user-primary);
 }
 
 .join-club-checkbox .form-check-input:focus {
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 0 0 3px var(--user-primary-light);
 }
 
 .join-club-checkbox .form-check-label {
     cursor: pointer;
-    color: #495057;
+    color: var(--text-primary);
     font-size: 0.95rem;
     line-height: 1.5;
     flex: 1;
@@ -228,9 +234,9 @@
 }
 
 .join-club-error-message {
-    background: #fff5f5;
-    border: 1px solid #feb2b2;
-    color: #c53030;
+    background: var(--error-light);
+    border: 1px solid var(--error);
+    color: var(--error);
     padding: 0.75rem 1rem;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -248,12 +254,12 @@
     width: 64px;
     height: 64px;
     margin: 0 auto 1rem;
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    background: linear-gradient(135deg, var(--success) 0%, var(--success-hover) 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .join-club-success-icon i {
@@ -262,27 +268,27 @@
 }
 
 .join-club-success-message h5 {
-    color: #2d3748;
+    color: var(--text-primary);
     font-weight: 600;
     margin-bottom: 0.5rem;
 }
 
 .join-club-success-message p {
-    color: #718096;
+    color: var(--text-secondary);
     margin: 0;
 }
 
 .join-club-modal-footer {
     border: none;
     padding: 1.5rem 2rem;
-    background: #f8f9fa;
+    background: var(--bg-secondary);
     gap: 0.75rem;
 }
 
 .join-club-btn-cancel {
-    background: white;
-    color: #495057;
-    border: 2px solid #dee2e6;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
     padding: 0.625rem 1.5rem;
     border-radius: 8px;
     font-weight: 500;
@@ -290,26 +296,27 @@
 }
 
 .join-club-btn-cancel:hover {
-    background: #f8f9fa;
-    border-color: #adb5bd;
-    color: #212529;
+    background: var(--bg-secondary);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
 }
 
 .join-club-btn-submit {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--user-primary) 0%, var(--admin-primary) 100%);
     color: white;
     border: none;
     padding: 0.625rem 1.5rem;
     border-radius: 8px;
     font-weight: 600;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
     min-width: 160px;
 }
 
 .join-club-btn-submit:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    background: linear-gradient(135deg, var(--user-primary-hover) 0%, var(--admin-primary-hover) 100%);
 }
 
 .join-club-btn-submit:active:not(:disabled) {
@@ -328,64 +335,17 @@
     border-width: 2px;
 }
 
-/* Dark Mode Support */
-[data-bs-theme="dark"] .join-club-modal-body {
-    background: #1a202c;
-    color: #e2e8f0;
+/* Dark Mode Support - Uses CSS Variables Automatically */
+[data-theme="dark"] .join-club-modal-content {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
-[data-bs-theme="dark"] .join-club-message {
-    background: #2d3748;
-    color: #cbd5e0;
-    border-left-color: #667eea;
+[data-theme="dark"] .join-club-modal-header {
+    background: linear-gradient(135deg, var(--user-primary) 0%, var(--admin-primary) 100%);
 }
 
-[data-bs-theme="dark"] .join-club-textarea {
-    background: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
-}
-
-[data-bs-theme="dark"] .join-club-textarea:focus {
-    border-color: #667eea;
-    background: #2d3748;
-}
-
-[data-bs-theme="dark"] .join-club-checkbox {
-    background: #2d3748;
-    border-color: #4a5568;
-}
-
-[data-bs-theme="dark"] .join-club-checkbox:hover {
-    background: #374151;
-    border-color: #4a5568;
-}
-
-[data-bs-theme="dark"] .join-club-checkbox .form-check-label {
-    color: #cbd5e0;
-}
-
-[data-bs-theme="dark"] .join-club-modal-footer {
-    background: #2d3748;
-}
-
-[data-bs-theme="dark"] .join-club-btn-cancel {
-    background: #374151;
-    color: #e2e8f0;
-    border-color: #4a5568;
-}
-
-[data-bs-theme="dark"] .join-club-btn-cancel:hover {
-    background: #4a5568;
-    border-color: #667eea;
-}
-
-[data-bs-theme="dark"] .join-club-success-message h5 {
-    color: #e2e8f0;
-}
-
-[data-bs-theme="dark"] .join-club-success-message p {
-    color: #cbd5e0;
+[data-theme="dark"] .join-club-success-icon {
+    box-shadow: 0 4px 12px rgba(52, 211, 153, 0.4);
 }
 
 /* Modal Animation */
@@ -404,6 +364,12 @@
 .modal-backdrop.show {
     opacity: 0.5;
     backdrop-filter: blur(4px);
+    background: var(--overlay-bg);
+}
+
+[data-theme="dark"] .modal-backdrop.show {
+    opacity: 0.7;
+    background: var(--overlay-bg);
 }
 </style>
 
