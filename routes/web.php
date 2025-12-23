@@ -116,6 +116,11 @@ Route::get('/test/club-user-api', function () {
     return view('test.club_user_api_test');
 })->name('test.club.user.api');
 
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::middleware(['auth'])->get('/test/select-club-modal', function () {
+    return view('test.select_club_modal_test');
+})->name('test.select.club.modal');
+
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
 use App\Http\Controllers\Forum\CommentController;

@@ -32,7 +32,7 @@ class Club extends Model {
 
     public function members() {
         return $this->belongsToMany(User::class, 'club_user')
-                        ->withPivot('role')
+                        ->withPivot('role', 'status')
                         ->withTimestamps();
     }
 
@@ -46,6 +46,16 @@ class Club extends Model {
 
     public function clubUser() {
         return $this->belongsTo(User::class, 'club_user_id');
+    }
+
+    public function blacklist() {
+        return $this->hasMany(ClubBlacklist::class);
+    }
+
+    public function blacklistedUsers() {
+        return $this->belongsToMany(User::class, 'club_blacklist')
+                    ->withPivot('reason', 'blacklisted_by')
+                    ->withTimestamps();
     }
 
     /**

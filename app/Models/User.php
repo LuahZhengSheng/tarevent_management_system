@@ -93,8 +93,15 @@ class User extends Authenticatable implements MustVerifyEmail
     // 学生加入的 clubs（通过 club_user 中间表）
     public function clubs() {
         return $this->belongsToMany(Club::class, 'club_user')
-                        ->withPivot('role')
+                        ->withPivot('role', 'status')
                         ->withTimestamps();
+    }
+
+    // 被加入黑名单的俱乐部
+    public function blacklistedClubs() {
+        return $this->belongsToMany(Club::class, 'club_blacklist')
+                    ->withPivot('reason', 'blacklisted_by')
+                    ->withTimestamps();
     }
 
     // 判断是否是某个 club 的成员

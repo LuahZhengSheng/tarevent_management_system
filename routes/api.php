@@ -16,6 +16,9 @@ use App\Http\Controllers\Api\ClubUserController;
 // For production, consider using 'auth:sanctum' with proper token authentication
 Route::middleware(['web', 'auth'])->group(function () {
     Route::prefix('clubs')->group(function () {
+        // Get all available clubs with join status
+        Route::get('/available', [ClubApiController::class, 'getAvailableClubs']);
+
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);
 

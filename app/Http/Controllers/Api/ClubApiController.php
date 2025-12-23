@@ -7,6 +7,7 @@ use App\Models\Club;
 use App\Models\User;
 use App\Services\ClubFacade;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ClubApiController extends Controller
 {
@@ -195,6 +196,72 @@ class ClubApiController extends Controller
                 'user_name' => $user->name,
                 'total_clubs' => $clubs->count(),
                 'clubs' => $clubs,
+            ],
+        ], 200);
+    }
+
+    /**
+     * Get all available clubs with join status for the authenticated user.
+     *
+     * @param Request $request
+     * @param ClubFacade $facade
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailableClubs(Request $request, ClubFacade $facade)
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        // Get all active clubs
+        $clubs = \App\Models\Club::where('status', 'active')
+            ->with(['creator', 'clubUser'])
+            ->get();
+
+        // Get membership service to check join status
+        $membershipService = app(\App\Services\Club\MembershipService::class);
+
+        $clubsWithStatus = $clubs->map(function ($club) use ($user, $membershipService) {
+            $joinStatus = $membershipService->getClubJoinStatus($club, $user);
+
+            return [
+                'id' => $club->id,
+                'name' => $club->name,
+                'slug' => $club->slug,
+                'description' => $club->description,
+                'email' => $club->email,
+                'phone' => $club->phone,
+                'logo' => $club->logo ? \Storage::url($club->logo) : null,
+                'status' => $club->status,
+                'join_status' => $joinStatus['status'],
+                'rejected_at' => $joinStatus['rejected_at'] ? (is_string($joinStatus['rejected_at']) ? $joinStatus['rejected_at'] : $joinStatus['rejected_at']->toIso8601String()) : null,
+                'removed_at' => $joinStatus['removed_at'] ? (is_string($joinStatus['removed_at']) ? $joinStatus['removed_at'] : $joinStatus['removed_at']->toIso8601String()) : null,
+                'cooldown_remaining_days' => $joinStatus['cooldown_remaining_days'],
+                'pending_request_id' => $joinStatus['pending_request_id'],
+                'blacklist_reason' => $joinStatus['blacklist_reason'] ?? null,
+                'creator' => $club->creator ? [
+                    'id' => $club->creator->id,
+                    'name' => $club->creator->name,
+                ] : null,
+                'club_user' => $club->clubUser ? [
+                    'id' => $club->clubUser->id,
+                    'name' => $club->clubUser->name,
+                    'email' => $club->clubUser->email,
+                ] : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Available clubs retrieved successfully.',
+            'data' => [
+                'clubs' => $clubsWithStatus,
+                'total' => $clubsWithStatus->count(),
             ],
         ], 200);
     }
