@@ -54,6 +54,13 @@
                         <i class="bi bi-bookmark me-1"></i>My Events
                     </a>
                 </li>
+                
+                <!-- My Posts (for authenticated users) -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('forums.my-posts') ? 'active' : '' }}" href="{{ route('forums.my-posts') }}">
+                        <i class="bi bi-bookmark me-1"></i>My Posts
+                    </a>
+                </li>
 
                 <!-- Create Event (for club admins only) -->
                 @if(auth()->user()->hasRole('club'))

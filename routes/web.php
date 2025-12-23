@@ -17,7 +17,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Club\ClubController;
 
-
 if (app()->environment('local')) {
     Route::get('/__debug-which-app__', function () {
         return 'APP SIGN: TAREVENT ' . base_path();
@@ -159,7 +158,6 @@ Route::redirect('/', '/events')->name('home');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
 //Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
-
 //// Public Club Browsing
 //Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
 //Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
@@ -271,118 +269,76 @@ Route::middleware(['auth', 'user'])->group(function () {
 //    });
 });
 
-//// Forum Routes - Require Authentication
-//Route::middleware(['auth', 'check.active.user'])->group(function () {
-//
-//    // Forum Main Routes
-//    Route::prefix('forums')->name('forums.')->group(function () {
-//
-//        // Public forum index (all users can view)
-//        Route::get('/', [PostController::class, 'index'])->name('index');
-//
-//        // Post CRUD Operations
-//        Route::prefix('posts')->name('posts.')->group(function () {
-//            Route::get('/create', [PostController::class, 'create'])->name('create');
-//            Route::post('/', [PostController::class, 'store'])->name('store');
-//            Route::get('/{post}', [PostController::class, 'show'])->name('show');
-//            Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-//            Route::put('/{post}', [PostController::class, 'update'])->name('update');
-//            Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-//            Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-//        });
-//
-//        // My Posts Routes
-//        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-//        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-//    });
-//});
+/*
+  |--------------------------------------------------------------------------
+  | Forum Routes
+  |--------------------------------------------------------------------------
+ */
 
-// Forum Routes - Public Access (No Authentication Required)
 Route::prefix('forums')->name('forums.')->group(function () {
 
-    // Public Forum Index
+    // Public (view only)
     Route::get('/', [PostController::class, 'index'])->name('index');
+    Route::get('/posts/{post:slug}', [PostController::class, 'show'])->name('posts.show');
 
-    // Post CRUD Operations
-    Route::prefix('posts')->name('posts.')->group(function () {
+    // Tags: search public, request auth
+    Route::prefix('tags')->name('tags.')->group(function () {
+        Route::get('/search', [PostController::class, 'searchTags'])->name('search');
+        Route::post('/request', [PostController::class, 'requestTag'])
+                ->middleware('auth')
+                ->name('request');
+    });
+
+    // Auth required
+    Route::middleware(['auth', 'check.active.user'])->group(function () {
+
+        Route::prefix('posts')->name('posts.')->group(function () {
+            Route::get('/{post:slug}/edit', [PostController::class, 'edit'])->name('edit');
+            Route::put('/{post:slug}', [PostController::class, 'update'])->name('update');
+            Route::delete('/{post:slug}', [PostController::class, 'destroy'])->name('destroy');
+            Route::post('/{post:slug}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
+
+            // Comment / Reply
+            Route::post('/{post:slug}/comments', [CommentController::class, 'store'])->name('comments.store');
+
+            // 按页获取 replies，用于“View X reply”
+            Route::get('/{post:slug}/comments/{comment}/replies', [CommentController::class, 'listReplies'])
+                    ->name('comments.replies');
+
+            // 顶层评论排序（AJAX）
+            Route::get('/{post:slug}/comments/top-level', [CommentController::class, 'listTopLevel'])
+                    ->name('comments.top-level');
+
+            // Post Like
+            Route::post('/{post:slug}/like', [LikeController::class, 'toggle'])->name('like.toggle');
+            Route::get('/{post:slug}/likes', [LikeController::class, 'users'])->name('likes.users');
+
+            // Save
+            Route::post('/{post:slug}/save', [PostSaveController::class, 'toggle'])->name('save.toggle');
+
+            // Report
+            Route::post('/{post:slug}/report', [PostReportController::class, 'store'])->name('report.store');
+        });
+
+        // Comment delete
+        Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+
+        // Comment update
+        Route::put('/comments/{comment}', [CommentController::class, 'update'])
+                ->name('comments.update');
+
+        // Comment Like
+        Route::post('/comments/{comment}/like', [LikeController::class, 'toggleComment'])
+                ->name('comments.like');
+
         Route::get('/create', [PostController::class, 'create'])->name('create');
         Route::post('/', [PostController::class, 'store'])->name('store');
-        Route::get('/{post}', [PostController::class, 'show'])->name('show');
-        Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-        Route::put('/{post}', [PostController::class, 'update'])->name('update');
-        Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-        Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
 
-        // Comment Routes
-        Route::post('/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
-
-        // Like Routes
-        Route::post('/{post}/like', [LikeController::class, 'toggle'])->name('like.toggle');
-        Route::get('/{post}/likes', [LikeController::class, 'users'])->name('likes.users');
+        // My posts
+        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
+        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
     });
-
-    // Tag Management Routes
-    Route::prefix('tags')->name('tags.')->group(function () {
-        // Search tags for autocomplete (AJAX)
-        Route::get('/search', [PostController::class, 'searchTags'])->name('search');
-
-        // Request new tag creation (requires authentication)
-        Route::post('/request', [PostController::class, 'requestTag'])
-            ->middleware('auth')
-            ->name('request');
-    });
-
-    // My Posts Routes
-    Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-    Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-
-    // Comment Delete Route
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 });
-
-
-//// 1) 公开的论坛首页（不需登录）
-//// 论坛所有路由暂时公开（测试用）
-//Route::prefix('forums')->name('forums.')->group(function () {
-//
-//    // 论坛首页
-//    Route::get('/', [PostController::class, 'index'])->name('index');
-//
-//    // 帖子相关路由
-//    Route::prefix('posts')->name('posts.')->group(function () {
-//        Route::get('/create', [PostController::class, 'create'])->name('create');
-//        Route::post('/', [PostController::class, 'store'])->name('store');
-//        Route::get('/{post}', [PostController::class, 'show'])->name('show');
-//        Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-//        Route::put('/{post}', [PostController::class, 'update'])->name('update');
-//        Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-//        Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-//    });
-//
-//    // 我的帖子
-//    Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-//    Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-//});
-
-
-// 2) 需要登录的部分（我的帖子、发帖等）
-//Route::middleware(['auth', 'check.active.user'])->group(function () {
-//    Route::prefix('forums')->name('forums.')->group(function () {
-//
-//        Route::prefix('posts')->name('posts.')->group(function () {
-//            Route::get('/create', [PostController::class, 'create'])->name('create');
-//            Route::post('/', [PostController::class, 'store'])->name('store');
-//            Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-//            Route::put('/{post}', [PostController::class, 'update'])->name('update');
-//            Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-//            Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-//        });
-//
-//        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-//        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-//    });
-//});
-
 
 /*
   |--------------------------------------------------------------------------

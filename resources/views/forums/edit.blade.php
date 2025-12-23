@@ -4,7 +4,7 @@
 @section('title', 'Edit Post - Forum')
 
 @push('styles')
-@vite(['resources/css/forum-create.css', 'resources/css/media-lightbox.css'])
+@vite(['resources/css/forums/forum-create.css', 'resources/css/forums/media-lightbox.css'])
 @endpush
 
 @section('content')

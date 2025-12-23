@@ -1,704 +1,565 @@
+{{-- resources/views/forums/my-posts.blade.php - Enhanced Version --}}
 @extends('layouts.app')
 
-@section('title', 'My Posts - Forum')
+@section('title', 'My Posts')
+
+@push('styles')
+@vite([
+    'resources/css/forums/my-posts.css',
+    'resources/css/forums/forum-media-gallery.css',
+    'resources/css/forums/media-lightbox.css'
+])
+@endpush
 
 @section('content')
-<div class="my-posts-page">
-    <!-- Hero Section -->
-    <div class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <h1 class="hero-title mb-3">My Posts</h1>
-                    <p class="hero-subtitle">Manage all your forum posts in one place</p>
-                </div>
-                <div class="col-lg-4 text-lg-end">
-                    <a href="{{ route('forum.posts.create') }}" class="btn btn-primary btn-lg">
-                        <i class="bi bi-plus-circle me-2"></i>Create New Post
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+@php
+    $tab = request('tab', 'posts');
 
-    <div class="container py-5">
-        <!-- Statistics Cards -->
-        <div class="row g-4 mb-5">
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon bg-primary">
-                        <i class="bi bi-file-text"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">{{ $stats['total_posts'] }}</h3>
-                        <p class="stat-label">Total Posts</p>
-                    </div>
-                </div>
-            </div>
+    // Stats
+    $totalPosts = $stats['total'] ?? ($postsTotal ?? (is_countable($posts ?? null) ? count($posts) : 0));
+    $publishedPosts = $stats['published'] ?? ($publishedTotal ?? null);
+    $draftPosts = $stats['draft'] ?? ($draftTotal ?? null);
 
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon bg-success">
-                        <i class="bi bi-check-circle"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">{{ $stats['published_posts'] }}</h3>
-                        <p class="stat-label">Published</p>
-                    </div>
-                </div>
-            </div>
+    // Profile
+    $displayName = $profile['name'] ?? (auth()->user()->name ?? 'User');
+    $displayHandle = $profile['handle'] ?? (auth()->user()->username ?? ('@' . (auth()->user()->id ?? 'me')));
+    $bio = $profile['bio'] ?? 'Manage your posts, drafts and activity in one place.';
+    $coverUrl = $profile['cover_url'] ?? null;
+    $avatarUrl = $profile['avatar_url'] ?? null;
 
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon bg-warning">
-                        <i class="bi bi-pencil-square"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">{{ $stats['draft_posts'] }}</h3>
-                        <p class="stat-label">Drafts</p>
-                    </div>
-                </div>
-            </div>
+    // Additional stats
+    $followers = $profile['followers'] ?? null;
+    $following = $profile['following'] ?? null;
+    $likesTotal = $profile['likes_total'] ?? null;
+    $commentsTotal = $profile['comments_total'] ?? null;
+@endphp
 
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-icon bg-info">
-                        <i class="bi bi-eye"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">{{ number_format($stats['total_views']) }}</h3>
-                        <p class="stat-label">Total Views</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="mp-page">
+    {{-- ===== Hero Cover Section ===== --}}
+    <section class="mp-cover">
+        @if($coverUrl)
+            <div class="mp-cover__bg" style="background-image:url('{{ $coverUrl }}');" role="img" aria-label="Cover image"></div>
+        @else
+            <div class="mp-cover__bg" role="img" aria-label="Default cover"></div>
+        @endif
+        <div class="mp-cover__overlay" aria-hidden="true"></div>
 
-        <!-- Filter Section -->
-        <div class="card shadow-sm mb-4 filter-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <div class="filter-buttons">
-                        <a href="{{ route('forum.my-posts', ['filter' => 'all']) }}" 
-                           class="btn btn-sm {{ $filter === 'all' ? 'btn-primary' : 'btn-outline-secondary' }}">
-                            <i class="bi bi-grid me-1"></i>All Posts
-                        </a>
-                        <a href="{{ route('forum.my-posts', ['filter' => 'published']) }}" 
-                           class="btn btn-sm {{ $filter === 'published' ? 'btn-success' : 'btn-outline-secondary' }}">
-                            <i class="bi bi-check-circle me-1"></i>Published
-                        </a>
-                        <a href="{{ route('forum.my-posts', ['filter' => 'draft']) }}" 
-                           class="btn btn-sm {{ $filter === 'draft' ? 'btn-warning' : 'btn-outline-secondary' }}">
-                            <i class="bi bi-pencil me-1"></i>Drafts
-                        </a>
-                    </div>
-
-                    <div class="post-count">
-                        <span class="text-muted">
-                            <i class="bi bi-list-ul me-1"></i>
-                            {{ $posts->total() }} {{ Str::plural('post', $posts->total()) }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Posts Grid -->
-        <div class="row g-4" id="postsContainer">
-            @forelse($posts as $post)
-            <div class="col-lg-4 col-md-6 post-item" data-post-id="{{ $post->id }}">
-                <div class="card post-card h-100">
-                    <!-- Post Media Preview -->
-                    @if($post->media_paths && count($post->media_paths) > 0)
-                    <div class="post-media-preview">
-                        @php
-                            $firstMedia = $post->media_paths[0];
-                            $extension = pathinfo($firstMedia, PATHINFO_EXTENSION);
-                            $isVideo = in_array(strtolower($extension), ['mp4', 'mov', 'avi']);
-                        @endphp
-                        
-                        @if($isVideo)
-                        <video class="card-img-top" muted>
-                            <source src="{{ Storage::url($firstMedia) }}" type="video/{{ $extension }}">
-                        </video>
+        <div class="mp-container">
+            <div class="mp-cover__inner">
+                {{-- Left: Avatar + Identity --}}
+                <div class="mp-cover__left">
+                    <div class="mp-avatar" role="img" aria-label="Profile avatar">
+                        @if($avatarUrl)
+                            <img class="mp-avatar__img" src="{{ $avatarUrl }}" alt="{{ $displayName }}'s avatar">
                         @else
-                        <img src="{{ Storage::url($firstMedia) }}" 
-                             alt="{{ $post->title }}" 
-                             class="card-img-top">
-                        @endif
-                        
-                        @if(count($post->media_paths) > 1)
-                        <div class="media-count-badge">
-                            <i class="bi bi-images"></i> {{ count($post->media_paths) }}
-                        </div>
-                        @endif
-                    </div>
-                    @else
-                    <div class="post-placeholder">
-                        <i class="bi bi-file-text"></i>
-                    </div>
-                    @endif
-
-                    <!-- Status Badge -->
-                    <div class="post-status-badge">
-                        @if($post->status === 'draft')
-                            <span class="badge bg-warning">
-                                <i class="bi bi-pencil me-1"></i>Draft
-                            </span>
-                        @else
-                            <span class="badge bg-success">
-                                <i class="bi bi-check-circle me-1"></i>Published
-                            </span>
+                            <div class="mp-avatar__fallback" aria-label="Avatar placeholder">
+                                {{ strtoupper(mb_substr($displayName, 0, 1)) }}
+                            </div>
                         @endif
                     </div>
 
-                    <div class="card-body">
-                        <!-- Post Title -->
-                        <h5 class="post-title">
-                            <a href="{{ route('forum.posts.show', $post) }}" 
-                               class="text-decoration-none">
-                                {{ $post->title }}
-                            </a>
-                        </h5>
+                    <div class="mp-identity">
+                        <h1 class="mp-identity__name">{{ $displayName }}</h1>
+                        <div class="mp-identity__handle">{{ $displayHandle }}</div>
+                        <p class="mp-identity__bio">{{ $bio }}</p>
 
-                        <!-- Category -->
-                        <div class="post-category mb-2">
-                            <span class="badge bg-primary-light text-primary">
-                                {{ $post->category }}
-                            </span>
-                            @if($post->visibility === 'club_only')
-                            <span class="badge bg-secondary">
-                                <i class="bi bi-lock me-1"></i>Club Only
-                            </span>
+                        <div class="mp-kpis" role="list">
+                            <div class="mp-kpi" role="listitem">
+                                <span class="mp-kpi__label">Posts</span>
+                                <span class="mp-kpi__value">{{ number_format($totalPosts) }}</span>
+                            </div>
+                            @if(!is_null($likesTotal))
+                                <div class="mp-kpi" role="listitem">
+                                    <span class="mp-kpi__label">Likes</span>
+                                    <span class="mp-kpi__value">{{ number_format($likesTotal) }}</span>
+                                </div>
+                            @endif
+                            @if(!is_null($commentsTotal))
+                                <div class="mp-kpi" role="listitem">
+                                    <span class="mp-kpi__label">Comments</span>
+                                    <span class="mp-kpi__value">{{ number_format($commentsTotal) }}</span>
+                                </div>
+                            @endif
+                            @if(!is_null($followers))
+                                <div class="mp-kpi" role="listitem">
+                                    <span class="mp-kpi__label">Followers</span>
+                                    <span class="mp-kpi__value">{{ number_format($followers) }}</span>
+                                </div>
+                            @endif
+                            @if(!is_null($following))
+                                <div class="mp-kpi" role="listitem">
+                                    <span class="mp-kpi__label">Following</span>
+                                    <span class="mp-kpi__value">{{ number_format($following) }}</span>
+                                </div>
                             @endif
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Post Excerpt -->
-                        <p class="post-excerpt text-muted">
-                            {{ $post->excerpt }}
-                        </p>
+                {{-- Right: Actions + Mini Stats --}}
+                <div class="mp-cover__right">
+                    <nav class="mp-actions" aria-label="Quick actions">
+                        <a href="{{ route('forums.create') }}" class="btn btn-light mp-btn-pill">
+                            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                            <span>Create Post</span>
+                        </a>
+                        <a href="{{ route('forums.index') }}" class="btn btn-outline-light mp-btn-pill mp-btn-glass">
+                            <i class="bi bi-grid me-1" aria-hidden="true"></i>
+                            <span>Browse Forum</span>
+                        </a>
+                    </nav>
 
-                        <!-- Tags -->
-                        @if($post->tags && count($post->tags) > 0)
-                        <div class="post-tags mb-3">
-                            @foreach(array_slice($post->tags, 0, 3) as $tag)
-                            <span class="tag-badge">#{{ $tag }}</span>
-                            @endforeach
-                            @if(count($post->tags) > 3)
-                            <span class="tag-badge">+{{ count($post->tags) - 3 }}</span>
-                            @endif
+                    <div class="mp-mini" role="complementary" aria-label="Post statistics">
+                        <div class="mp-mini__row">
+                            <span class="mp-mini__label">Published</span>
+                            <span class="mp-mini__value">{{ $publishedPosts ?? '—' }}</span>
                         </div>
-                        @endif
-
-                        <!-- Post Meta -->
-                        <div class="post-meta">
-                            <div class="meta-item">
-                                <i class="bi bi-calendar3 text-primary"></i>
-                                <span>{{ $post->formatted_date }}</span>
-                            </div>
-                            <div class="meta-item">
-                                <i class="bi bi-eye text-primary"></i>
-                                <span>{{ number_format($post->views_count) }}</span>
-                            </div>
-                            <div class="meta-item">
-                                <i class="bi bi-heart text-primary"></i>
-                                <span>{{ number_format($post->likes_count) }}</span>
-                            </div>
-                            <div class="meta-item">
-                                <i class="bi bi-chat text-primary"></i>
-                                <span>{{ number_format($post->comments_count) }}</span>
-                            </div>
+                        <div class="mp-mini__row">
+                            <span class="mp-mini__label">Drafts</span>
+                            <span class="mp-mini__value">{{ $draftPosts ?? '—' }}</span>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Action Buttons -->
-                    <div class="card-footer bg-transparent">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="btn-group" role="group">
-                                <a href="{{ route('forum.posts.show', $post) }}" 
-                                   class="btn btn-sm btn-outline-primary"
-                                   title="View Post">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="{{ route('forum.posts.edit', $post) }}" 
-                                   class="btn btn-sm btn-outline-secondary"
-                                   title="Edit Post">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-danger delete-post-btn"
-                                        data-post-id="{{ $post->id }}"
-                                        data-post-title="{{ $post->title }}"
-                                        title="Delete Post">
-                                    <i class="bi bi-trash"></i>
+    {{-- ===== Main Content ===== --}}
+    <main class="mp-main">
+        <div class="mp-container">
+            <div class="mp-layout">
+                {{-- ===== Left Sidebar: Filters ===== --}}
+                <aside class="mp-left" role="complementary" aria-label="Filters and navigation">
+                    <div class="mp-card mp-card--soft">
+                        <div class="mp-card__title">
+                            <i class="bi bi-sliders" aria-hidden="true"></i>
+                            <span>Quick Filters</span>
+                        </div>
+
+                        <form class="mp-quickform" role="search" aria-label="Filter posts">
+                            <div class="mp-field">
+                                <label for="mpSearchInput" class="mp-label">Search</label>
+                                <div class="mp-input mp-input--icon mp-input--mini">
+                                    <i class="bi bi-search" aria-hidden="true"></i>
+                                    <input id="mpSearchInput" 
+                                           type="text" 
+                                           class="form-control" 
+                                           placeholder="Search title / content..."
+                                           aria-label="Search posts">
+                                </div>
+                            </div>
+
+                            <div class="mp-field">
+                                <label for="mpSortSelect" class="mp-label">Sort By</label>
+                                <select id="mpSortSelect" class="form-select" aria-label="Sort posts">
+                                    <option value="latest" selected>Latest First</option>
+                                    <option value="oldest">Oldest First</option>
+                                    <option value="most_viewed">Most Viewed</option>
+                                    <option value="most_liked">Most Liked</option>
+                                </select>
+                            </div>
+
+                            <div class="mp-actions-col">
+                                <button class="btn btn-primary mp-btn-pill" 
+                                        id="mpApplyClientFilter" 
+                                        type="button"
+                                        aria-label="Apply filters">
+                                    <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+                                    <span>Apply Filters</span>
+                                </button>
+                                <button class="btn btn-outline-secondary mp-btn-pill" 
+                                        id="mpResetClientFilter" 
+                                        type="button"
+                                        aria-label="Reset filters">
+                                    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>
+                                    <span>Reset</span>
                                 </button>
                             </div>
+                        </form>
 
-                            <button type="button" 
-                                    class="btn btn-sm {{ $post->status === 'draft' ? 'btn-success' : 'btn-warning' }} toggle-status-btn"
-                                    data-post-id="{{ $post->id }}">
-                                @if($post->status === 'draft')
-                                    <i class="bi bi-upload me-1"></i>Publish
+                        <nav class="mp-links" aria-label="Quick navigation">
+                            <a class="mp-link" href="{{ route('forums.create') }}">
+                                <i class="bi bi-plus-circle" aria-hidden="true"></i>
+                                <span>Create new post</span>
+                            </a>
+                            <a class="mp-link" href="{{ route('forums.index') }}">
+                                <i class="bi bi-grid" aria-hidden="true"></i>
+                                <span>Browse forum</span>
+                            </a>
+                        </nav>
+                    </div>
+                </aside>
+
+                {{-- ===== Right Content: Posts/Drafts/Liked/Comments ===== --}}
+                <section class="mp-content" role="main" aria-label="Posts content">
+                    {{-- Tabs Navigation --}}
+                    <nav class="mp-tabs" role="tablist" aria-label="Content tabs">
+                        <a class="mp-tab {{ $tab === 'posts' ? 'active' : '' }}" 
+                           href="{{ request()->fullUrlWithQuery(['tab' => 'posts']) }}"
+                           role="tab"
+                           aria-selected="{{ $tab === 'posts' ? 'true' : 'false' }}"
+                           aria-label="My posts">
+                            <i class="bi bi-file-text" aria-hidden="true"></i>
+                            <span>Posts</span>
+                        </a>
+                        <a class="mp-tab {{ $tab === 'drafts' ? 'active' : '' }}" 
+                           href="{{ request()->fullUrlWithQuery(['tab' => 'drafts']) }}"
+                           role="tab"
+                           aria-selected="{{ $tab === 'drafts' ? 'true' : 'false' }}"
+                           aria-label="Draft posts">
+                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                            <span>Drafts</span>
+                        </a>
+                        <a class="mp-tab {{ $tab === 'liked' ? 'active' : '' }}" 
+                           href="{{ request()->fullUrlWithQuery(['tab' => 'liked']) }}"
+                           role="tab"
+                           aria-selected="{{ $tab === 'liked' ? 'true' : 'false' }}"
+                           aria-label="Liked posts">
+                            <i class="bi bi-heart" aria-hidden="true"></i>
+                            <span>Liked</span>
+                        </a>
+                        <a class="mp-tab {{ $tab === 'comments' ? 'active' : '' }}" 
+                           href="{{ request()->fullUrlWithQuery(['tab' => 'comments']) }}"
+                           role="tab"
+                           aria-selected="{{ $tab === 'comments' ? 'true' : 'false' }}"
+                           aria-label="My comments">
+                            <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                            <span>Comments</span>
+                        </a>
+                    </nav>
+
+                    {{-- Content Header --}}
+                    <header class="mp-strip">
+                        <div class="mp-strip__left">
+                            <h2 class="mp-strip__title">
+                                @if($tab === 'drafts')
+                                    Draft Posts
+                                @elseif($tab === 'liked')
+                                    Liked Posts
+                                @elseif($tab === 'comments')
+                                    My Comments
                                 @else
-                                    <i class="bi bi-archive me-1"></i>Unpublish
+                                    My Posts
                                 @endif
-                            </button>
+                            </h2>
+                            <p class="mp-strip__sub">
+                                @if($tab === 'comments')
+                                    All comments you've made on posts
+                                @else
+                                    One row per post (desktop-friendly list layout)
+                                @endif
+                            </p>
+                        </div>
+                    </header>
+
+                    {{-- Posts / Drafts / Liked Content --}}
+                    @if(in_array($tab, ['posts', 'drafts', 'liked']))
+                        <div class="mp-list-posts" id="mpPostGrid" role="list" aria-label="Post list">
+                            @forelse(($posts ?? []) as $post)
+                                @php
+                                    $mediaPaths = $post->media_paths ?? $post->mediapaths ?? [];
+                                    $mediaCount = is_array($mediaPaths) ? count($mediaPaths) : 0;
+                                    
+                                    $isDraft = ($post->status ?? null) === 'draft';
+                                    $isPinned = (bool)($post->is_pinned ?? false);
+                                    $isClubOnly = ($post->visibility ?? null) === 'club_only';
+                                    
+                                    $excerpt = $post->excerpt ?? \Illuminate\Support\Str::limit(strip_tags($post->content ?? ''), 180);
+                                    $views = $post->views_count ?? 0;
+                                    $likes = $post->likes_count ?? 0;
+                                    $comments = $post->comments_count ?? 0;
+                                    $createdAt = $post->created_at ?? null;
+                                @endphp
+
+                                <article class="mp-rowpost"
+                                         role="listitem"
+                                         data-post-title="{{ strtolower($post->title ?? '') }}"
+                                         data-post-excerpt="{{ strtolower($excerpt ?? '') }}"
+                                         data-post-views="{{ (int)$views }}"
+                                         data-post-likes="{{ (int)$likes }}"
+                                         data-post-created="{{ $createdAt ? $createdAt->timestamp : 0 }}"
+                                         aria-label="Post: {{ $post->title }}">
+
+                                    <div class="mp-rowpost__main">
+                                        {{-- Media Gallery (if exists) --}}
+                                        @if($mediaCount > 0)
+                                            <div class="mp-rowpost__media-top">
+                                                <div class="media-gallery-facebook layout-{{ min($mediaCount, 5) }}"
+                                                     role="img"
+                                                     aria-label="Post media gallery with {{ $mediaCount }} {{ Str::plural('item', $mediaCount) }}">
+                                                    @foreach($post->media_paths as $index => $media)
+                                                        @php
+                                                            $mediaPath = is_array($media) ? ($media['path'] ?? '') : $media;
+                                                            $mediaType = is_array($media) ? ($media['type'] ?? 'image') : 'image';
+                                                            $mimeType = is_array($media) ? ($media['mime_type'] ?? 'image/jpeg') : 'image/jpeg';
+                                                            $isVideo = $mediaType === 'video' || str_starts_with($mimeType, 'video/');
+                                                            
+                                                            if (empty($mediaPath)) continue;
+                                                            $isVisible = $index < 5;
+                                                        @endphp
+
+                                                        <div class="fb-media-item media-item item-{{ $index + 1 }} {{ !$isVisible ? 'd-none' : '' }}"
+                                                             data-index="{{ $index }}"
+                                                             data-lightbox="true"
+                                                             data-group="post-{{ $post->id }}"
+                                                             data-type="{{ $isVideo ? 'video' : 'image' }}"
+                                                             data-src="{{ Storage::url($mediaPath) }}"
+                                                             tabindex="0"
+                                                             role="button"
+                                                             aria-label="View {{ $isVideo ? 'video' : 'image' }} {{ $index + 1 }}">
+                                                            
+                                                            @if($isVideo)
+                                                                <video class="fb-media-content" preload="metadata" aria-label="Video preview">
+                                                                    <source src="{{ Storage::url($mediaPath) }}" type="{{ $mimeType }}">
+                                                                </video>
+                                                                <div class="fb-media-badge video-badge" aria-label="Video">
+                                                                    <i class="bi bi-play-circle-fill" aria-hidden="true"></i>
+                                                                </div>
+                                                            @else
+                                                                <img src="{{ Storage::url($mediaPath) }}"
+                                                                     alt="Media {{ $index + 1 }}"
+                                                                     class="fb-media-content"
+                                                                     loading="lazy">
+                                                            @endif
+
+                                                            @if($index == 4 && $mediaCount > 5)
+                                                                <div class="fb-overlay-more" aria-label="{{ $mediaCount - 5 }} more items">
+                                                                    <span class="overlay-number">+{{ $mediaCount - 5 }}</span>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        {{-- Post Header --}}
+                                        <div class="mp-rowpost__top">
+                                            <div class="mp-rowpost__titlewrap">
+                                                <h3 class="mp-rowpost__title">
+                                                    <a href="{{ route('forums.posts.show', $post->slug) }}">
+                                                        {{ $post->title }}
+                                                    </a>
+                                                </h3>
+
+                                                <div class="mp-rowpost__badges" role="list">
+                                                    @if($isPinned)
+                                                        <span class="badge text-bg-warning" role="listitem">
+                                                            <i class="bi bi-pin-angle-fill me-1" aria-hidden="true"></i>Pinned
+                                                        </span>
+                                                    @endif
+                                                    @if($isDraft)
+                                                        <span class="badge text-bg-secondary" role="listitem">
+                                                            <i class="bi bi-pencil-fill me-1" aria-hidden="true"></i>Draft
+                                                        </span>
+                                                    @endif
+                                                    @if($isClubOnly)
+                                                        <span class="badge text-bg-dark" role="listitem">
+                                                            <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Club Only
+                                                        </span>
+                                                    @endif
+                                                    @if(isset($post->category) && $post->category)
+                                                        <span class="badge text-bg-primary" role="listitem">
+                                                            {{ $post->category->name ?? 'Category' }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <div class="mp-rowpost__meta" role="list">
+                                                <span class="mp-stat" role="listitem">
+                                                    <i class="bi bi-clock" aria-hidden="true"></i>
+                                                    <time datetime="{{ $createdAt ? $createdAt->toIso8601String() : '' }}">
+                                                        {{ $createdAt ? $createdAt->diffForHumans() : '—' }}
+                                                    </time>
+                                                </span>
+                                                <span class="mp-stat" role="listitem">
+                                                    <i class="bi bi-eye" aria-hidden="true"></i>
+                                                    <span>{{ number_format((int)$views) }}</span>
+                                                </span>
+                                                <span class="mp-stat" role="listitem">
+                                                    <i class="bi bi-heart" aria-hidden="true"></i>
+                                                    <span>{{ number_format((int)$likes) }}</span>
+                                                </span>
+                                                <span class="mp-stat" role="listitem">
+                                                    <i class="bi bi-chat" aria-hidden="true"></i>
+                                                    <span>{{ number_format((int)$comments) }}</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {{-- Excerpt --}}
+                                        <p class="mp-rowpost__excerpt">{{ $excerpt }}</p>
+
+                                        {{-- Tags --}}
+                                        @if(!empty($post->tags) && $post->tags->count() > 0)
+                                            <div class="mp-tags mp-rowpost__tags" role="list">
+                                                @foreach($post->tags->take(6) as $tag)
+                                                    <span class="mp-tag" role="listitem">#{{ $tag->name }}</span>
+                                                @endforeach
+                                                @if($post->tags->count() > 6)
+                                                    <span class="mp-tag mp-tag--more" role="listitem">
+                                                        +{{ $post->tags->count() - 6 }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        {{-- Actions --}}
+                                        <div class="mp-rowpost__actions">
+                                            <a href="{{ route('forums.posts.show', $post->slug) }}" 
+                                               class="btn btn-outline-primary mp-btn-pill"
+                                               aria-label="View post">
+                                                <i class="bi bi-eye me-1" aria-hidden="true"></i>
+                                                <span>View</span>
+                                            </a>
+                                            <a href="{{ route('forums.posts.edit', $post->slug) }}" 
+                                               class="btn btn-outline-secondary mp-btn-pill"
+                                               aria-label="Edit post">
+                                                <i class="bi bi-pencil me-1" aria-hidden="true"></i>
+                                                <span>Edit</span>
+                                            </a>
+                                            <button type="button"
+                                                    class="btn btn-danger mp-btn-pill js-delete-post"
+                                                    data-delete-url="{{ route('forums.posts.destroy', $post->slug) }}"
+                                                    data-post-title="{{ $post->title }}"
+                                                    aria-label="Delete post">
+                                                <i class="bi bi-trash me-1" aria-hidden="true"></i>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
+                            @empty
+                                <div class="mp-empty" role="status">
+                                    <div class="mp-empty__icon">
+                                        <i class="bi bi-inboxes" aria-hidden="true"></i>
+                                    </div>
+                                    <h3 class="mp-empty__title">No posts found</h3>
+                                    <p class="mp-empty__text">
+                                        Create a new post, or adjust your filters to see results.
+                                    </p>
+                                    <a href="{{ route('forums.posts.create') }}" 
+                                       class="btn btn-primary mp-btn-pill"
+                                       aria-label="Create your first post">
+                                        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                                        <span>Create Post</span>
+                                    </a>
+                                </div>
+                            @endforelse
+                        </div>
+
+                        {{-- Pagination --}}
+                        @if(method_exists($posts ?? null, 'links'))
+                            <nav class="mp-pagination" aria-label="Posts pagination">
+                                {{ $posts->links() }}
+                            </nav>
+                        @endif
+                    @endif
+
+                    {{-- Comments Tab Content --}}
+                    @if($tab === 'comments')
+                        <div class="mp-list" role="list" aria-label="Comments list">
+                            @forelse(($comments ?? []) as $comment)
+                                <article class="mp-item" role="listitem">
+                                    <header class="mp-item__head">
+                                        <a class="mp-item__title" 
+                                           href="{{ route('forums.posts.show', $comment->post->slug ?? '') }}">
+                                            {{ \Illuminate\Support\Str::limit($comment->post->title ?? 'Post', 80) }}
+                                        </a>
+                                        <span class="mp-badge">
+                                            <i class="bi bi-clock" aria-hidden="true"></i>
+                                            <time datetime="{{ $comment->created_at ? $comment->created_at->toIso8601String() : '' }}">
+                                                {{ $comment->created_at ? $comment->created_at->diffForHumans() : '—' }}
+                                            </time>
+                                        </span>
+                                    </header>
+                                    <div class="mp-item__body">
+                                        {{ \Illuminate\Support\Str::limit(strip_tags($comment->content ?? ''), 220) }}
+                                    </div>
+                                </article>
+                            @empty
+                                <div class="mp-empty" role="status">
+                                    <div class="mp-empty__icon">
+                                        <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+                                    </div>
+                                    <h3 class="mp-empty__title">No comments yet</h3>
+                                    <p class="mp-empty__text">
+                                        Comments you leave on posts will appear here.
+                                    </p>
+                                </div>
+                            @endforelse
+                        </div>
+                    @endif
+                </section>
+            </div>
+        </div>
+    </main>
+
+    {{-- Toast Notifications Container --}}
+    <div id="myToastHost" 
+         class="mp-toast-host" 
+         role="region" 
+         aria-live="polite" 
+         aria-atomic="true"
+         aria-label="Notifications"></div>
+
+    {{-- Delete Confirmation Modal --}}
+    <div class="modal fade" 
+         id="deleteConfirmModal" 
+         tabindex="-1" 
+         aria-labelledby="deleteConfirmModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content mp-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2" aria-hidden="true"></i>
+                        <span>Confirm Delete</span>
+                    </h5>
+                    <button type="button" 
+                            class="btn-close" 
+                            data-bs-dismiss="modal" 
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mp-warn" role="alert">
+                        <div class="mp-warn__icon" aria-hidden="true">
+                            <i class="bi bi-trash3"></i>
+                        </div>
+                        <div>
+                            <div class="mp-warn__title">Delete this post?</div>
+                            <div class="text-muted mt-1" id="deleteConfirmText">
+                                This action cannot be undone.
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            @empty
-            <div class="col-12">
-                <div class="empty-state text-center py-5">
-                    <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-                    <h4>No Posts Yet</h4>
-                    <p class="text-muted mb-4">
-                        You haven't created any posts yet. Start sharing your thoughts with the community!
-                    </p>
-                    <a href="{{ route('forum.posts.create') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-circle me-2"></i>Create Your First Post
-                    </a>
+
+                <div class="modal-footer">
+                    <button type="button" 
+                            class="btn btn-outline-secondary mp-btn-pill" 
+                            data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1" aria-hidden="true"></i>
+                        <span>Cancel</span>
+                    </button>
+                    <button type="button" 
+                            class="btn btn-danger mp-btn-pill" 
+                            id="confirmDeleteBtn">
+                        <i class="bi bi-trash me-1" aria-hidden="true"></i>
+                        <span>Delete</span>
+                    </button>
                 </div>
             </div>
-            @endforelse
-        </div>
-
-        <!-- Pagination -->
-        @if($posts->hasPages())
-        <div class="mt-5">
-            {{ $posts->links() }}
-        </div>
-        @endif
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>
-                    Confirm Delete
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete the post:</p>
-                <p class="fw-bold" id="deletePostTitle"></p>
-                <p class="text-danger">
-                    <i class="bi bi-info-circle me-1"></i>
-                    This action cannot be undone.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="bi bi-trash me-2"></i>Delete Post
-                </button>
-            </div>
         </div>
     </div>
 </div>
-
-<style>
-.hero-section {
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    color: white;
-    padding: 4rem 0;
-    margin-bottom: 2rem;
-}
-
-.hero-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-}
-
-.hero-subtitle {
-    font-size: 1.25rem;
-    opacity: 0.95;
-}
-
-.stat-card {
-    background: var(--bg-primary);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    box-shadow: var(--shadow-md);
-    transition: all 0.3s ease;
-    border: 1px solid var(--border-color);
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-}
-
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.75rem;
-    color: white;
-}
-
-.stat-content {
-    flex: 1;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin: 0.5rem 0 0;
-}
-
-.filter-card {
-    border: none;
-    border-radius: 1rem;
-}
-
-.filter-buttons {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.filter-buttons .btn {
-    transition: all 0.3s ease;
-}
-
-.post-card {
-    border: none;
-    border-radius: 1rem;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-md);
-}
-
-.post-card:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-xl);
-}
-
-.post-media-preview {
-    position: relative;
-    height: 200px;
-    overflow: hidden;
-    background: var(--bg-secondary);
-}
-
-.post-media-preview img,
-.post-media-preview video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.post-card:hover .post-media-preview img,
-.post-card:hover .post-media-preview video {
-    transform: scale(1.1);
-}
-
-.post-placeholder {
-    height: 200px;
-    background: linear-gradient(135deg, var(--primary-light), var(--secondary));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 4rem;
-    color: var(--primary);
-    opacity: 0.3;
-}
-
-.media-count-badge {
-    position: absolute;
-    bottom: 0.75rem;
-    right: 0.75rem;
-    background: rgba(0, 0, 0, 0.75);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-.post-status-badge {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 10;
-}
-
-.post-status-badge .badge {
-    padding: 0.5rem 0.75rem;
-    font-weight: 600;
-}
-
-.post-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    line-height: 1.4;
-}
-
-.post-title a {
-    color: var(--text-primary);
-    transition: color 0.3s ease;
-}
-
-.post-title a:hover {
-    color: var(--primary);
-}
-
-.post-category {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.bg-primary-light {
-    background-color: var(--primary-light) !important;
-}
-
-.post-excerpt {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    margin-bottom: 1rem;
-}
-
-.post-tags {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.tag-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background-color: var(--bg-secondary);
-    color: var(--text-secondary);
-    border-radius: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.post-meta {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.meta-item i {
-    font-size: 1rem;
-}
-
-.card-footer {
-    border-top: 1px solid var(--border-color);
-    padding: 1rem;
-}
-
-.empty-state {
-    padding: 4rem 2rem;
-}
-
-.empty-state i {
-    opacity: 0.3;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .hero-title {
-        font-size: 2rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1rem;
-    }
-
-    .stat-card {
-        padding: 1rem;
-    }
-
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
-    }
-
-    .stat-value {
-        font-size: 1.5rem;
-    }
-
-    .filter-buttons {
-        width: 100%;
-    }
-
-    .filter-buttons .btn {
-        flex: 1;
-    }
-}
-
-/* Dark Mode */
-[data-theme="dark"] .post-placeholder {
-    background: linear-gradient(135deg, var(--bg-tertiary), var(--primary-light));
-}
-
-[data-theme="dark"] .tag-badge {
-    background-color: var(--bg-tertiary);
-}
-</style>
+@endsection
 
 @push('scripts')
-<script>
-$(function() {
-    const csrfToken = $('meta[name="csrf-token"]').attr('content');
-    let deletePostId = null;
-
-    // Delete Post Button Click
-    $('.delete-post-btn').on('click', function() {
-        deletePostId = $(this).data('post-id');
-        const postTitle = $(this).data('post-title');
-        
-        $('#deletePostTitle').text(postTitle);
-        new bootstrap.Modal('#deleteModal').show();
-    });
-
-    // Confirm Delete
-    $('#confirmDeleteBtn').on('click', function() {
-        if (!deletePostId) return;
-
-        const $btn = $(this);
-        $btn.prop('disabled', true)
-            .html('<span class="spinner-border spinner-border-sm me-2"></span>Deleting...');
-
-        $.ajax({
-            url: '{{ route("forum.my-posts.quick-delete") }}',
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            },
-            data: { post_id: deletePostId },
-            success: function(response) {
-                if (response.success) {
-                    // Remove post card with animation
-                    $(`.post-item[data-post-id="${deletePostId}"]`)
-                        .fadeOut(300, function() {
-                            $(this).remove();
-                            
-                            // Check if no posts left
-                            if ($('.post-item').length === 0) {
-                                location.reload();
-                            }
-                        });
-                    
-                    bootstrap.Modal.getInstance('#deleteModal').hide();
-                    showToast('success', response.message);
-                }
-            },
-            error: function(xhr) {
-                showToast('error', 'Failed to delete post. Please try again.');
-            },
-            complete: function() {
-                $btn.prop('disabled', false)
-                    .html('<i class="bi bi-trash me-2"></i>Delete Post');
-                deletePostId = null;
-            }
-        });
-    });
-
-    // Toggle Post Status
-    $('.toggle-status-btn').on('click', function() {
-        const $btn = $(this);
-        const postId = $btn.data('post-id');
-        const $card = $(`.post-item[data-post-id="${postId}"]`);
-
-        $btn.prop('disabled', true);
-
-        $.ajax({
-            url: `/forum/posts/${postId}/toggle-status`,
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            },
-            success: function(response) {
-                if (response.success) {
-                    showToast('success', response.message);
-                    
-                    // Update button and badge
-                    if (response.status === 'published') {
-                        $btn.removeClass('btn-success').addClass('btn-warning')
-                            .html('<i class="bi bi-archive me-1"></i>Unpublish');
-                        $card.find('.post-status-badge .badge')
-                            .removeClass('bg-warning')
-                            .addClass('bg-success')
-                            .html('<i class="bi bi-check-circle me-1"></i>Published');
-                    } else {
-                        $btn.removeClass('btn-warning').addClass('btn-success')
-                            .html('<i class="bi bi-upload me-1"></i>Publish');
-                        $card.find('.post-status-badge .badge')
-                            .removeClass('bg-success')
-                            .addClass('bg-warning')
-                            .html('<i class="bi bi-pencil me-1"></i>Draft');
-                    }
-                }
-            },
-            error: function() {
-                showToast('error', 'Failed to update post status.');
-            },
-            complete: function() {
-                $btn.prop('disabled', false);
-            }
-        });
-    });
-
-    function showToast(type, message) {
-        const bgColor = type === 'success' ? 'bg-success' : 'bg-danger';
-        const icon = type === 'success' ? 'check-circle' : 'x-circle';
-        
-        const toast = $(`
-            <div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
-                <div class="toast ${bgColor} text-white" role="alert">
-                    <div class="toast-body">
-                        <i class="bi bi-${icon} me-2"></i>${message}
-                    </div>
-                </div>
-            </div>
-        `);
-        
-        $('body').append(toast);
-        const bsToast = new bootstrap.Toast(toast.find('.toast')[0], { delay: 3000 });
-        bsToast.show();
-        
-        toast.find('.toast').on('hidden.bs.toast', function() {
-            toast.remove();
-        });
-    }
-});
-</script>
+@vite([
+    'resources/js/my-posts.js',
+    'resources/js/media-lightbox.js'
+])
 @endpush
-@endsection

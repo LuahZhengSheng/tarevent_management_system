@@ -76,7 +76,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'interested_categories' => 'array',
         'permissions' => 'array',
     ];
-    
     protected $attributes = [
         'role' => 'student',
         'status' => 'active',
