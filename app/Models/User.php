@@ -6,11 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+
 //use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
-{
-    use HasFactory, Notifiable;
+class User extends Authenticatable {
+
+    use HasFactory,
+        Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -54,7 +56,6 @@ class User extends Authenticatable
         'password' => 'hashed',
         'interested_categories' => 'array',
     ];
-    
     protected $attributes = [
         'role' => 'student',
         'status' => 'active',
@@ -117,9 +118,8 @@ class User extends Authenticatable
     public function hasAnyRole(array $roles): bool {
         return in_array($this->role, $roles);
     }
-        
-    public function isStudent(): bool
-    {
+
+    public function isStudent(): bool {
         return $this->role === 'user';
     }
 
@@ -210,8 +210,7 @@ class User extends Authenticatable
      * 
      * @return string
      */
-    public function getProfilePhotoUrlAttribute()
-    {
+    public function getProfilePhotoUrlAttribute() {
         // 如果有上传的头像且文件存在
         if ($this->profile_photo && Storage::disk('public')->exists($this->profile_photo)) {
             return asset('storage/' . $this->profile_photo);
@@ -232,12 +231,11 @@ class User extends Authenticatable
      * 
      * @return string|null
      */
-    public function getProfilePhotoPathAttribute()
-    {
+    public function getProfilePhotoPathAttribute() {
         if ($this->profile_photo) {
             return storage_path('app/public/' . $this->profile_photo);
         }
-        
+
         return null;
     }
 
@@ -246,8 +244,7 @@ class User extends Authenticatable
      * 
      * @return bool
      */
-    public function hasProfilePhoto(): bool
-    {
+    public function hasProfilePhoto(): bool {
         return $this->profile_photo && Storage::disk('public')->exists($this->profile_photo);
     }
 
@@ -256,15 +253,14 @@ class User extends Authenticatable
      * 
      * @return bool
      */
-    public function deleteProfilePhoto(): bool
-    {
+    public function deleteProfilePhoto(): bool {
         if ($this->hasProfilePhoto()) {
             Storage::disk('public')->delete($this->profile_photo);
             $this->profile_photo = null;
             $this->save();
             return true;
         }
-        
+
         return false;
     }
 
@@ -273,14 +269,13 @@ class User extends Authenticatable
                         ->whereNull('read_at')
                         ->count();
     }
-    
+
 //    public function getUnreadNotificationsCountAttribute()
 //    {
 //        return $this->notifications()
 //                    ->whereNull('read_at')
 //                    ->count();
 //    }
-
     // =============================
     // Scopes
     // =============================
@@ -342,5 +337,11 @@ class User extends Authenticatable
             'total_likes' => $this->posts()->sum('likes_count'),
             'total_comments' => $this->posts()->sum('comments_count'),
         ];
+    }
+
+    public function savedPosts() {
+        return $this->belongsToMany(\App\Models\Post::class, 'post_saves')
+                        ->withPivot(['pinned_at', 'last_viewed_at'])
+                        ->withTimestamps();
     }
 }
