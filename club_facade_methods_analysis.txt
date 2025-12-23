@@ -1,0 +1,335 @@
+================================================================================
+                    CLUBFACADE METHODS CATEGORIZATION ANALYSIS
+================================================================================
+
+ANALYSIS DATE: Current
+FILE: app/Services/ClubFacade.php
+TOTAL PUBLIC METHODS: 26
+TOTAL PROTECTED METHODS: 1
+
+================================================================================
+1. ACTION METHODS (State-Changing, Suitable for Controller Routes)
+================================================================================
+
+These methods modify data, change system state, and are suitable for direct
+controller route mapping. They perform business operations and should be called
+from controllers.
+
+1.1 CLUB LIFECYCLE METHODS
+--------------------------------------------------------------------------------
+
+1. createClub(array $data, User $creator): Club
+   - Creates a new club record
+   - Modifies database (INSERT)
+   - Returns created Club model
+   - Suitable for: POST /clubs
+
+2. approveClub(Club $club, User $approver, bool $activate = true): Club
+   - Updates club approval status
+   - Modifies database (UPDATE)
+   - Changes club state from pending to approved
+   - Suitable for: PUT/PATCH /clubs/{club}/approve
+
+3. rejectClub(Club $club, User $rejector, ?string $reason = null): Club
+   - Updates club rejection status
+   - Modifies database (UPDATE)
+   - Status: NOT IMPLEMENTED (empty method)
+   - Suitable for: PUT/PATCH /clubs/{club}/reject
+
+4. activateClub(Club $club, ?User $activatedBy = null): Club
+   - Activates a club (sets status to 'active')
+   - Modifies database (UPDATE)
+   - Status: NOT IMPLEMENTED (empty method)
+   - Suitable for: PUT/PATCH /clubs/{club}/activate
+
+5. deactivateClub(Club $club, ?User $deactivatedBy = null, ?string $reason = null): Club
+   - Deactivates a club (sets status to 'inactive')
+   - Modifies database (UPDATE)
+   - Suitable for: PUT/PATCH /clubs/{club}/deactivate
+
+6. transferOwnership(Club $club, User $newOwner, User $transferredBy): Club
+   - Transfers club ownership to another user
+   - Modifies database (UPDATE)
+   - Status: NOT IMPLEMENTED (empty method)
+   - Suitable for: PUT/PATCH /clubs/{club}/transfer
+
+7. bulkUpdateStatus(array $clubIds, string $status, ?User $updatedBy = null): int
+   - Updates multiple clubs' statuses
+   - Modifies database (BULK UPDATE)
+   - Status: NOT IMPLEMENTED (empty method)
+   - Suitable for: POST /clubs/bulk-update-status
+
+1.2 MEMBER MANAGEMENT METHODS
+--------------------------------------------------------------------------------
+
+8. addMember(Club $club, User $user, ?string $role = null): bool
+   - Adds a user to club_user pivot table
+   - Modifies database (INSERT into pivot)
+   - Suitable for: POST /clubs/{club}/members/{user}
+
+9. removeMember(Club $club, User $user, ?User $removedBy = null): bool
+   - Removes a user from club_user pivot table
+   - Modifies database (DELETE from pivot)
+   - Suitable for: DELETE /clubs/{club}/members/{user}
+
+10. updateMemberRole(Club $club, User $user, string $newRole, ?User $updatedBy = null): bool
+    - Updates member role in pivot table
+    - Modifies database (UPDATE pivot)
+    - Suitable for: PUT /clubs/{club}/members/{user}/role
+
+1.3 JOIN REQUEST METHODS
+--------------------------------------------------------------------------------
+
+11. requestJoin(Club $club, User $user): ClubJoinRequest
+    - Creates a join request record
+    - Modifies database (INSERT)
+    - Suitable for: POST /clubs/{club}/join-requests
+
+12. approveJoin(Club $club, User $user, ?User $approver = null): bool
+    - Approves join request and adds member
+    - Modifies database (UPDATE + INSERT)
+    - Suitable for: PUT/PATCH /clubs/{club}/join-requests/{user}/approve
+
+13. rejectJoin(Club $club, User $user, ?User $rejector = null): bool
+    - Rejects a join request
+    - Modifies database (UPDATE)
+    - Suitable for: PUT/PATCH /clubs/{club}/join-requests/{user}/reject
+
+================================================================================
+2. QUERY/HELPER METHODS (Read-Only, NOT Suitable for Direct Routes)
+================================================================================
+
+These methods retrieve data or check state without modifying the database.
+They are utility methods that should be used internally or by controllers for
+data retrieval, but typically don't need direct route mapping (controllers
+may use them to prepare data for views).
+
+2.1 CLUB RETRIEVAL METHODS
+--------------------------------------------------------------------------------
+
+14. getClubForAccount(User $clubAccount): ?Club
+    - Finds club by club_user_id
+    - Read-only query
+    - Returns Club or null
+    - Use case: Controller can use this to get club for authenticated club account
+    - Route suggestion: Can be used in controller, but not direct route needed
+
+15. listMembers(Club $club): Collection
+    - Retrieves all members from pivot table
+    - Read-only query
+    - Returns Collection of User models
+    - Use case: Controller can use this to display members list
+    - Route suggestion: Can be used in controller, but not direct route needed
+
+2.2 STATUS CHECK METHODS
+--------------------------------------------------------------------------------
+
+16. isActive(Club $club): bool
+    - Checks if club status is 'active'
+    - Read-only check
+    - Returns boolean
+    - Use case: Internal validation, conditional logic
+    - Route suggestion: NOT suitable for direct route (too simple)
+
+17. hasMember(Club $club, User $user): bool
+    - Checks if user is a member
+    - Read-only check
+    - Returns boolean
+    - Use case: Internal validation, conditional logic
+    - Route suggestion: NOT suitable for direct route (too simple)
+
+18. getMemberRole(Club $club, User $user): ?string
+    - Gets member's role from pivot table
+    - Read-only query
+    - Returns string or null
+    - Use case: Internal checks, display logic
+    - Route suggestion: NOT suitable for direct route (too simple)
+
+19. countMembers(Club $club): int
+    - Counts number of members
+    - Read-only query
+    - Returns integer
+    - Use case: Statistics, display counts
+    - Route suggestion: NOT suitable for direct route (too simple)
+
+2.3 PERMISSION/STATUS QUERY METHODS (Not Implemented)
+--------------------------------------------------------------------------------
+
+20. canPerformAction(User $user, Club $club, string $action): bool
+    - Checks if user can perform action
+    - Read-only check
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: Authorization checks
+    - Route suggestion: NOT suitable for direct route (internal helper)
+
+2.4 DATA RETRIEVAL METHODS (Not Implemented)
+--------------------------------------------------------------------------------
+
+21. getPendingClubs(array $filters = []): Collection
+    - Gets clubs pending approval
+    - Read-only query
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: Admin dashboard, approval queue
+    - Route suggestion: Can be used in controller for listing
+
+22. getActiveClubsWithStats(array $filters = []): Collection
+    - Gets active clubs with aggregated statistics
+    - Read-only query with aggregation
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: Public listing, dashboard
+    - Route suggestion: Can be used in controller for listing
+
+23. getManageableClubs(User $user): Collection
+    - Gets clubs user can manage
+    - Read-only query
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: User dashboard, club selection
+    - Route suggestion: Can be used in controller for listing
+
+24. getClubStatistics(Club $club): array
+    - Gets club statistics and analytics
+    - Read-only query with aggregation
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: Dashboard, reports
+    - Route suggestion: Can be used in controller for display
+
+2.5 VALIDATION/UTILITY METHODS
+--------------------------------------------------------------------------------
+
+25. validateClubData(array $data, ?Club $club = null): array
+    - Validates club data (business rules)
+    - Read-only validation
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: Form validation, pre-save checks
+    - Route suggestion: Can be used in controller/form requests
+
+26. isSlugAvailable(string $slug, ?Club $club = null): bool
+    - Checks if slug is available
+    - Read-only check
+    - Status: NOT IMPLEMENTED (empty method)
+    - Use case: Form validation, AJAX checks
+    - Route suggestion: Can be used in controller for AJAX validation
+
+================================================================================
+3. INTERNAL/HELPER METHODS (Should NOT be Exposed)
+================================================================================
+
+These methods are protected/private and should only be used internally within
+the facade class. They should never be called directly from controllers or
+exposed via routes.
+
+3.1 AUDIT LOGGING
+--------------------------------------------------------------------------------
+
+27. protected function log(Club $club, string $action, User $actor, ?User $target = null, array $meta = []): void
+    - Creates audit log entries
+    - Modifies database (INSERT into club_logs)
+    - Visibility: PROTECTED (internal use only)
+    - Called by: Other facade methods for audit trail
+    - Should NOT be exposed: Internal implementation detail
+
+================================================================================
+4. SUMMARY STATISTICS
+================================================================================
+
+ACTION METHODS (Suitable for Routes):
+- Total: 13 methods
+- Implemented: 8 methods
+- Not Implemented: 5 methods (rejectClub, activateClub, transferOwnership, bulkUpdateStatus)
+
+QUERY/HELPER METHODS (Not Suitable for Direct Routes):
+- Total: 13 methods
+- Implemented: 5 methods (getClubForAccount, listMembers, isActive, hasMember, getMemberRole, countMembers)
+- Not Implemented: 8 methods
+
+INTERNAL METHODS:
+- Total: 1 method
+- All implemented: 1 method (log)
+
+================================================================================
+5. CATEGORIZATION JUSTIFICATION
+================================================================================
+
+5.1 WHY ACTION METHODS ARE SUITABLE FOR ROUTES
+--------------------------------------------------------------------------------
+
+Action methods are state-changing operations that:
+- Modify database state (INSERT, UPDATE, DELETE)
+- Represent user actions/commands
+- Have clear HTTP verb mappings (POST, PUT, PATCH, DELETE)
+- Return meaningful results (models, booleans, counts)
+- Can be directly mapped to RESTful routes
+- Represent complete business operations
+
+5.2 WHY QUERY/HELPER METHODS ARE NOT SUITABLE FOR DIRECT ROUTES
+--------------------------------------------------------------------------------
+
+Query/helper methods are read-only utilities that:
+- Do not modify state
+- Are too granular for direct route mapping
+- Are better used within controllers to prepare data
+- Return simple types (bool, int, string, Collection)
+- May be used by multiple controllers/views
+- Represent data retrieval, not user actions
+
+Exceptions:
+- Some query methods like getPendingClubs() or getActiveClubsWithStats() could
+  be used in controllers that serve listing pages, but they don't need direct
+  route mapping - the controller's index() method would call them.
+
+5.3 WHY INTERNAL METHODS SHOULD NOT BE EXPOSED
+--------------------------------------------------------------------------------
+
+Protected methods like log() are:
+- Implementation details
+- Called automatically by other methods
+- Not part of the public API
+- Should remain encapsulated within the facade
+
+================================================================================
+6. RECOMMENDATIONS
+================================================================================
+
+6.1 ROUTE MAPPING SUGGESTIONS
+--------------------------------------------------------------------------------
+
+Action methods that should have routes:
+✓ createClub → POST /clubs
+✓ approveClub → PUT /clubs/{club}/approve
+✓ deactivateClub → PUT /clubs/{club}/deactivate
+✓ addMember → POST /clubs/{club}/members/{user}
+✓ removeMember → DELETE /clubs/{club}/members/{user}
+✓ updateMemberRole → PUT /clubs/{club}/members/{user}/role
+✓ requestJoin → POST /clubs/{club}/join-requests
+✓ approveJoin → PUT /clubs/{club}/join-requests/{user}/approve
+✓ rejectJoin → PUT /clubs/{club}/join-requests/{user}/reject
+
+Query methods that should be used in controllers (not direct routes):
+- getClubForAccount → Used in ClubController::show()
+- listMembers → Used in ClubController::members()
+- isActive, hasMember, getMemberRole, countMembers → Used internally or in views
+
+6.2 IMPLEMENTATION PRIORITY
+--------------------------------------------------------------------------------
+
+High Priority (Core Functionality):
+- rejectClub (needed for approval workflow)
+- activateClub (needed for club lifecycle)
+
+Medium Priority (Useful Features):
+- transferOwnership (admin feature)
+- getPendingClubs (admin dashboard)
+- getActiveClubsWithStats (public listing)
+
+Low Priority (Nice to Have):
+- getManageableClubs (user dashboard)
+- getClubStatistics (analytics)
+- validateClubData (enhanced validation)
+- isSlugAvailable (form validation)
+- canPerformAction (authorization helper)
+- bulkUpdateStatus (admin bulk operations)
+
+================================================================================
+END OF ANALYSIS
+================================================================================
+

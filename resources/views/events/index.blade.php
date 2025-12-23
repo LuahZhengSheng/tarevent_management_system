@@ -194,6 +194,13 @@
                         <!-- Image Overlay Tags -->
                         <div class="event-tags">
                             <span class="tag tag-category">{{ $event->category }}</span>
+                            {{-- Private Event Badge --}}
+                            @if(!$event->is_public)
+                            <span class="tag tag-private">
+                                <i class="bi bi-lock-fill me-1"></i>
+                                Private
+                            </span>
+                            @endif
                             @if($event->is_paid)
                             <span class="tag tag-price">RM {{ number_format($event->fee_amount, 2) }}</span>
                             @else

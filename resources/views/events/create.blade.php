@@ -618,7 +618,6 @@
                                 Publish Event
                             </button>
                         </div>
-
                     </div>
                 </div>
             </div>

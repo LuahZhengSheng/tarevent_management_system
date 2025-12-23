@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use App\Services\PostService;
+use App\Contracts\MailServiceInterface;
+use App\Services\MailService;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Observers\EventObserver;
@@ -22,6 +24,9 @@ class AppServiceProvider extends ServiceProvider {
         $this->app->singleton(PostService::class, function ($app) {
             return new PostService();
         });
+
+        // Bind MailServiceInterface to MailService implementation
+        $this->app->singleton(MailServiceInterface::class, MailService::class);
     }
 
 
@@ -35,9 +40,17 @@ class AppServiceProvider extends ServiceProvider {
         // Register model observers
         Event::observe(EventObserver::class);
         EventRegistration::observe(EventRegistrationObserver::class);
+
+        // Morph map for polymorphic relationships
         Relation::morphMap([
             'club' => \App\Models\Club::class,
         ]);
-        // Other bootstrap logic can go here
+
+        // Share unread notification count with all views (for navbar badge)
+        view()->composer('*', function ($view) {
+            if (auth()->check()) {
+                $view->with('unreadNotificationsCount', auth()->user()->unread_notifications_count);
+            }
+        });
     }
 }

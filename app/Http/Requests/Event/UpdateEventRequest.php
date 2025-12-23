@@ -41,6 +41,13 @@ class UpdateEventRequest extends FormRequest {
 
         $rules = [];
 
+        // ========================
+        // STAGE 0: CANCELLED EVENT
+        // ========================
+        if ($event->status === 'cancelled') {
+            return $this->getPastEventRules();
+        }
+
         // ====================
         // STAGE 1: DRAFT
         // ====================
@@ -90,7 +97,7 @@ class UpdateEventRequest extends FormRequest {
             'is_public' => 'required|boolean',
             'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',
-            'registration_start_time' => 'required|date|before:start_time',
+            'registration_start_time' => 'required|date|after:now|before:start_time',
             'registration_end_time' => 'required|date|after:registration_start_time|before:start_time',
             'venue' => 'required|string|max:255',
             'location_map_url' => 'nullable|url|max:500',
@@ -108,6 +115,7 @@ class UpdateEventRequest extends FormRequest {
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'tags' => 'nullable|array|max:10',
             'tags.*' => 'string|max:50',
+            'status' => ['required', Rule::in(['draft', 'published'])],
             // Custom fields allowed in draft
             'custom_fields' => 'nullable|array',
             'custom_fields.*.label' => 'required_with:custom_fields|string|max:255',
@@ -140,7 +148,7 @@ class UpdateEventRequest extends FormRequest {
             // Time fields - can modify
             'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',
-            'registration_start_time' => 'required|date|before:start_time',
+            'registration_start_time' => 'required|date|after:now|before:start_time',
             'registration_end_time' => 'required|date|after:registration_start_time|before:start_time',
             // Can modify fee settings
             'is_paid' => 'required|boolean',
@@ -260,6 +268,7 @@ class UpdateEventRequest extends FormRequest {
             'start_time.after' => 'Event must start in the future.',
             'end_time.after' => 'Event end time must be after start time.',
             'registration_start_time.before' => 'Registration must start before the event.',
+            'registration_start_time.after' => 'Registration must start in the future.',
             'registration_end_time.before' => 'Registration must close before event starts.',
             'registration_end_time.after' => 'Registration close time must be after registration open time.',
             'venue.required' => 'Venue is required.',

@@ -525,6 +525,20 @@
     color: white;
 }
 
+.registration-status.status-private {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border-left: 4px solid #6366f1;
+}
+
+.registration-status.status-private .status-icon {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+}
+
+.registration-status.status-private .status-text h4 {
+    color: #6366f1;
+}
+
 /* Price Display */
 .price-display {
     text-align: center;
@@ -858,6 +872,399 @@
     }
 }
 
+/* Status Tag Styles */
+.status-tag {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.status-draft {
+    background: rgba(156, 163, 175, 0.3);
+    color: white;
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.3);
+    color: white;
+}
+
+.status-published {
+    background: rgba(16, 185, 129, 0.3);
+    color: white;
+}
+
+.status-cancelled {
+    background: rgba(239, 68, 68, 0.3);
+    color: white;
+}
+
+.status-completed {
+    background: rgba(59, 130, 246, 0.3);
+    color: white;
+}
+
+/* Management Actions */
+.management-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    width: 100%;
+}
+
+.action-btn i {
+    font-size: 1.25rem;
+}
+
+.action-btn:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow-sm);
+}
+
+.action-edit:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.action-publish:hover {
+    background: var(--success-light);
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.action-cancel:hover {
+    background: var(--warning-light);
+    border-color: var(--warning);
+    color: #856404;
+}
+
+.action-delete:hover {
+    background: var(--error-light);
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.action-view:hover {
+    background: var(--info-light);
+    border-color: var(--info);
+    color: var(--info);
+}
+
+/* Event Stats */
+.event-stats {
+    padding: 1.25rem;
+    background: var(--bg-secondary);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.event-stats h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* Alert Info Variant */
+.alert-info {
+    background: var(--info-light);
+    border-color: var(--info);
+    color: var(--info);
+}
+
+.alert-danger {
+    background: var(--error-light);
+    border-color: var(--error);
+    color: var(--error);
+}
+
+/* Stage Timeline Styles */
+.stage-timeline {
+    background: var(--bg-secondary);
+    border-radius: 0.75rem;
+    padding: 1.5rem 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    position: relative;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+}
+
+.timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 2.5rem;
+    width: 2px;
+    height: calc(100% - 1rem);
+    background: var(--border-color);
+}
+
+.timeline-item.active {
+    opacity: 1;
+}
+
+.timeline-item.completed {
+    opacity: 1;
+}
+
+.timeline-marker {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.timeline-item.active .timeline-marker {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+.timeline-item.completed .timeline-marker {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.timeline-marker i {
+    font-size: 0.875rem;
+}
+
+.timeline-content {
+    flex: 1;
+    padding-top: 0.125rem;
+}
+
+.timeline-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.timeline-time {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.timeline-item.active .timeline-time {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* Alert Primary Variant */
+.alert-primary {
+    background: var(--info-light);
+    border-color: var(--info);
+    color: var(--info);
+}
+
+.alert-secondary {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* Modal */
+#cancelRegistrationModal .cancellation-details {
+    background: var(--bg-secondary);
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    margin: 0;
+    border: 1px solid var(--border-color);
+}
+
+#cancelRegistrationModal .cancellation-details h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* 只应用于 Modal 内的 detail-row */
+#cancelRegistrationModal .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#cancelRegistrationModal .detail-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* 只应用于 Modal 内的 detail-label */
+#cancelRegistrationModal .detail-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* 只应用于 Modal 内的 detail-value */
+#cancelRegistrationModal .detail-value {
+    color: var(--text-primary);
+    text-align: right;
+    font-weight: 500;
+    max-width: 60%;
+    word-wrap: break-word;
+}
+
+/* Modal 其他样式 */
+#cancelRegistrationModal .modal-content {
+    border-radius: 1rem;
+    border: none;
+    box-shadow: var(--shadow-xl);
+}
+
+#cancelRegistrationModal .modal-header {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+}
+
+#cancelRegistrationModal .modal-body {
+    padding: 1.5rem;
+}
+
+#cancelRegistrationModal .modal-footer {
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+}
+
+#cancelRegistrationModal .alert {
+    border-radius: 0.75rem;
+    border: none;
+    padding: 1rem;
+}
+
+#cancelRegistrationModal .alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border-left: 4px solid var(--warning);
+}
+
+#cancelRegistrationModal .alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--info);
+    border-left: 4px solid var(--info);
+}
+
+#cancelRegistrationModal .alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border-left: 4px solid var(--error);
+}
+
+#cancelRegistrationModal .badge {
+    padding: 0.35rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+    .action-btn {
+        font-size: 0.875rem;
+        padding: 0.75rem 0.875rem;
+    }
+
+    .action-btn i {
+        font-size: 1.1rem;
+    }
+    
+       .stage-timeline {
+        padding: 1rem 0.75rem;
+    }
+
+    .timeline-item {
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+    }
+
+    .timeline-marker {
+        width: 24px;
+        height: 24px;
+    }
+
+    .timeline-marker i {
+        font-size: 0.75rem;
+    }
+
+    .timeline-label {
+        font-size: 0.8rem;
+    }
+
+    .timeline-time {
+        font-size: 0.7rem;
+    }
+
+    .timeline-item:not(:last-child)::after {
+        left: 11px;
+    }
+}
+
 @media (max-width: 575px) {
     .event-meta-tags {
         gap: 0.5rem;
@@ -883,4 +1290,55 @@
     .quick-info-item i {
         font-size: 1rem;
     }
+}
+
+/* Dark Mode Adjustments */
+[data-theme="dark"] .alert-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--info);
+}
+
+[data-theme="dark"] .alert-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+}
+
+[data-theme="dark"] .event-stats {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .stage-timeline {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .timeline-item:not(:last-child)::after {
+    background: var(--border-hover);
+}
+
+[data-theme="dark"] .timeline-marker {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .alert-primary {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--info);
+}
+
+[data-theme="dark"] .alert-secondary {
+    background: rgba(156, 163, 175, 0.15);
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] #cancelRegistrationModal .cancellation-details {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] #cancelRegistrationModal .modal-header {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+}
+
+/* Loading state */
+#confirmCancelBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }

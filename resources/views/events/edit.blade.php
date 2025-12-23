@@ -33,7 +33,12 @@
                     $stageIcon = 'file-earmark';
                     $stageColor = 'secondary';
                     
-                    if ($event->status === 'cancelled') {
+                    if ($event->status === 'draft') {
+                        $stage = 'draft';
+                        $stageLabel = 'Draft';
+                        $stageIcon = 'file-earmark';
+                        $stageColor = 'secondary';
+                    } elseif ($event->status === 'cancelled') {
                         $stage = 'cancelled';
                         $stageLabel = 'Cancelled';
                         $stageIcon = 'x-circle';
@@ -166,7 +171,7 @@
                                             id="is_public" 
                                             name="is_public" 
                                             required
-                                            {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'disabled' : '' }}>
+                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                         <option value="1" {{ old('is_public', $event->is_public) == 1 ? 'selected' : '' }}>
                                             🌍 Public - All Students
                                         </option>
@@ -174,7 +179,7 @@
                                             🔒 Private - Club Members Only
                                         </option>
                                     </select>
-                                    @if(in_array($stage, ['registration', 'ongoing', 'past']))
+                                    @if(in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
                                         <input type="hidden" name="is_public" value="{{ $event->is_public }}">
                                     @endif
                                     <div class="invalid-feedback"></div>
@@ -239,7 +244,7 @@
                                            name="start_time" 
                                            value="{{ old('start_time', $event->start_time->format('Y-m-d\TH:i')) }}"
                                            required
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
                                         <small class="text-muted">🔒 Locked during/after registration</small>
                                     @endif
@@ -258,7 +263,7 @@
                                            name="end_time" 
                                            value="{{ old('end_time', $event->end_time->format('Y-m-d\TH:i')) }}"
                                            required
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
                                         <small class="text-muted">🔒 Locked during/after registration</small>
                                     @endif
@@ -277,7 +282,7 @@
                                            name="registration_start_time" 
                                            value="{{ old('registration_start_time', $event->registration_start_time->format('Y-m-d\TH:i')) }}"
                                            required
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
                                         <small class="text-muted">🔒 Cannot change after registration starts</small>
                                     @endif
@@ -296,7 +301,7 @@
                                            name="registration_end_time" 
                                            value="{{ old('registration_end_time', $event->registration_end_time->format('Y-m-d\TH:i')) }}"
                                            required
-                                           {{ in_array($stage, ['ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if($stage === 'registration')
                                         <small class="text-info">✓ Can extend deadline during registration</small>
                                     @elseif(in_array($stage, ['ongoing', 'past']))
@@ -333,7 +338,7 @@
                                        value="{{ old('venue', $event->venue) }}"
                                        placeholder="e.g., Main Auditorium, Block A, Room 301"
                                        required
-                                       {{ in_array($stage, ['ongoing', 'past']) ? 'readonly' : '' }}>
+                                       {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                 <div class="invalid-feedback"></div>
 <!--                                @if($stage === 'registration')
                                     <small class="text-warning">⚠️ Only minor changes allowed during registration</small>
@@ -353,7 +358,7 @@
                                            name="location_map_url" 
                                            value="{{ old('location_map_url', $event->location_map_url) }}"
                                            placeholder="https://maps.google.com/..."
-                                           {{ in_array($stage, ['ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                 </div>
                                 <small class="form-text">Optional: Help attendees find the venue</small>
                                 <div class="invalid-feedback"></div>
@@ -383,7 +388,7 @@
                                            value="0" 
                                            {{ old('is_paid', $event->is_paid) == 0 ? 'checked' : '' }}
                                            class="toggle-radio"
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'disabled' : '' }}>
+                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                     <label for="is_paid_free" class="toggle-label">
                                         <div class="toggle-icon">🎉</div>
                                         <div class="toggle-content">
@@ -400,7 +405,7 @@
                                            value="1" 
                                            {{ old('is_paid', $event->is_paid) == 1 ? 'checked' : '' }}
                                            class="toggle-radio"
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'disabled' : '' }}>
+                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                     <label for="is_paid_paid" class="toggle-label">
                                         <div class="toggle-icon">💳</div>
                                         <div class="toggle-content">
@@ -411,7 +416,7 @@
                                 </div>
                             </div>
 
-                            @if(in_array($stage, ['registration', 'ongoing', 'past']))
+                            @if(in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
                                 <input type="hidden" name="is_paid" value="{{ $event->is_paid }}">
                                 <div class="alert alert-info">
                                     <i class="bi bi-lock me-2"></i>
@@ -434,7 +439,7 @@
                                            placeholder="0.00" 
                                            step="0.01"
                                            min="0"
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                 </div>
                                 <div class="invalid-feedback"></div>
                             </div>
@@ -452,7 +457,7 @@
                                            value="{{ old('max_participants', $event->max_participants) }}"
                                            placeholder="Unlimited"
                                            min="{{ $event->registrations()->where('status', 'confirmed')->count() }}"
-                                           {{ in_array($stage, ['ongoing', 'past']) ? 'readonly' : '' }}>
+                                           {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     <small class="form-text">
                                         @if($stage === 'registration')
                                             Current: {{ $event->registrations()->where('status', 'confirmed')->count() }} registered
@@ -476,12 +481,12 @@
                                                    name="refund_available" 
                                                    value="1"
                                                    {{ old('refund_available', $event->refund_available) ? 'checked' : '' }}
-                                                   {{ in_array($stage, ['registration', 'ongoing', 'past']) ? 'disabled' : '' }}>
+                                                   {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                             <span class="switch-slider"></span>
                                         </label>
                                         <span class="switch-label">Allow cancellation refunds</span>
                                     </div>
-                                    @if(in_array($stage, ['registration', 'ongoing', 'past']))
+                                    @if(in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
                                         <input type="hidden" name="refund_available" value="{{ $event->refund_available }}">
                                         <small class="text-muted">🔒 Locked after registration</small>
                                     @endif
@@ -521,7 +526,7 @@
                     </div>
 
                     <!-- Registration Form Configuration -->
-                    @if(!in_array($stage, ['registration', 'ongoing', 'past']))
+                    @if(!in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
                     <div class="form-section" id="section-registration-config">
                         <div class="section-header">
                             <div class="section-icon">
@@ -812,7 +817,6 @@
                             </button>
                             @endif
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -987,21 +991,31 @@ document.getElementById('cancelEventForm').addEventListener('submit', function(e
 });
 
 // Load existing tags
-document.addEventListener('DOMContentLoaded', function() {
+//document.addEventListener('DOMContentLoaded', function() {
+//    const existingTags = @json(old('tags', $event->tags ?? []));
+//    if (Array.isArray(existingTags) && existingTags.length > 0) {
+//        window.tags = existingTags;
+//        if (typeof window.renderTags === 'function') {
+//            window.renderTags();
+//        }
+//    }
+//    
+//    // Load existing custom fields
+//    const existingFields = @json($event->customRegistrationFields ?? []);
+//    if (existingFields.length > 0 && typeof window.loadExistingCustomFields === 'function') {
+//        window.loadExistingCustomFields(existingFields);
+//    }
+//});
+
+document.addEventListener('DOMContentLoaded', function () {
     const existingTags = @json(old('tags', $event->tags ?? []));
-    if (Array.isArray(existingTags) && existingTags.length > 0) {
-        window.tags = existingTags;
-        if (typeof window.renderTags === 'function') {
-            window.renderTags();
-        }
-    }
-    
-    // Load existing custom fields
-    const existingFields = @json($event->customRegistrationFields ?? []);
-    if (existingFields.length > 0 && typeof window.loadExistingCustomFields === 'function') {
-        window.loadExistingCustomFields(existingFields);
+    console.log('existingTags from Blade:', existingTags);
+
+    if (Array.isArray(existingTags) && existingTags.length > 0 && typeof window.initEventTags === 'function') {
+        window.initEventTags(existingTags);
     }
 });
+
 </script>
 @endpush
 

@@ -181,4 +181,58 @@ class Event extends Model {
             'cancelled_reason' => $reason,
         ]);
     }
+
+    /**
+     * Check if user is a member of the organizing club
+     */
+    public function isUserClubMember(User $user = null) {
+        if (!$user) {
+            return false;
+        }
+
+        // Public events: everyone is considered eligible
+        if ($this->is_public) {
+            return true;
+        }
+
+        // Private events organized by a club: check membership via pivot
+        if ($this->organizer_type === Club::class || $this->organizer_type === 'club') {
+            return $user->isMemberOfClub($this->organizer_id);
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user can register for this event
+     */
+    public function canUserRegister(User $user = null) {
+        // Must be logged in
+        if (!$user) {
+            return false;
+        }
+
+        // For private events, must be club member
+        if (!$this->is_public && !$this->isUserClubMember($user)) {
+            return false;
+        }
+
+        // Event must be published and registration open
+        if (!$this->is_registration_open) {
+            return false;
+        }
+
+        // Event must not be full
+        if ($this->is_full) {
+            return false;
+        }
+
+        // User must not already be registered
+        $existingRegistration = $this->registrations()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['confirmed', 'pending_payment'])
+                ->exists();
+
+        return !$existingRegistration;
+    }
 }

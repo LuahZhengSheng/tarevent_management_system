@@ -6,32 +6,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class EventRegistration extends Model
-{
-    use HasFactory, SoftDeletes;
+class EventRegistration extends Model {
+
+    use HasFactory,
+        SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'event_id',
-        'status',                    // confirmed / pending_payment / cancelled / waitlisted
+        'status', // confirmed / pending_payment / cancelled / waitlisted
 //        'payment_id',
-        'registration_number',       // Unique registration number (e.g., REG-2024-001234)
-        'full_name',                 // Registrant full name
-        'email',                     // Registrant email
-        'phone',                     // Registrant phone
-        'student_id',                // Student ID number
-        'program',                   // Study program/course
-        'emergency_contact_name',    // Emergency contact person
-        'emergency_contact_phone',   // Emergency contact number
-        'registration_data',         // JSON - Custom registration fields data
-        'attended',                  // Boolean - Did they attend?
-        'checked_in_at',             // Datetime of check-in
-        'cancelled_at',              // Datetime when cancelled
-        'cancellation_reason',       // Why wemaias it cancelled
-        'refund_status',             // null / pending / processed / rejected
-        'refund_processed_at',       // When refund was processed
-        'notes',                     // Admin notes
+        'registration_number', // Unique registration number (e.g., REG-2024-001234)
+        'full_name', // Registrant full name
+        'email', // Registrant email
+        'phone', // Registrant phone
+        'student_id', // Student ID number
+        'program', // Study program/course
+        'emergency_contact_name', // Emergency contact person
+        'emergency_contact_phone', // Emergency contact number
+        'registration_data', // JSON - Custom registration fields data
+        'attended', // Boolean - Did they attend?
+        'checked_in_at', // Datetime of check-in
+        'cancelled_at', // Datetime when cancelled
+        'cancellation_reason', // Why wemaias it cancelled
+        'refund_status', // null / pending / processed / rejected
+        'refund_processed_at', // When refund was processed
+        'notes', // Admin notes
     ];
-
     protected $casts = [
         'registration_data' => 'array',
         'attended' => 'boolean',
@@ -42,90 +43,66 @@ class EventRegistration extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
-
     protected $attributes = [
         'status' => 'pending_payment',
         'attended' => false,
     ];
 
     // Relationships
-    public function event()
-    {
+    public function event() {
         return $this->belongsTo(Event::class);
     }
 
-    public function user()
-    {
+    public function user() {
         return $this->belongsTo(User::class);
     }
 
-    public function payment()
-    {
+    public function payment() {
         return $this->hasOne(Payment::class);
     }
 
     // Scopes
-    public function scopeConfirmed($query)
-    {
+    public function scopeConfirmed($query) {
         return $query->where('status', 'confirmed');
     }
 
-    public function scopePendingPayment($query)
-    {
+    public function scopePendingPayment($query) {
         return $query->where('status', 'pending_payment');
     }
 
-    public function scopeCancelled($query)
-    {
+    public function scopeCancelled($query) {
         return $query->where('status', 'cancelled');
     }
 
-    public function scopeAttended($query)
-    {
+    public function scopeAttended($query) {
         return $query->where('attended', true);
     }
 
     // Accessors
-    public function getIsConfirmedAttribute()
-    {
+    public function getIsConfirmedAttribute() {
         return $this->status === 'confirmed';
     }
 
-    public function getIsPendingPaymentAttribute()
-    {
+    public function getIsPendingPaymentAttribute() {
         return $this->status === 'pending_payment';
     }
 
-    public function getIsCancelledAttribute()
-    {
+    public function getIsCancelledAttribute() {
         return $this->status === 'cancelled';
     }
 
-    public function getCanBeCancelledAttribute()
-    {
-        // Can cancel if:
-        // 1. Status is confirmed or pending_payment
-        // 2. Event hasn't started yet
-        // 3. Not already cancelled
-        return in_array($this->status, ['confirmed', 'pending_payment']) &&
-               $this->event->start_time > now() &&
-               !$this->cancelled_at;
-    }
-
-    public function getIsRefundEligibleAttribute()
-    {
+    public function getIsRefundEligibleAttribute() {
         // Refund eligible if:
         // 1. Event allows refunds
         // 2. Registration is cancelled
         // 3. Cancellation was before event start
         return $this->event->refund_available &&
-               $this->is_cancelled &&
-               $this->cancelled_at < $this->event->start_time;
+                $this->is_cancelled &&
+                $this->cancelled_at < $this->event->start_time;
     }
 
     // Methods
-    public function cancel($reason = null)
-    {
+    public function cancel($reason = null) {
         $this->update([
             'status' => 'cancelled',
             'cancelled_at' => now(),
@@ -138,27 +115,78 @@ class EventRegistration extends Model
         }
     }
 
-    public function confirm()
-    {
+    /**
+     * Check if this registration can be cancelled
+     */
+    public function getCanBeCancelledAttribute() {
+        // Cannot cancel if already cancelled
+        if ($this->status === 'cancelled') {
+            return false;
+        }
+
+        // Must be confirmed or pending_payment
+        if (!in_array($this->status, ['confirmed', 'pending_payment'])) {
+            return false;
+        }
+
+        // Event must allow cancellation
+        if (!$this->event->allow_cancellation) {
+            return false;
+        }
+
+        $now = now();
+
+        // Can only cancel during registration period
+        if ($now < $this->event->registration_start_time ||
+                $now > $this->event->registration_end_time) {
+            return false;
+        }
+
+        // Cannot cancel after event has started
+        if ($now >= $this->event->start_time) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get cancellation deadline info
+     */
+    public function getCancellationDeadlineAttribute() {
+        if (!$this->event->allow_cancellation) {
+            return null;
+        }
+
+        // Registration end time is the deadline
+        return $this->event->registration_end_time;
+    }
+
+    /**
+     * Check if belongs to user
+     */
+    public function belongsToUser($userId) {
+        return $this->user_id == $userId;
+    }
+
+    public function confirm() {
         $this->update([
             'status' => 'confirmed',
         ]);
     }
 
-    public function checkIn()
-    {
+    public function checkIn() {
         $this->update([
             'attended' => true,
             'checked_in_at' => now(),
         ]);
     }
 
-    public static function generateRegistrationNumber()
-    {
+    public static function generateRegistrationNumber() {
         $year = now()->year;
         $lastNumber = static::whereYear('created_at', $year)
-            ->orderBy('id', 'desc')
-            ->value('registration_number');
+                ->orderBy('id', 'desc')
+                ->value('registration_number');
 
         if ($lastNumber) {
             $lastNum = (int) substr($lastNumber, -6);
@@ -171,8 +199,7 @@ class EventRegistration extends Model
     }
 
     // Boot method to auto-generate registration number
-    protected static function boot()
-    {
+    protected static function boot() {
         parent::boot();
 
         static::creating(function ($registration) {

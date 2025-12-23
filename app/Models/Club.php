@@ -3,21 +3,63 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
-class Club extends Model
-{
+class Club extends Model {
+
     protected $fillable = [
         'name',
         'slug',
         'description',
         'email',
         'phone',
+        'logo',
         'status',
+        'created_by',
+        'approved_at',
+        'approved_by',
+        'club_user_id',
+    ];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
     ];
 
     // 一个 club 有很多 events（通过 polymorphic organizer）
-    public function events()
-    {
+    public function events() {
         return $this->morphMany(Event::class, 'organizer');
+    }
+
+    public function members() {
+        return $this->belongsToMany(User::class, 'club_user')
+                        ->withPivot('role')
+                        ->withTimestamps();
+    }
+
+    public function creator() {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver() {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function clubUser() {
+        return $this->belongsTo(User::class, 'club_user_id');
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($club) {
+            // Automatically generate slug from name if not provided
+            if (empty($club->slug) && !empty($club->name)) {
+                $club->slug = Str::slug($club->name);
+            }
+        });
     }
 }

@@ -51,6 +51,7 @@ class StoreEventRequest extends FormRequest {
             'registration_start_time' => [
                 'required',
                 'date',
+                'after:now',
                 'before:start_time',
             ],
             'registration_end_time' => [
@@ -147,6 +148,7 @@ class StoreEventRequest extends FormRequest {
             'end_time.after' => 'Event end time must be after start time.',
             'registration_start_time.required' => 'Registration start time is required.',
             'registration_start_time.before' => 'Registration must start before the event begins.',
+            'registration_start_time.after' => 'Registration must start in the future.',
             'registration_end_time.required' => 'Registration end time is required.',
             'registration_end_time.after' => 'Registration close time must be after open time.',
             'registration_end_time.before' => 'Registration must close before event starts.',

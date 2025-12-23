@@ -3,6 +3,36 @@
  * Real-time validation and secure form submission
  */
 
+// 共享 tags 状态
+window.eventTags = []; // 用 window 方便调试
+
+function renderTags() {
+    const $tagsContainer = $('#tags-container');
+    console.log('[renderTags] container length =', $tagsContainer.length, 'tags =', window.eventTags);
+
+    if (!$tagsContainer.length)
+        return;
+
+    $tagsContainer.empty();
+    window.eventTags.forEach((tag, index) => {
+        $tagsContainer.append(
+                `<span class="tag-badge">
+                ${tag}
+                <i class="bi bi-x-circle tag-remove" data-index="${index}"></i>
+             </span>`
+                );
+    });
+}
+
+// 提供给 Blade 调用
+window.initEventTags = function (initialTags) {
+    console.log('[initEventTags] called with', initialTags);
+    if (Array.isArray(initialTags)) {
+        window.eventTags = initialTags.slice();
+        renderTags();
+    }
+};
+
 // 在文件开头添加
 const isEditMode = $('#eventForm').data('event-id') !== undefined;
 const eventStage = $('#eventForm').data('event-stage');
@@ -19,6 +49,30 @@ $(function () {
 
     let tags = [];
     let validationTimeouts = {};
+
+//    function renderTags() {
+//        const $tagsContainer = $('#tags-container');
+//        if (!$tagsContainer.length)
+//            return;
+//
+//        $tagsContainer.empty();
+//        tags.forEach((tag, index) => {
+//            $tagsContainer.append(
+//                    `<span class="tag-badge">
+//                ${tag}
+//                <i class="bi bi-x-circle tag-remove" data-index="${index}"></i>
+//             </span>`
+//                    );
+//        });
+//    }
+//
+//    window.initEventTags = function (initialTags) {
+//        console.log('[initEventTags] called with', initialTags);
+//        if (Array.isArray(initialTags)) {
+//            tags = initialTags.slice(); // 覆盖为已有 tags
+//            renderTags();
+//        }
+//    };
 
     init();
 
@@ -145,31 +199,18 @@ $(function () {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const tag = $.trim($(this).val());
-                if (tag && tags.length < 10 && !tags.includes(tag)) {
-                    tags.push(tag);
+                if (tag && window.eventTags.length < 10 && !window.eventTags.includes(tag)) {
+                    window.eventTags.push(tag);
                     renderTags();
                 }
                 $(this).val('');
             }
         });
 
-        // 删除 tag（事件委托）
         $tagsContainer.on('click', '.tag-remove', function () {
             const index = $(this).data('index');
-            tags.splice(index, 1);
+            window.eventTags.splice(index, 1);
             renderTags();
-        });
-    }
-
-    function renderTags() {
-        $tagsContainer.empty();
-        tags.forEach((tag, index) => {
-            $tagsContainer.append(
-                    `<span class="tag-badge">
-                    ${tag}
-                    <i class="bi bi-x-circle tag-remove" data-index="${index}"></i>
-                 </span>`
-                    );
         });
     }
 
@@ -191,6 +232,10 @@ $(function () {
         const $regStart = $('#registration_start_time');
         const $regEnd = $('#registration_end_time');
 
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        const nowStr = now.toISOString().slice(0, 16);
+
         // ====== EDIT MODE 特殊处理 ======
         if (isEditMode) {
             // 如果是 registration stage，registration_end_time 只能延长
@@ -211,6 +256,21 @@ $(function () {
             // 如果字段是 readonly，不需要设置监听器
             if ($startTime.prop('readonly')) {
                 return; // 直接返回，不设置任何监听
+            }
+        }
+
+        $regStart.attr('min', nowStr);
+
+        // ====== 初始化时跑一次限制逻辑 ======
+        const startVal = $startTime.val();
+        if (startVal) {
+            $endTime.attr('min', startVal);
+            $regStart.attr('max', startVal);
+            $regEnd.attr('max', startVal);
+
+            const regStartVal = $regStart.val();
+            if (regStartVal) {
+                $regEnd.attr('min', regStartVal);
             }
         }
 
@@ -409,11 +469,8 @@ $(function () {
         const regStartVal = $('#registration_start_time').val();
         const regEndVal = $('#registration_end_time').val();
 
-        console.log('RAW VALUES:', {startVal, endVal, regStartVal, regEndVal});
-
         if (!startVal || !endVal || !regStartVal || !regEndVal) {
-            console.log('Some values empty -> skip date logic, return true');
-            return true; // 这里先返回 true，避免直接把表单判错
+            return true;
         }
 
         const startTime = new Date(startVal);
@@ -422,38 +479,39 @@ $(function () {
         const regEnd = new Date(regEndVal);
         const now = new Date();
 
-        console.log('PARSED DATES:', {startTime, endTime, regStart, regEnd, now});
-
-        // 如果有任何 Invalid Date，先不报错，返回 true
         if ([startTime, endTime, regStart, regEnd].some(d => isNaN(d.getTime()))) {
-            console.log('At least one Invalid Date -> skip date logic, return true');
             return true;
         }
 
         let isValid = true;
 
-        if (!(startTime > now)) {
-            console.log('FAIL: startTime > now');
-            showFieldError($('#start_time'), 'Event must start in the future');
-            isValid = false;
+        // 只有在 create 或 draft/before-registration 阶段，才要求「必须在未来」
+        const shouldEnforceFuture = !isEditMode || (eventStage === 'draft' || eventStage === 'before-registration');
+
+        if (shouldEnforceFuture) {
+            if (!(regStart >= now)) {
+                showFieldError($('#registration_start_time'), 'Registration must start in the future');
+                isValid = false;
+            }
+            if (!(startTime > now)) {
+                showFieldError($('#start_time'), 'Event must start in the future');
+                isValid = false;
+            }
         }
+
         if (!(endTime > startTime)) {
-            console.log('FAIL: endTime > startTime');
             showFieldError($('#end_time'), 'End time must be after start time');
             isValid = false;
         }
         if (!(regEnd < startTime)) {
-            console.log('FAIL: regEnd < startTime');
             showFieldError($('#registration_end_time'), 'Registration must close before event starts');
             isValid = false;
         }
         if (!(regEnd > regStart)) {
-            console.log('FAIL: regEnd > regStart');
             showFieldError($('#registration_end_time'), 'Registration close time must be after open time');
             isValid = false;
         }
 
-        console.log('validateDateLogic result:', isValid);
         return isValid;
     }
 
@@ -466,6 +524,11 @@ $(function () {
         // 先把 trim 后的值写回 input，这样 HTML5 validity 也用去空格后的值
         if (raw !== value) {
             $field.val(value);
+        }
+
+        if ($field.prop('readonly') || $field.prop('disabled')) {
+            clearFieldValidation($field);
+            return true;
         }
 
         if (!$field.prop('required') && !value) {
@@ -566,7 +629,9 @@ $(function () {
                     $f.val($.trim($f.val()));
                 });
 
-        const $requiredFields = $form.find('[required]');
+        const $requiredFields = $form.find('[required]').filter(function () {
+            return !this.readOnly && !this.disabled;
+        });
         let isValid = true;
 
         for (const el of $requiredFields) {
@@ -605,7 +670,7 @@ $(function () {
         }
 
         const formData = new FormData($form[0]);
-        tags.forEach(tag => formData.append('tags[]', tag));
+        window.eventTags.forEach(tag => formData.append('tags[]', tag));
         formData.set('status', status);
 
         const $submitButtons = $form.find('button[type="submit"]');

@@ -18,7 +18,7 @@
                         <p class="hero-subtitle">Join the conversation, share ideas, and connect with fellow students</p>
                     </div>
                     <div class="hero-actions">
-                        <a href="{{ route('forums.posts.create') }}" class="btn btn-primary btn-lg">
+                        <a href="{{ route('forums.create') }}" class="btn btn-primary btn-lg">
                             <i class="bi bi-plus-circle me-2"></i>Create Post
                         </a>
                     </div>

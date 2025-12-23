@@ -18,7 +18,7 @@ $(document).ready(function () {
     });
 
     // AJAX field validation with debounce
-    let validationTimeout;
+    let validationTimeouts = {};
 
     $('[data-validate="true"]').on('input', function () {
         const field = $(this);
@@ -35,8 +35,6 @@ $(document).ready(function () {
         if (field.prop('readonly') || field.prop('disabled')) {
             return;
         }
-
-        clearTimeout(validationTimeout);
 
         // Reset validation state
         field.removeClass('is-invalid is-valid');
@@ -70,11 +68,15 @@ $(document).ready(function () {
             }
         }
 
+        if (validationTimeouts[fieldName]) {
+            clearTimeout(validationTimeouts[fieldName]);
+        }
+
         // Show validating state
         field.closest('.form-group').addClass('field-validating');
         isValidating[fieldName] = true;
 
-        validationTimeout = setTimeout(function () {
+        validationTimeouts[fieldName] = setTimeout(function () {
             $.ajax({
                 url: '/events/register/validate-field',
                 method: 'POST',
