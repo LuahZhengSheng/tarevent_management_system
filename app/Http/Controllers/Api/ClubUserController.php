@@ -19,6 +19,19 @@ class ClubUserController extends Controller
     ) {}
 
     /**
+     * Format API response with status and timestamp
+     */
+    private function formatResponse(array $data, int $statusCode = 200): JsonResponse
+    {
+        $response = array_merge([
+            'status' => $statusCode >= 200 && $statusCode < 300 ? 'success' : 'error',
+            'timestamp' => now()->timestamp,
+        ], $data);
+
+        return response()->json($response, $statusCode);
+    }
+
+    /**
      * Display a listing of club users
      * GET /api/v1/club-users
      */
@@ -29,7 +42,7 @@ class ClubUserController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json([
+        return $this->formatResponse([
             'success' => true,
             'data' => $users->items(),
             'meta' => [
@@ -51,10 +64,14 @@ class ClubUserController extends Controller
             // Reuse existing AdminCreatedStudentStrategy with 'club' role
             $strategy = new AdminCreatedStudentStrategy('club');
             
+            // Get validated data (excluding timestamp as it's only for tracking)
+            $validated = $request->validated();
+            unset($validated['timestamp']); // Remove timestamp from user creation data
+            
             // Reuse existing UserService to create user
-            $user = $this->userService->createUser($request->validated(), $strategy);
+            $user = $this->userService->createUser($validated, $strategy);
 
-            return response()->json([
+            return $this->formatResponse([
                 'success' => true,
                 'message' => 'Club user created successfully.',
                 'data' => [
@@ -72,7 +89,7 @@ class ClubUserController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->formatResponse([
                 'success' => false,
                 'message' => 'Failed to create club user.',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error.',
@@ -88,13 +105,13 @@ class ClubUserController extends Controller
     {
         // Ensure it's a club user
         if ($user->role !== 'club') {
-            return response()->json([
+            return $this->formatResponse([
                 'success' => false,
                 'message' => 'User is not a club user.',
             ], 404);
         }
 
-        return response()->json([
+        return $this->formatResponse([
             'success' => true,
             'data' => [
                 'id' => $user->id,

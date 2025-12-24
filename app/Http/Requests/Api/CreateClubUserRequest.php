@@ -33,6 +33,7 @@ class CreateClubUserRequest extends FormRequest
             'program' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:active,inactive,suspended'],
             'club_id' => ['nullable', 'integer', 'exists:clubs,id'],
+            'timestamp' => ['required', 'integer'], // Unix timestamp in seconds
         ];
     }
 
@@ -46,6 +47,8 @@ class CreateClubUserRequest extends FormRequest
             'student_id.unique' => 'The student ID is already registered.',
             'phone.required' => 'Phone number is required.',
             'club_id.exists' => 'The specified club does not exist.',
+            'timestamp.required' => 'The timestamp field is required.',
+            'timestamp.integer' => 'The timestamp must be a valid Unix timestamp.',
         ];
     }
 
