@@ -13,31 +13,45 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="admin-stat-card">
                 <div class="admin-stat-icon bg-primary">
                     <i class="bi bi-calendar-event"></i>
                 </div>
                 <div class="admin-stat-content">
                     <div class="admin-stat-label">Active Events</div>
-                    <div class="admin-stat-value">24</div>
+                    <div class="admin-stat-value">{{ \App\Models\Event::where('status', 'published')->count() }}</div>
                     <div class="admin-stat-meta text-muted">Including pending approvals</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="admin-stat-card">
                 <div class="admin-stat-icon bg-success">
                     <i class="bi bi-people"></i>
                 </div>
                 <div class="admin-stat-content">
                     <div class="admin-stat-label">Total Users</div>
-                    <div class="admin-stat-value">1,432</div>
+                    <div class="admin-stat-value">{{ \App\Models\User::count() }}</div>
                     <div class="admin-stat-meta text-muted">Students & club admins</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon bg-info">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="admin-stat-content">
+                    <div class="admin-stat-label">Total Clubs</div>
+                    <div class="admin-stat-value">{{ \App\Models\Club::count() }}</div>
+                    <div class="admin-stat-meta text-muted">
+                        <a href="{{ route('admin.clubs.index') }}" class="text-decoration-none" style="color: inherit;">View all clubs</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="admin-stat-card">
                 <div class="admin-stat-icon bg-warning">
                     <i class="bi bi-graph-up-arrow"></i>
@@ -114,8 +128,11 @@
                     <h2 class="admin-panel-title">Quick Actions</h2>
                 </div>
                 <div class="d-grid gap-2">
-                    <a href="{{ route('events.create') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-circle me-2"></i>Create New Event
+                    <a href="{{ route('admin.clubs.create') }}" class="btn btn-primary">
+                        <i class="bi bi-building-add me-2"></i>Create New Club
+                    </a>
+                    <a href="{{ route('admin.clubs.index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-building me-2"></i>Manage Clubs
                     </a>
                     <a href="{{ route('admin.events.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-funnel me-2"></i>Review Pending Events
@@ -123,6 +140,74 @@
                     <a href="{{ route('home') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-box-arrow-up-right me-2"></i>View User Site
                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Clubs -->
+    <div class="row g-4 mt-4">
+        <div class="col-lg-12">
+            <div class="admin-panel-card">
+                <div class="admin-panel-header">
+                    <h2 class="admin-panel-title">Recent Clubs</h2>
+                    <a href="{{ route('admin.clubs.index') }}" class="admin-panel-link">View all</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Club</th>
+                                <th scope="col">Category</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="text-end">Members</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php
+                                $recentClubs = \App\Models\Club::with(['creator', 'clubUser'])
+                                    ->latest()
+                                    ->limit(5)
+                                    ->get();
+                            @endphp
+                            @forelse($recentClubs as $club)
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img 
+                                            src="{{ $club->logo ? '/storage/' . $club->logo : asset('images/default-club-avatar.png') }}" 
+                                            alt="{{ $club->name }}"
+                                            class="rounded"
+                                            style="width: 32px; height: 32px; object-fit: cover;"
+                                            onerror="this.src='{{ asset('images/default-club-avatar.png') }}'"
+                                        >
+                                        <div>
+                                            <div class="fw-semibold">{{ $club->name }}</div>
+                                            <div class="text-muted small">{{ $club->email ?? '–' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if($club->category)
+                                    <span class="badge rounded-pill bg-primary-subtle text-primary">{{ ucfirst($club->category) }}</span>
+                                    @else
+                                    <span class="text-muted">–</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="badge rounded-pill bg-{{ $club->status === 'active' ? 'success' : ($club->status === 'inactive' ? 'warning' : 'secondary') }}-subtle text-{{ $club->status === 'active' ? 'success' : ($club->status === 'inactive' ? 'warning' : 'secondary') }}">
+                                        {{ ucfirst($club->status) }}
+                                    </span>
+                                </td>
+                                <td class="text-end fw-semibold">{{ $club->members()->wherePivot('status', 'active')->count() }}</td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No clubs found</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -193,7 +193,8 @@ body {
 }
 
 /* User Site Theme Class */
-.user-site {
+.user-site,
+.club-site {
     --primary: var(--user-primary);
     --primary-hover: var(--user-primary-hover);
     --primary-light: var(--user-primary-light);

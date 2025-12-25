@@ -34,7 +34,7 @@
 
                 <!-- Clubs -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('home') }}">
+                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('clubs.index') }}">
                         <i class="bi bi-people me-1"></i>Clubs
                     </a>
                 </li>

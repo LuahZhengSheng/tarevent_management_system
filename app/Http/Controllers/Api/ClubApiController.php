@@ -248,19 +248,98 @@ class ClubApiController extends Controller
     }
 
     /**
+     * Get join requests for a club.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @return JsonResponse
+     */
+    public function getJoinRequests(Request $request, Club $club): JsonResponse
+    {
+        try {
+            // Validate IFA standard: timestamp or requestID must be provided
+            $request->validate([
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+                'status' => ['nullable', 'string', 'in:pending,approved,rejected'],
+            ]);
+
+            // Ensure at least one of timestamp or requestID is provided
+            if (!$request->filled('timestamp') && !$request->filled('requestID')) {
+                return $this->failResponse('Either timestamp or requestID must be provided.', [], 400);
+            }
+
+            $status = $request->input('status');
+
+            $query = $club->joinRequests()->with('user');
+
+            if ($status) {
+                $query->where('status', $status);
+            }
+
+            $joinRequests = $query->orderBy('created_at', 'desc')->get();
+
+            $requestsData = $joinRequests->map(function ($joinRequest) {
+                return [
+                    'id' => $joinRequest->id,
+                    'user' => [
+                        'id' => $joinRequest->user->id,
+                        'name' => $joinRequest->user->name,
+                        'email' => $joinRequest->user->email,
+                        'profile_photo_url' => $joinRequest->user->profile_photo_url,
+                    ],
+                    'status' => $joinRequest->status,
+                    'reason' => $joinRequest->description,
+                    'rejection_reason' => null, // Not stored in database, handled via metadata if needed
+                    'created_at' => $joinRequest->created_at->toISOString(),
+                    'updated_at' => $joinRequest->updated_at->toISOString(),
+                    'approved_at' => $joinRequest->status === 'approved' ? $joinRequest->updated_at->toISOString() : null,
+                    'rejected_at' => $joinRequest->status === 'rejected' ? $joinRequest->updated_at->toISOString() : null,
+                ];
+            });
+
+            return $this->successResponse([
+                'data' => [
+                    'club_id' => $club->id,
+                    'club_name' => $club->name,
+                    'status_filter' => $status,
+                    'total_requests' => $joinRequests->count(),
+                    'requests' => $requestsData,
+                ],
+            ], 'Join requests retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Approve a join request.
      *
+     * @param Request $request
      * @param Club $club
      * @param User $user
      * @param ClubFacade $facade
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function approveJoin(Club $club, User $user, ClubFacade $facade)
+    public function approveJoin(Request $request, Club $club, User $user, ClubFacade $facade): JsonResponse
     {
         try {
+            // Validate IFA standard
+            $request->validate([
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
+
             $facade->approveJoin($club, $user, auth()->user());
 
-            return $this->successResponse([], 'Join request approved successfully.');
+            return $this->successResponse([
+                'data' => [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                ],
+            ], 'Join request approved successfully.');
         } catch (\Exception $e) {
             return $this->failResponse($e->getMessage(), [
                 'error' => $e->getMessage(),
@@ -271,17 +350,30 @@ class ClubApiController extends Controller
     /**
      * Reject a join request.
      *
+     * @param Request $request
      * @param Club $club
      * @param User $user
      * @param ClubFacade $facade
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function rejectJoin(Club $club, User $user, ClubFacade $facade)
+    public function rejectJoin(Request $request, Club $club, User $user, ClubFacade $facade): JsonResponse
     {
         try {
-            $facade->rejectJoin($club, $user, auth()->user());
+            $validated = $request->validate([
+                'reason' => ['nullable', 'string', 'max:500'],
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
 
-            return $this->successResponse([], 'Join request rejected successfully.');
+            $facade->rejectJoin($club, $user, auth()->user(), $validated['reason'] ?? null);
+
+            return $this->successResponse([
+                'data' => [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'rejection_reason' => $validated['reason'] ?? null,
+                ],
+            ], 'Join request rejected successfully.');
         } catch (\Exception $e) {
             return $this->failResponse($e->getMessage(), [
                 'error' => $e->getMessage(),
@@ -754,6 +846,265 @@ class ClubApiController extends Controller
                     'published_at' => $announcement->published_at,
                 ],
             ], 'Announcement unpublished successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // ============================================
+    // Member Management APIs (IFA Compliant)
+    // ============================================
+
+    /**
+     * Get club members list.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @param ClubFacade $facade
+     * @return JsonResponse
+     */
+    public function getMembers(Request $request, Club $club, ClubFacade $facade): JsonResponse
+    {
+        try {
+            // Validate IFA standard: timestamp or requestID must be provided
+            $request->validate([
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+                'status' => ['nullable', 'string', 'in:active,removed'],
+            ]);
+
+            // Ensure at least one of timestamp or requestID is provided
+            if (!$request->filled('timestamp') && !$request->filled('requestID')) {
+                return $this->failResponse('Either timestamp or requestID must be provided.', [], 400);
+            }
+
+            $status = $request->input('status', 'active');
+
+            // Get members based on status
+            if ($status === 'active') {
+                $members = $club->members()
+                    ->wherePivot('status', 'active')
+                    ->withPivot('role', 'status', 'created_at')
+                    ->orderBy('club_user.created_at', 'desc')
+                    ->get();
+            } else {
+                $members = $club->members()
+                    ->wherePivot('status', 'removed')
+                    ->withPivot('role', 'status', 'created_at')
+                    ->orderBy('club_user.created_at', 'desc')
+                    ->get();
+            }
+
+            $membersData = $members->map(function ($member) {
+                return [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'email' => $member->email,
+                    'profile_photo_url' => $member->profile_photo_url,
+                    'role' => $member->pivot->role,
+                    'role_display_name' => \App\Models\ClubMemberRole::displayName($member->pivot->role),
+                    'joined_at' => $member->pivot->created_at ? $member->pivot->created_at->toISOString() : null,
+                ];
+            });
+
+            return $this->successResponse([
+                'data' => [
+                    'club_id' => $club->id,
+                    'club_name' => $club->name,
+                    'status' => $status,
+                    'total_members' => $members->count(),
+                    'members' => $membersData,
+                ],
+            ], 'Members retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get blacklisted users for a club.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @return JsonResponse
+     */
+    public function getBlacklist(Request $request, Club $club): JsonResponse
+    {
+        try {
+            // Validate IFA standard: timestamp or requestID must be provided
+            $request->validate([
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            // Ensure at least one of timestamp or requestID is provided
+            if (!$request->filled('timestamp') && !$request->filled('requestID')) {
+                return $this->failResponse('Either timestamp or requestID must be provided.', [], 400);
+            }
+
+            $blacklistedUsers = $club->blacklistedUsers()
+                ->withPivot('reason', 'blacklisted_by', 'created_at')
+                ->orderBy('club_blacklist.created_at', 'desc')
+                ->get();
+
+            $blacklistData = $blacklistedUsers->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'profile_photo_url' => $user->profile_photo_url,
+                    'reason' => $user->pivot->reason,
+                    'blacklisted_at' => $user->pivot->created_at ? $user->pivot->created_at->toISOString() : null,
+                ];
+            });
+
+            return $this->successResponse([
+                'data' => [
+                    'club_id' => $club->id,
+                    'club_name' => $club->name,
+                    'total_blacklisted' => $blacklistedUsers->count(),
+                    'blacklisted_users' => $blacklistData,
+                ],
+            ], 'Blacklist retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Update member role.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @param User $user
+     * @param ClubFacade $facade
+     * @return JsonResponse
+     */
+    public function updateMemberRole(Request $request, Club $club, User $user, ClubFacade $facade): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'role' => ['required', 'string', 'in:' . implode(',', \App\Models\ClubMemberRole::all())],
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $facade->updateMemberRole($club, $user, $validated['role'], auth()->user());
+
+            return $this->successResponse([
+                'data' => [
+                    'member_id' => $user->id,
+                    'member_name' => $user->name,
+                    'new_role' => $validated['role'],
+                    'role_display_name' => \App\Models\ClubMemberRole::displayName($validated['role']),
+                ],
+            ], 'Member role updated successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Remove member from club.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @param User $user
+     * @param ClubFacade $facade
+     * @return JsonResponse
+     */
+    public function removeMember(Request $request, Club $club, User $user, ClubFacade $facade): JsonResponse
+    {
+        try {
+            // Validate IFA standard
+            $request->validate([
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $facade->removeMember($club, $user, auth()->user());
+
+            return $this->successResponse([
+                'data' => [
+                    'member_id' => $user->id,
+                    'member_name' => $user->name,
+                ],
+            ], 'Member removed successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Add user to blacklist.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @param User $user
+     * @param ClubFacade $facade
+     * @return JsonResponse
+     */
+    public function addToBlacklist(Request $request, Club $club, User $user, ClubFacade $facade): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'reason' => ['nullable', 'string', 'max:500'],
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $facade->addToBlacklist($club, $user, $validated['reason'] ?? null, auth()->user());
+
+            return $this->successResponse([
+                'data' => [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'reason' => $validated['reason'] ?? null,
+                ],
+            ], 'User added to blacklist successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Remove user from blacklist.
+     *
+     * @param Request $request
+     * @param Club $club
+     * @param User $user
+     * @param ClubFacade $facade
+     * @return JsonResponse
+     */
+    public function removeFromBlacklist(Request $request, Club $club, User $user, ClubFacade $facade): JsonResponse
+    {
+        try {
+            // Validate IFA standard
+            $request->validate([
+                'timestamp' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/'],
+                'requestID' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $facade->removeFromBlacklist($club, $user, auth()->user());
+
+            return $this->successResponse([
+                'data' => [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                ],
+            ], 'User removed from blacklist successfully.');
         } catch (\Exception $e) {
             return $this->failResponse($e->getMessage(), [
                 'error' => $e->getMessage(),

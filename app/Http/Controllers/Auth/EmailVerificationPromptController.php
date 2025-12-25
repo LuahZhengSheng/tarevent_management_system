@@ -23,6 +23,9 @@ class EmailVerificationPromptController extends Controller
             if ($user->isAdmin() || $user->isSuperAdmin()) {
                 return redirect()->intended(route('admin.dashboard', absolute: false));
             }
+            if ($user->isClub()) {
+                return redirect()->intended(route('club.dashboard', absolute: false));
+            }
             return redirect()->intended(route('home', absolute: false));
         }
         

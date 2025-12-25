@@ -5,6 +5,7 @@ namespace App\Services\Club;
 use App\Models\Club;
 use App\Models\ClubBlacklist;
 use App\Models\ClubJoinRequest;
+use App\Models\ClubMemberRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,15 +27,21 @@ class MembershipService
      * 
      * @param Club $club The club to add member to
      * @param User $user The user to add as member
-     * @param string|null $role Optional role (e.g., 'member', 'officer', 'treasurer')
+     * @param string|null $role Optional role (defaults to 'member')
      * @return bool True if member was added, false if already a member
-     * @throws \Exception If user cannot be added
+     * @throws \Exception If user cannot be added or role is invalid
      */
     public function addMember(Club $club, User $user, ?string $role = null): bool
     {
         // Validate that user is a student (not admin or club account)
         if (!in_array($user->role, ['user', 'student'])) {
             throw new \Exception("Only students can be added as club members.");
+        }
+
+        // Validate role if provided
+        $finalRole = $role ?? ClubMemberRole::MEMBER;
+        if (!ClubMemberRole::isValid($finalRole)) {
+            throw new \Exception("Invalid member role: {$finalRole}. Valid roles are: " . implode(', ', ClubMemberRole::all()));
         }
 
         // Check if user is already a member
@@ -52,13 +59,13 @@ class MembershipService
         if ($existingPivot) {
             // Update existing record to active
             $club->members()->updateExistingPivot($user->id, [
-                'role' => $role ?? 'member',
+                'role' => $finalRole,
                 'status' => 'active',
             ]);
         } else {
             // Create new record
             $club->members()->attach($user->id, [
-                'role' => $role ?? 'member',
+                'role' => $finalRole,
                 'status' => 'active',
             ]);
         }
@@ -102,13 +109,18 @@ class MembershipService
      * @param User $user The member whose role to update
      * @param string $newRole The new role to assign
      * @return bool True if role was updated
-     * @throws \Exception If role update is not allowed
+     * @throws \Exception If role update is not allowed or role is invalid
      */
     public function updateMemberRole(Club $club, User $user, string $newRole): bool
     {
         // Check if user is a member of the club
         if (!$this->hasMember($club, $user)) {
             throw new \Exception("User is not a member of this club.");
+        }
+
+        // Validate role
+        if (!ClubMemberRole::isValid($newRole)) {
+            throw new \Exception("Invalid member role: {$newRole}. Valid roles are: " . implode(', ', ClubMemberRole::all()));
         }
 
         // Update the role in the pivot table

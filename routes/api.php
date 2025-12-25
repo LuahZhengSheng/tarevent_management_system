@@ -11,10 +11,10 @@ use App\Http\Controllers\Api\AuthTokenController;
 
 
 /*
-  |--------------------------------------------------------------------------
-  | API Routes
-  |--------------------------------------------------------------------------
- */
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
 
 // Club API Routes (requires authentication)
 // Note: Using ['web','auth'] instead of 'auth:sanctum' for development/testing
@@ -39,10 +39,31 @@ Route::middleware(['web', 'auth'])->group(function () {
             // Request to join a club
             Route::post('/join', [ClubApiController::class, 'requestJoin']);
 
-            // Approve/Reject join requests
+            // Join Request routes
+            Route::prefix('join-requests')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getJoinRequests']);
+                Route::post('/{user}/approve', [ClubApiController::class, 'approveJoin']);
+                Route::post('/{user}/reject', [ClubApiController::class, 'rejectJoin']);
+            });
+
+            // Legacy routes (for backward compatibility)
             Route::prefix('join/{user}')->group(function () {
                 Route::post('/approve', [ClubApiController::class, 'approveJoin']);
                 Route::post('/reject', [ClubApiController::class, 'rejectJoin']);
+            });
+
+            // Member Management routes
+            Route::prefix('members')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getMembers']);
+                Route::put('/{user}/role', [ClubApiController::class, 'updateMemberRole']);
+                Route::delete('/{user}', [ClubApiController::class, 'removeMember']);
+            });
+
+            // Blacklist routes
+            Route::prefix('blacklist')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getBlacklist']);
+                Route::post('/{user}', [ClubApiController::class, 'addToBlacklist']);
+                Route::delete('/{user}', [ClubApiController::class, 'removeFromBlacklist']);
             });
 
             // Announcement routes
@@ -67,12 +88,10 @@ Route::middleware(['web', 'auth'])->group(function () {
 // Club User API Routes (v1)
 // Note: Using ['web','auth'] for development/testing to allow web session authentication
 Route::middleware(['web', 'auth'])->prefix('v1')->group(function () {
-    // ======================
-    // Club User APIs
-    // ======================
-    // Create club user
+    // Create club user (with rate limiting: 10 requests per minute)
     Route::post('/club-users', [ClubUserController::class, 'store'])
-            ->name('api.v1.club-users.store');
+        ->middleware('throttle:10,1')
+        ->name('api.v1.club-users.store');
 
     // Get club user
     Route::get('/club-users/{user}', [ClubUserController::class, 'show'])

@@ -16,7 +16,6 @@ use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Forum\ForumMessageController;
 //use App\Http\Controllers\Forum\ForumController;
-//use App\Http\Controllers\Club\ClubController;
 //use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
@@ -94,6 +93,11 @@ if (app()->environment('local')) {
 
         return view('test.club_forum_picker', compact('clubs'));
     })->name('test.club-forum');
+
+    // Test Club Join API
+    Route::middleware('auth')->get('/test/clubs/join-api', function () {
+        return view('clubs.test_join_api');
+    })->name('test.clubs.join-api');
 }
 
 if (app()->environment('local')) {
@@ -231,9 +235,10 @@ Route::redirect('/', '/events')->name('home');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
 //Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
-//// Public Club Browsing
-//Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
-//Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
+
+// Public Club Browsing (Student Side)
+Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
+Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
 //// Public Forum Browsing
 //Route::get('/forum', [ForumController::class, 'index'])->name('forum.index');
 //Route::get('/forum/{post}', [ForumController::class, 'show'])->name('forum.show');
@@ -518,11 +523,60 @@ Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(fu
 });
 
 Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(function () {
-// Route::prefix('club')->name('club.')->group(function () {
-    // Club Events Management
+    // Club Dashboard
+    Route::get('/dashboard', [ClubController::class, 'dashboard'])->name('dashboard');
+    
+    // Club Profile Management
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/edit', [ClubController::class, 'editProfile'])->name('edit');
+        Route::put('/update', [ClubController::class, 'updateProfile'])->name('update');
+    });
+
+    // Club Members Management
+    Route::prefix('members')->name('members.')->group(function () {
+        Route::get('/', [ClubController::class, 'membersIndex'])->name('index');
+        Route::put('/{user}/role', [ClubController::class, 'updateMemberRole'])->name('updateRole');
+        Route::delete('/{user}', [ClubController::class, 'removeMember'])->name('remove');
+        Route::post('/{user}/blacklist', [ClubController::class, 'addToBlacklist'])->name('blacklist');
+    });
+
+    // Club Announcements Management
+    Route::prefix('announcements')->name('announcements.')->group(function () {
+        Route::get('/', [ClubController::class, 'announcementsIndex'])->name('index');
+        Route::get('/create', [ClubController::class, 'createAnnouncement'])->name('create');
+        Route::post('/', [ClubController::class, 'storeAnnouncement'])->name('store');
+        Route::get('/{announcement}/edit', [ClubController::class, 'editAnnouncement'])->name('edit');
+        Route::put('/{announcement}', [ClubController::class, 'updateAnnouncement'])->name('update');
+        Route::delete('/{announcement}', [ClubController::class, 'deleteAnnouncement'])->name('delete');
+    });
+
+    // Join Requests Management
+    Route::prefix('join-requests')->name('join-requests.')->group(function () {
+        Route::get('/', [ClubController::class, 'joinRequestsIndex'])->name('index');
+        Route::post('/{user}/approve', [ClubController::class, 'approveJoin'])->name('approve');
+        Route::post('/{user}/reject', [ClubController::class, 'rejectJoin'])->name('reject');
+    });
+
+    // Blacklist Management (handled in members page)
+    Route::prefix('blacklist')->name('blacklist.')->group(function () {
+        Route::delete('/{user}', [ClubController::class, 'removeFromBlacklist'])->name('remove');
+    });
+
+    // Activity Logs
+    Route::prefix('logs')->name('logs.')->group(function () {
+        Route::get('/', [ClubController::class, 'logsIndex'])->name('index');
+    });
+
+    // Club Events Management (Reserved for Event Module)
     Route::prefix('events')->name('events.')->group(function () {
         Route::get('/', [ClubEventsController::class, 'index'])->name('index');
         Route::get('/fetch', [ClubEventsController::class, 'fetch'])->name('fetch');
+    });
+
+    // Forum Management (Reserved for Forum Module)
+    Route::prefix('forum')->name('forum.')->group(function () {
+        Route::get('/', [ClubController::class, 'forumIndex'])->name('index');
+        // Route::post('/posts', [ClubForumController::class, 'storePost'])->name('storePost'); // Placeholder
     });
 });
 
@@ -534,6 +588,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::post('/clubs', [ClubController::class, 'store'])
             ->name('clubs.store');
+
+    // Check if user email exists (for real-time validation)
+    Route::get('/admin/clubs/check-email', [ClubController::class, 'checkUserEmail'])
+            ->name('admin.clubs.check-email');
 });
 
 Route::middleware(['auth', 'club'])->group(function () {
@@ -575,6 +633,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
         Route::put('/{user}', [UserController::class, 'update'])->name('update');
+    });
+
+    // Club Management (Admin)
+    Route::prefix('clubs')->name('clubs.')->group(function () {
+        Route::get('/', [ClubController::class, 'adminIndex'])->name('index');
+        Route::get('/create', [ClubController::class, 'adminCreate'])->name('create');
+        Route::post('/', [ClubController::class, 'adminStore'])->name('store');
+        Route::get('/{club}', [ClubController::class, 'adminShow'])->name('show');
+        Route::post('/{club}/activate', [ClubController::class, 'adminActivate'])->name('activate');
+        Route::post('/{club}/deactivate', [ClubController::class, 'adminDeactivate'])->name('deactivate');
+        Route::get('/{club}/logs', [ClubController::class, 'adminLogs'])->name('logs');
     });
 
     // Administrator Management

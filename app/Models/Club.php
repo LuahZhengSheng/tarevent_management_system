@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class Club extends Model {
+    
+    public $timestamps = true;
 
     protected $fillable = [
         'name',
@@ -65,6 +67,14 @@ class Club extends Model {
 
     public function publishedAnnouncements() {
         return $this->hasMany(ClubAnnouncement::class)->published();
+    }
+
+    public function joinRequests() {
+        return $this->hasMany(ClubJoinRequest::class);
+    }
+
+    public function logs() {
+        return $this->hasMany(ClubLog::class);
     }
 
     /**
