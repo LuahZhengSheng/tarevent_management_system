@@ -238,7 +238,6 @@ Route::redirect('/', '/events')->name('home');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
 //Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
-
 // Public Club Browsing (Student Side)
 Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
 Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
@@ -385,7 +384,7 @@ Route::middleware(['auth', 'user'])->group(function () {
     // View Receipt (HTML Page)
     Route::get('/registrations/{registration}/receipt', [PaymentController::class, 'receipt'])
             ->name('registrations.receipt');
-            
+
     // Download Payment Receipt (PDF) 
     Route::get('/payments/{payment}/download-receipt', [PaymentController::class, 'downloadReceipt'])
             ->name('payments.download-receipt');
@@ -479,36 +478,24 @@ Route::prefix('forums')->name('forums.')->group(function () {
     });
 });
 
+// Admin Forum Moderation (MUST be under /admin)
+Route::middleware(['auth', 'admin'])
+        ->prefix('admin/forums')
+        ->name('admin.forums.')
+        ->group(function () {
+            Route::get('/', [AdminForumController::class, 'index'])->name('index');
 
-// ===== Admin Forum Moderation =====
-Route::prefix('forums')->name('forums.')->group(function () {
+            Route::get('/posts', [AdminForumPostController::class, 'index'])->name('posts.index');
 
-    // 让 sidebar 的 admin.forums.index 可用
-    Route::get('/', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'index'])
-        ->name('index');
+            // admin.forums.posts.show
+            Route::get('/posts/{post}', [AdminForumPostController::class, 'show'])->name('posts.show');
 
-    // Posts list（同一个页面）
-    Route::get('/posts', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'index'])
-        ->name('posts.index');
-
-    // Post detail JSON for modal
-    Route::get('/posts/{post}', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'show'])
-        ->name('posts.show');
-
-    // Tags...
-    Route::get('/tags', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'index'])
-        ->name('tags.index');
-    Route::get('/tags/table', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'table'])
-        ->name('tags.table');
-    Route::patch('/tags/{tag}/approve', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'approve'])
-        ->name('tags.approve');
-    Route::patch('/tags/{tag}/reject', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'reject'])
-        ->name('tags.reject');
-    Route::patch('/tags/{tag}', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'update'])
-        ->name('tags.update');
-});
-
-
+            Route::get('/tags', [AdminForumTagController::class, 'index'])->name('tags.index');
+            Route::get('/tags/table', [AdminForumTagController::class, 'table'])->name('tags.table');
+            Route::patch('/tags/{tag}/approve', [AdminForumTagController::class, 'approve'])->name('tags.approve');
+            Route::patch('/tags/{tag}/reject', [AdminForumTagController::class, 'reject'])->name('tags.reject');
+            Route::patch('/tags/{tag}', [AdminForumTagController::class, 'update'])->name('tags.update');
+        });
 
 /*
   |--------------------------------------------------------------------------
@@ -556,7 +543,7 @@ Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(fu
 Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(function () {
     // Club Dashboard
     Route::get('/dashboard', [ClubController::class, 'dashboard'])->name('dashboard');
-    
+
     // Club Profile Management
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/edit', [ClubController::class, 'editProfile'])->name('edit');
