@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api;
 
 use App\Support\PhoneHelper;
 use App\Support\StudentIdHelper;
+use Illuminate\Validation\Rules\Password;
 
 class CreateClubUserRequest extends BaseApiRequest
 {
@@ -14,7 +15,20 @@ class CreateClubUserRequest extends BaseApiRequest
      */
     public function authorize(): bool
     {
-        return true; // Authorization can be added later if needed
+        $user = auth()->user();
+        
+        // Check if user is authenticated
+        if (!$user) {
+            return false;
+        }
+        
+        // Check if user account is active (not suspended or inactive)
+        if ($user->isSuspended() || $user->isInactive()) {
+            return false;
+        }
+        
+        // Only admin or super_admin can create club users
+        return $user->isAdmin() || $user->isSuperAdmin();
     }
 
     /**
@@ -26,7 +40,14 @@ class CreateClubUserRequest extends BaseApiRequest
         return array_merge(parent::rules(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password' => [
+                'nullable',
+                'confirmed',
+                Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+            ],
             'password_confirmation' => ['nullable', 'string'],
             'student_id' => ['required', 'string', 'max:50', 'unique:users'],
             'phone' => ['required', 'string', 'max:50'],
@@ -46,6 +67,10 @@ class CreateClubUserRequest extends BaseApiRequest
             'student_id.unique' => 'The student ID is already registered.',
             'phone.required' => 'Phone number is required.',
             'club_id.exists' => 'The specified club does not exist.',
+            'password.min' => 'The password must be at least 8 characters.',
+            'password.mixed' => 'The password must contain both uppercase and lowercase letters.',
+            'password.numbers' => 'The password must contain at least one number.',
+            'password.symbols' => 'The password must contain at least one symbol.',
         ];
     }
 

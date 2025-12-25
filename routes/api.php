@@ -49,8 +49,9 @@ Route::middleware(['web', 'auth'])->group(function () {
 // Club User API Routes (v1)
 // Note: Using ['web','auth'] for development/testing to allow web session authentication
 Route::middleware(['web', 'auth'])->prefix('v1')->group(function () {
-    // Create club user
+    // Create club user (with rate limiting: 10 requests per minute)
     Route::post('/club-users', [ClubUserController::class, 'store'])
+        ->middleware('throttle:10,1')
         ->name('api.v1.club-users.store');
     
     // Get club user
