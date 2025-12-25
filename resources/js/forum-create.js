@@ -7,10 +7,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('createPostForm') || document.getElementById('editPostForm');
     const postTitle = document.getElementById('postTitle');
     const postCategory = document.getElementById('postCategory');
+
     const visibilityPublic = document.getElementById('visibilityPublic');
     const visibilityClubOnly = document.getElementById('visibilityClubOnly');
     const clubSelectionContainer = document.getElementById('clubSelectionContainer');
-    const clubCheckboxes = document.querySelectorAll('.club-checkbox');
+    const clubListContainer = document.getElementById('clubListContainer');
+    const joinClubButton = document.getElementById('joinClubButton');
+
     const postContent = document.getElementById('postContent');
     const contentInput = document.getElementById('contentInput');
     const mediaInput = document.getElementById('mediaInput');
@@ -20,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const publishBtn = document.getElementById('publishBtn');
     const loadingOverlay = document.getElementById('formLoadingOverlay');
 
+    let clubCheckboxes = []; // 动态填充
     let selectedFiles = [];
     let isSubmitting = false;
     let formInitialData = null;
@@ -177,6 +181,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return 'club_only';
         return '';
     }
+
+    function refreshClubCheckboxes() {
+        if (!clubListContainer) {
+            clubCheckboxes = [];
+            return;
+        }
+        clubCheckboxes = Array.from(clubListContainer.querySelectorAll('.club-checkbox'));
+    }
+
 
     // ========================================
     // Validation Functions
@@ -399,6 +412,109 @@ document.addEventListener('DOMContentLoaded', function () {
             updateButtonStates();
         });
     });
+
+    // ========================================
+    // Load user clubs via API
+    // ========================================
+    async function loadUserClubs() {
+        if (!clubListContainer || !config.clubsApiUrl)
+            return;
+
+        const loadingText = document.getElementById('clubListLoading');
+        if (loadingText)
+            loadingText.textContent = 'Loading your clubs...';
+
+        try {
+            const response = await fetch(config.clubsApiUrl, {
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load clubs');
+            }
+
+            const json = await response.json();
+            const clubs = (json.data && json.data.clubs) ? json.data.clubs : [];
+
+            if (!clubs.length) {
+                clubListContainer.innerHTML = `
+                <p class="text-muted small">
+                    You are not a member of any club yet.
+                </p>
+            `;
+                refreshClubCheckboxes();
+                updateButtonStates();
+                return;
+            }
+
+            // 渲染 checkbox 列表
+            clubListContainer.innerHTML = clubs.map(club => {
+                const id = club.id;
+                const name = club.name;
+                const role = club.member_role || '';
+                const membersText = role ? `Role: ${role}` : '';
+
+                // 这里改用 config.oldClubIds
+                const checked =
+                        Array.isArray(config.oldClubIds) && config.oldClubIds.includes(id)
+                        ? 'checked'
+                        : '';
+
+                return `
+                <label class="club-item">
+                    <input type="checkbox"
+                           name="club_ids[]"
+                           value="${id}"
+                           class="club-checkbox"
+                           ${checked}>
+                    <span class="club-checkbox-custom"></span>
+                    <div class="club-info">
+                        <div class="club-name">${name}</div>
+                        <div class="club-members">${membersText}</div>
+                    </div>
+                </label>
+            `;
+            }).join('');
+
+            // 重新抓 checkbox 节点并绑定事件
+            refreshClubCheckboxes();
+            clubCheckboxes.forEach(cb => {
+                cb.addEventListener('change', function () {
+                    validateClubSelection(true);
+                    updateButtonStates();
+                });
+            });
+
+            updateButtonStates();
+        } catch (e) {
+            console.error(e);
+            clubListContainer.innerHTML = `
+            <p class="text-danger small">
+                Failed to load clubs. Please try again later.
+            </p>
+        `;
+        }
+    }
+
+
+    // ========================================
+    // Join Club Modal
+    // ========================================
+    if (joinClubButton && config.joinClubModalId) {
+        const modalElement = document.getElementById(config.joinClubModalId);
+        if (modalElement && window.bootstrap) {
+            const joinClubModal = new bootstrap.Modal(modalElement);
+
+            joinClubButton.addEventListener('click', function (e) {
+                e.preventDefault();
+                joinClubModal.show();
+            });
+        }
+    }
+
 
     // ========================================
     // Content Editor
@@ -1061,23 +1177,47 @@ document.addEventListener('DOMContentLoaded', function () {
             const response = await fetch(url, {
                 method: method === 'PUT' || method === 'PATCH' ? 'POST' : method,
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-CSRF-TOKEN': document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute('content'),
                     'Accept': 'application/json',
                 },
                 body: formData,
             });
 
-            const data = await response.json();
+            const contentType = response.headers.get('Content-Type') || '';
+            const isJson = contentType.includes('application/json');
+            const data = isJson ? await response.json() : null;
 
             hideLoading();
 
-            if (data.success) {
+            // 422 验证失败
+            if (response.status === 422) {
+                if (data && data.errors) {
+                    displayBackendErrors(data.errors);
+                } else if (data && data.message) {
+                    alert(data.message);
+                } else {
+                    alert('Validation failed. Please check your input.');
+                }
+                return;
+            }
+
+            // 其它非 2xx
+            if (!response.ok) {
+                console.error('Submit failed with status', response.status, data);
+                alert(data && data.message ? data.message : 'Failed to submit post.');
+                return;
+            }
+
+            // 2xx 且 success=true
+            if (data && data.success) {
                 isSubmitting = true; // Prevent beforeunload
                 window.location.href = data.redirect;
             } else {
-                if (data.errors) {
+                if (data && data.errors) {
                     displayBackendErrors(data.errors);
-                } else if (data.message) {
+                } else if (data && data.message) {
                     alert(data.message);
                 }
             }
@@ -1086,6 +1226,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Error submitting form:', error);
             alert('An error occurred while submitting the post. Please try again.');
         }
+
     }
 
     // ========================================
@@ -1257,6 +1398,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize
     // ========================================
 
+    handleVisibilityChange();
+    loadUserClubs();
     captureInitialFormData();
     updateButtonStates();
 

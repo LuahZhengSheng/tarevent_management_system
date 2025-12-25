@@ -1,119 +1,112 @@
-// resources/js/my-posts.js - Enhanced Version
+// resources/js/my-posts.js - Enhanced with AJAX
 
 /**
- * My Posts Page - Enhanced with smooth interactions and animations
+ * My Posts Page - Enhanced with AJAX updates
  */
 
-(function() {
-  'use strict';
+(function () {
+    'use strict';
 
-  // =====================================================
-  // Configuration & Constants
-  // =====================================================
-  const CONFIG = {
-    TOAST_DELAY: 3500,
-    ANIMATION_DURATION: 250,
-    DEBOUNCE_DELAY: 300
-  };
-
-  const TOAST_TYPES = {
-    SUCCESS: { bg: 'bg-success', icon: 'check-circle-fill' },
-    ERROR: { bg: 'bg-danger', icon: 'x-circle-fill' },
-    WARNING: { bg: 'bg-warning', icon: 'exclamation-triangle-fill' },
-    INFO: { bg: 'bg-info', icon: 'info-circle-fill' }
-  };
-
-  // =====================================================
-  // Utilities
-  // =====================================================
-  
-  /**
-   * Escape HTML to prevent XSS
-   */
-  function escapeHtml(str) {
-    const map = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
+    // =====================================================
+    // Configuration & Constants
+    // =====================================================
+    const CONFIG = {
+        TOAST_DELAY: 3500,
+        ANIMATION_DURATION: 250,
+        DEBOUNCE_DELAY: 500
     };
-    return String(str ?? '').replace(/[&<>"']/g, m => map[m]);
-  }
 
-  /**
-   * Debounce function
-   */
-  function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
+    const TOAST_TYPES = {
+        SUCCESS: {bg: 'bg-success', icon: 'check-circle-fill'},
+        ERROR: {bg: 'bg-danger', icon: 'x-circle-fill'},
+        WARNING: {bg: 'bg-warning', icon: 'exclamation-triangle-fill'},
+        INFO: {bg: 'bg-info', icon: 'info-circle-fill'}
     };
-  }
 
-  /**
-   * Get CSRF token
-   */
-  function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-  }
+    // =====================================================
+    // State Management
+    // =====================================================
+    let currentState = window.AJAX_CONFIG ? {
+        tab: window.currentState?.tab || 'posts',
+        search: window.currentState?.search || '',
+        status: window.currentState?.status || '',
+        visibility: window.currentState?.visibility || '',
+        sort: window.currentState?.sort || 'latest'
+    } : null;
 
-  // =====================================================
-  // Toast Notification System
-  // =====================================================
-  class ToastManager {
-    constructor() {
-      this.host = document.getElementById('myToastHost');
-      if (!this.host) {
-        console.warn('Toast host element not found');
-      }
+    // =====================================================
+    // Utilities
+    // =====================================================
+
+    function escapeHtml(str) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(str ?? '').replace(/[&<>"']/g, m => map[m]);
     }
 
-    /**
-     * Show toast notification
-     */
-    show(type, message, delay = CONFIG.TOAST_DELAY) {
-      if (!this.host) return;
-
-      const config = TOAST_TYPES[type.toUpperCase()] || TOAST_TYPES.INFO;
-      const toast = this.createToastElement(config, message, delay);
-      
-      this.host.appendChild(toast);
-      
-      // Initialize Bootstrap toast
-      const bsToast = new bootstrap.Toast(toast, { 
-        delay,
-        animation: true 
-      });
-      
-      bsToast.show();
-
-      // Add entrance animation
-      toast.style.animation = 'slideInRight 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
-
-      // Remove from DOM after hidden
-      toast.addEventListener('hidden.bs.toast', () => {
-        toast.style.animation = 'slideOutRight 0.25s cubic-bezier(0.4, 0, 1, 1)';
-        setTimeout(() => toast.remove(), 250);
-      });
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 
-    /**
-     * Create toast element
-     */
-    createToastElement(config, message, delay) {
-      const toast = document.createElement('div');
-      toast.className = `toast align-items-center text-white border-0 ${config.bg}`;
-      toast.setAttribute('role', 'alert');
-      toast.setAttribute('aria-live', 'assertive');
-      toast.setAttribute('aria-atomic', 'true');
-      
-      toast.innerHTML = `
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
+    // =====================================================
+    // Toast Notification System
+    // =====================================================
+    class ToastManager {
+        constructor() {
+            this.host = document.getElementById('myToastHost');
+            if (!this.host) {
+                console.warn('Toast host element not found');
+            }
+        }
+
+        show(type, message, delay = CONFIG.TOAST_DELAY) {
+            if (!this.host)
+                return;
+
+            const config = TOAST_TYPES[type.toUpperCase()] || TOAST_TYPES.INFO;
+            const toast = this.createToastElement(config, message, delay);
+
+            this.host.appendChild(toast);
+
+            const bsToast = new bootstrap.Toast(toast, {
+                delay,
+                animation: true
+            });
+
+            bsToast.show();
+            toast.style.animation = 'slideInRight 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.style.animation = 'slideOutRight 0.25s cubic-bezier(0.4, 0, 1, 1)';
+                setTimeout(() => toast.remove(), 250);
+            });
+        }
+
+        createToastElement(config, message, delay) {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white border-0 ${config.bg}`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+
+            toast.innerHTML = `
         <div class="d-flex align-items-center">
           <div class="toast-body">
             <i class="bi bi-${config.icon} me-2"></i>
@@ -126,466 +119,486 @@
         </div>
       `;
 
-      return toast;
-    }
-
-    success(message, delay) {
-      this.show('SUCCESS', message, delay);
-    }
-
-    error(message, delay) {
-      this.show('ERROR', message, delay);
-    }
-
-    warning(message, delay) {
-      this.show('WARNING', message, delay);
-    }
-
-    info(message, delay) {
-      this.show('INFO', message, delay);
-    }
-  }
-
-  // =====================================================
-  // Delete Functionality
-  // =====================================================
-  class DeleteManager {
-    constructor(toastManager) {
-      this.toast = toastManager;
-      this.modal = null;
-      this.deleteUrl = null;
-      
-      this.initModal();
-      this.attachEventListeners();
-    }
-
-    /**
-     * Initialize modal
-     */
-    initModal() {
-      const modalEl = document.getElementById('deleteConfirmModal');
-      if (!modalEl) {
-        console.warn('Delete modal element not found');
-        return;
-      }
-
-      this.modal = new bootstrap.Modal(modalEl);
-      this.confirmBtn = document.getElementById('confirmDeleteBtn');
-      this.confirmText = document.getElementById('deleteConfirmText');
-    }
-
-    /**
-     * Attach delete button listeners
-     */
-    attachEventListeners() {
-      // Delete buttons
-      document.querySelectorAll('.js-delete-post').forEach(btn => {
-        btn.addEventListener('click', (e) => this.handleDeleteClick(e, btn));
-      });
-
-      // Confirm button
-      if (this.confirmBtn) {
-        this.confirmBtn.addEventListener('click', () => this.confirmDelete());
-      }
-    }
-
-    /**
-     * Handle delete button click
-     */
-    handleDeleteClick(e, btn) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      this.deleteUrl = btn.getAttribute('data-delete-url');
-      const title = btn.getAttribute('data-post-title') || 'this post';
-
-      if (this.confirmText) {
-        this.confirmText.textContent = `You are about to delete "${title}". This action cannot be undone.`;
-      }
-
-      this.modal?.show();
-    }
-
-    /**
-     * Confirm delete action
-     */
-    async confirmDelete() {
-      if (!this.deleteUrl || !this.confirmBtn) return;
-
-      // Disable button
-      this.setButtonState(true);
-
-      try {
-        const response = await fetch(this.deleteUrl, {
-          method: 'DELETE',
-          headers: {
-            'X-CSRF-TOKEN': getCsrfToken(),
-            'Accept': 'application/json'
-          }
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success !== false) {
-          this.toast.success('Post deleted successfully.');
-          this.modal?.hide();
-          
-          // Reload page after animation
-          setTimeout(() => {
-            window.location.reload();
-          }, 600);
-        } else {
-          throw new Error(data.message || 'Failed to delete post');
+            return toast;
         }
-      } catch (error) {
-        console.error('Delete error:', error);
-        this.toast.error(error.message || 'Failed to delete post. Please try again.');
-        this.setButtonState(false);
-      }
+
+        success(message, delay) {
+            this.show('SUCCESS', message, delay);
+        }
+        error(message, delay) {
+            this.show('ERROR', message, delay);
+        }
+        warning(message, delay) {
+            this.show('WARNING', message, delay);
+        }
+        info(message, delay) {
+            this.show('INFO', message, delay);
+        }
     }
 
-    /**
-     * Set button loading state
-     */
-    setButtonState(loading) {
-      if (!this.confirmBtn) return;
+    // =====================================================
+    // AJAX Content Loader
+    // =====================================================
+    class AjaxContentLoader {
+        constructor(toastManager) {
+            this.toast = toastManager;
+            this.container = document.getElementById('postsContainer');
+            this.loadingOverlay = document.getElementById('loadingOverlay');
+            this.baseUrl = window.AJAX_CONFIG?.baseUrl;
 
-      this.confirmBtn.disabled = loading;
-      
-      if (loading) {
-        this.confirmBtn.innerHTML = `
-          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            if (!this.baseUrl) {
+                console.warn('AJAX base URL not configured');
+            }
+        }
+
+        async loadContent(params = {}) {
+            if (!this.container || !this.baseUrl)
+                return;
+
+            this.showLoading();
+
+            try {
+                // Build URL with query parameters
+                const url = new URL(this.baseUrl, window.location.origin);
+                Object.keys(params).forEach(key => {
+                    if (params[key]) {
+                        url.searchParams.append(key, params[key]);
+                    }
+                });
+
+                // Add AJAX header
+                url.searchParams.append('ajax', '1');
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success !== false) {
+                    this.updateContent(data.html || data.content || '');
+                    this.updateTabCounts(data.tabs);
+                    this.updateUrl(params);
+
+                    // Reinitialize lightbox for new content
+                    this.initializeLightbox();
+                } else {
+                    throw new Error(data.message || 'Failed to load content');
+                }
+
+            } catch (error) {
+                console.error('AJAX load error:', error);
+                this.toast.error('Failed to load content. Please try again.');
+            } finally {
+                this.hideLoading();
+        }
+        }
+
+        updateContent(html) {
+            // Find the tab content element
+            const tabContent = document.getElementById('tabContent');
+            if (tabContent) {
+                tabContent.innerHTML = html;
+
+                // Trigger fade-in animation
+                tabContent.style.opacity = '0';
+                requestAnimationFrame(() => {
+                    tabContent.style.transition = 'opacity 0.3s ease';
+                    tabContent.style.opacity = '1';
+                });
+            }
+        }
+
+        updateTabCounts(tabs) {
+            if (!tabs)
+                return;
+
+            Object.keys(tabs).forEach(tabKey => {
+                const tabBtn = document.querySelector(`[data-tab="${tabKey}"]`);
+                const countSpan = tabBtn?.querySelector('.tab-count');
+
+                if (countSpan && tabs[tabKey].count !== undefined) {
+                    countSpan.textContent = tabs[tabKey].count;
+                }
+            });
+        }
+
+        updateUrl(params) {
+            const url = new URL(window.location);
+
+            // Clear existing params
+            url.search = '';
+
+            // Add new params
+            Object.keys(params).forEach(key => {
+                if (params[key]) {
+                    url.searchParams.set(key, params[key]);
+                }
+            });
+
+            // Update URL without reload
+            window.history.pushState({}, '', url);
+        }
+
+        initializeLightbox() {
+            // Reinitialize lightbox for dynamically loaded content
+            document.querySelectorAll('.media-gallery-facebook').forEach(gallery => {
+                const items = [];
+                gallery.querySelectorAll('.fb-media-item').forEach(item => {
+                    items.push({
+                        type: item.dataset.type || 'image',
+                        url: item.dataset.src
+                    });
+                });
+
+                gallery.dataset.lightboxItems = JSON.stringify(items);
+            });
+        }
+
+        showLoading() {
+            if (this.loadingOverlay) {
+                this.loadingOverlay.style.display = 'flex';
+            }
+        }
+
+        hideLoading() {
+            if (this.loadingOverlay) {
+                setTimeout(() => {
+                    this.loadingOverlay.style.display = 'none';
+                }, 200);
+            }
+        }
+    }
+
+    // =====================================================
+    // Tab Manager
+    // =====================================================
+    class TabManager {
+        constructor(ajaxLoader) {
+            this.ajaxLoader = ajaxLoader;
+            this.tabs = document.querySelectorAll('.tab-item');
+            this.currentTab = currentState?.tab || 'posts';
+
+            this.init();
+        }
+
+        init() {
+            this.tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => this.handleTabClick(e, tab));
+            });
+        }
+
+        async handleTabClick(e, tab) {
+            e.preventDefault();
+
+            const tabKey = tab.dataset.tab;
+            if (tabKey === this.currentTab)
+                return;
+
+            // Update UI
+            this.tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Update state
+            this.currentTab = tabKey;
+            if (currentState)
+                currentState.tab = tabKey;
+
+            // Update hidden input
+            const tabInput = document.getElementById('currentTab');
+            if (tabInput)
+                tabInput.value = tabKey;
+
+            // Load content
+            await this.ajaxLoader.loadContent(this.getFilterParams());
+        }
+
+        getFilterParams() {
+            const sortValue = document.getElementById('sortFilter')?.value || 'latest';
+            return {
+                tab: this.currentTab,
+                q: currentState?.search || '',
+                status: currentState?.status || '',
+                visibility: currentState?.visibility || '',
+                sort: sortValue,
+            };
+        }
+
+    }
+
+    // =====================================================
+    // Filter Manager
+    // =====================================================
+    class FilterManager {
+        constructor(ajaxLoader, tabManager) {
+            this.ajaxLoader = ajaxLoader;
+            this.tabManager = tabManager;
+
+            this.searchInput = document.getElementById('searchInput');
+            this.clearBtn = document.getElementById('clearSearch');
+            this.statusFilter = document.getElementById('statusFilter');
+            this.visibilityFilter = document.getElementById('visibilityFilter');
+            this.sortFilter = document.getElementById('sortFilter');
+            this.resetBtn = document.getElementById('resetFilters');
+
+            this.init();
+        }
+
+        init() {
+            if (!this.searchInput)
+                return;
+
+            // Search input with debounce
+            const debouncedSearch = debounce(() => this.handleSearch(), CONFIG.DEBOUNCE_DELAY);
+            this.searchInput.addEventListener('input', debouncedSearch);
+
+            // Clear search button
+            if (this.clearBtn) {
+                this.clearBtn.addEventListener('click', () => this.clearSearch());
+            }
+
+            // Update clear button visibility
+            this.searchInput.addEventListener('input', () => {
+                if (this.clearBtn) {
+                    this.clearBtn.style.display = this.searchInput.value ? 'flex' : 'none';
+                }
+            });
+
+            // Filter selects
+            [this.statusFilter, this.visibilityFilter, this.sortFilter].forEach(select => {
+                if (select) {
+                    select.addEventListener('change', () => this.handleFilterChange());
+                }
+            });
+
+            // Reset button
+            if (this.resetBtn) {
+                this.resetBtn.addEventListener('click', () => this.resetFilters());
+            }
+
+            // Initial clear button state
+            if (this.clearBtn) {
+                this.clearBtn.style.display = this.searchInput.value ? 'flex' : 'none';
+            }
+        }
+
+        async handleSearch() {
+            if (currentState) {
+                currentState.search = this.searchInput.value.trim();
+            }
+            await this.applyFilters();
+        }
+
+        async handleFilterChange() {
+            if (currentState) {
+                currentState.status = this.statusFilter?.value || '';
+                currentState.visibility = this.visibilityFilter?.value || '';
+                currentState.sort = this.sortFilter?.value || 'latest';
+            }
+            await this.applyFilters();
+        }
+
+        async applyFilters() {
+            const params = {
+                tab: this.tabManager.currentTab,
+                q: this.searchInput?.value.trim() || '',
+                status: this.statusFilter?.value || '',
+                visibility: this.visibilityFilter?.value || '',
+                sort: this.sortFilter?.value || 'latest'
+            };
+
+            await this.ajaxLoader.loadContent(params);
+        }
+
+        clearSearch() {
+            if (this.searchInput) {
+                this.searchInput.value = '';
+                this.searchInput.focus();
+                if (this.clearBtn) {
+                    this.clearBtn.style.display = 'none';
+                }
+                if (currentState) {
+                    currentState.search = '';
+                }
+                this.applyFilters();
+            }
+        }
+
+        resetFilters() {
+            if (this.searchInput)
+                this.searchInput.value = '';
+            if (this.statusFilter)
+                this.statusFilter.value = '';
+            if (this.visibilityFilter)
+                this.visibilityFilter.value = '';
+            if (this.sortFilter)
+                this.sortFilter.value = 'latest';
+            if (this.clearBtn)
+                this.clearBtn.style.display = 'none';
+
+            if (currentState) {
+                currentState.search = '';
+                currentState.status = '';
+                currentState.visibility = '';
+                currentState.sort = 'latest';
+            }
+
+            this.applyFilters();
+        }
+    }
+
+    // =====================================================
+    // Delete Functionality
+    // =====================================================
+    class DeleteManager {
+        constructor(toastManager) {
+            this.toast = toastManager;
+            this.modal = null;
+            this.deleteUrl = null;
+
+            this.initModal();
+            this.attachEventListeners();
+        }
+
+        initModal() {
+            const modalEl = document.getElementById('deleteConfirmModal');
+            if (!modalEl)
+                return;
+
+            this.modal = new bootstrap.Modal(modalEl);
+            this.confirmBtn = document.getElementById('confirmDeleteBtn');
+            this.confirmText = document.getElementById('deleteConfirmText');
+        }
+
+        attachEventListeners() {
+            // Use event delegation for dynamically loaded content
+            document.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.js-delete-post');
+                if (deleteBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleDeleteClick(deleteBtn);
+                }
+            });
+
+            if (this.confirmBtn) {
+                this.confirmBtn.addEventListener('click', () => this.confirmDelete());
+            }
+        }
+
+        handleDeleteClick(btn) {
+            this.deleteUrl = btn.getAttribute('data-delete-url');
+            const title = btn.getAttribute('data-post-title') || 'this post';
+
+            if (this.confirmText) {
+                this.confirmText.textContent = `You are about to delete "${title}". This action cannot be undone.`;
+            }
+
+            this.modal?.show();
+        }
+
+        async confirmDelete() {
+            if (!this.deleteUrl || !this.confirmBtn)
+                return;
+
+            this.setButtonState(true);
+
+            try {
+                const response = await fetch(this.deleteUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success !== false) {
+                    this.toast.success('Post deleted successfully.');
+                    this.modal?.hide();
+
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 600);
+                } else {
+                    throw new Error(data.message || 'Failed to delete post');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                this.toast.error(error.message || 'Failed to delete post. Please try again.');
+                this.setButtonState(false);
+            }
+        }
+
+        setButtonState(loading) {
+            if (!this.confirmBtn)
+                return;
+
+            this.confirmBtn.disabled = loading;
+
+            if (loading) {
+                this.confirmBtn.innerHTML = `
+          <span class="spinner-border spinner-border-sm me-2"></span>
           Deleting...
         `;
-      } else {
-        this.confirmBtn.innerHTML = `
+            } else {
+                this.confirmBtn.innerHTML = `
           <i class="bi bi-trash me-1"></i> Delete
         `;
-      }
-    }
-  }
-
-  // =====================================================
-  // Filter & Sort System
-  // =====================================================
-  class FilterManager {
-    constructor() {
-      this.grid = document.getElementById('mpPostGrid');
-      this.searchInput = document.getElementById('mpSearchInput');
-      this.sortSelect = document.getElementById('mpSortSelect');
-      this.applyBtn = document.getElementById('mpApplyClientFilter');
-      this.resetBtn = document.getElementById('mpResetClientFilter');
-
-      this.allRows = [];
-      
-      if (this.grid && this.applyBtn && this.resetBtn) {
-        this.init();
-      }
-    }
-
-    /**
-     * Initialize filter system
-     */
-    init() {
-      // Store all posts
-      this.allRows = Array.from(this.grid.querySelectorAll('.mp-rowpost'));
-
-      // Add fade-in animation
-      this.allRows.forEach((row, index) => {
-        row.style.animationDelay = `${index * 50}ms`;
-        row.classList.add('mp-fade-in');
-      });
-
-      // Attach event listeners
-      this.applyBtn.addEventListener('click', () => this.applyFilters());
-      this.resetBtn.addEventListener('click', () => this.resetFilters());
-
-      // Real-time search
-      if (this.searchInput) {
-        const debouncedSearch = debounce(() => this.applyFilters(), CONFIG.DEBOUNCE_DELAY);
-        this.searchInput.addEventListener('input', debouncedSearch);
-      }
-    }
-
-    /**
-     * Apply filters and sorting
-     */
-    applyFilters() {
-      const query = (this.searchInput?.value || '').trim().toLowerCase();
-      const sortBy = this.sortSelect?.value || 'latest';
-
-      // Filter posts
-      let filtered = this.allRows.filter(row => {
-        if (!query) return true;
-        
-        const title = row.getAttribute('data-post-title') || '';
-        const excerpt = row.getAttribute('data-post-excerpt') || '';
-        
-        return title.includes(query) || excerpt.includes(query);
-      });
-
-      // Sort posts
-      filtered = this.sortPosts(filtered, sortBy);
-
-      // Update display
-      this.updateDisplay(filtered);
-    }
-
-    /**
-     * Sort posts
-     */
-    sortPosts(posts, sortBy) {
-      return posts.sort((a, b) => {
-        const aCreated = parseInt(a.getAttribute('data-post-created') || '0', 10);
-        const bCreated = parseInt(b.getAttribute('data-post-created') || '0', 10);
-        const aViews = parseInt(a.getAttribute('data-post-views') || '0', 10);
-        const bViews = parseInt(b.getAttribute('data-post-views') || '0', 10);
-        const aLikes = parseInt(a.getAttribute('data-post-likes') || '0', 10);
-        const bLikes = parseInt(b.getAttribute('data-post-likes') || '0', 10);
-
-        switch(sortBy) {
-          case 'oldest':
-            return aCreated - bCreated;
-          case 'most_viewed':
-            return bViews - aViews;
-          case 'most_liked':
-            return bLikes - aLikes;
-          case 'latest':
-          default:
-            return bCreated - aCreated;
+            }
         }
-      });
     }
 
-    /**
-     * Update display
-     */
-    updateDisplay(posts) {
-      // Clear grid
-      this.grid.innerHTML = '';
+    // =====================================================
+    // Lightbox Integration
+    // =====================================================
+    window.openLightbox = function (index) {
+        const gallery = event.target.closest('.media-gallery-facebook');
+        if (!gallery)
+            return;
 
-      // Show empty state if no results
-      if (posts.length === 0) {
-        this.showEmptyState();
-        return;
-      }
-
-      // Add filtered posts with staggered animation
-      posts.forEach((post, index) => {
-        post.style.animationDelay = `${index * 30}ms`;
-        post.classList.add('mp-fade-in');
-        this.grid.appendChild(post);
-      });
-    }
-
-    /**
-     * Show empty state
-     */
-    showEmptyState() {
-      const empty = document.createElement('div');
-      empty.className = 'mp-empty mp-fade-in';
-      empty.innerHTML = `
-        <div class="mp-empty__icon">
-          <i class="bi bi-search"></i>
-        </div>
-        <div class="mp-empty__title">No results found</div>
-        <div class="mp-empty__text">
-          Try adjusting your search terms or reset the filters to see all posts.
-        </div>
-        <button class="btn btn-primary mp-btn-pill mt-3" onclick="document.getElementById('mpResetClientFilter').click()">
-          <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Filters
-        </button>
-      `;
-      this.grid.appendChild(empty);
-    }
-
-    /**
-     * Reset filters
-     */
-    resetFilters() {
-      if (this.searchInput) this.searchInput.value = '';
-      if (this.sortSelect) this.sortSelect.value = 'latest';
-
-      this.grid.innerHTML = '';
-      this.allRows.forEach((row, index) => {
-        row.style.animationDelay = `${index * 30}ms`;
-        row.classList.add('mp-fade-in');
-        this.grid.appendChild(row);
-      });
-    }
-  }
-
-  // =====================================================
-  // Lightbox Integration
-  // =====================================================
-  class LightboxManager {
-    constructor() {
-      this.instance = null;
-      this.init();
-    }
-
-    /**
-     * Initialize lightbox
-     */
-    init() {
-      // Check for MediaLightbox
-      if (typeof window.MediaLightbox === 'function') {
-        this.instance = new window.MediaLightbox();
-      } else if (typeof MediaLightbox === 'function') {
-        this.instance = new MediaLightbox();
-      }
-
-      if (this.instance) {
-        this.attachEventListeners();
-      }
-    }
-
-    /**
-     * Attach lightbox event listeners
-     */
-    attachEventListeners() {
-      const lightboxItems = document.querySelectorAll('[data-lightbox="true"]');
-
-      lightboxItems.forEach(el => {
-        // Click event
-        el.addEventListener('click', (e) => {
-          e.preventDefault();
-          this.openLightbox(el);
-        });
-
-        // Keyboard accessibility
-        el.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            this.openLightbox(el);
-          }
-        });
-      });
-    }
-
-    /**
-     * Open lightbox
-     */
-    openLightbox(element) {
-      const group = element.getAttribute('data-group') || 'default';
-      const groupElements = Array.from(
-        document.querySelectorAll(`[data-lightbox="true"][data-group="${CSS.escape(group)}"]`)
-      );
-
-      const items = groupElements
-        .map(node => ({
-          type: node.getAttribute('data-type') || 'image',
-          src: node.getAttribute('data-src')
-        }))
-        .filter(item => item.src);
-
-      const index = groupElements.indexOf(element);
-
-      if (typeof this.instance.open === 'function') {
-        this.instance.open(items, Math.max(0, index));
-      } else if (typeof this.instance.show === 'function') {
-        this.instance.show(items, Math.max(0, index));
-      }
-    }
-  }
-
-  // =====================================================
-  // Smooth Scroll Enhancement
-  // =====================================================
-  function enhanceSmoothScroll() {
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function(e) {
-        const href = this.getAttribute('href');
-        if (href === '#') return;
-
-        const target = document.querySelector(href);
-        if (target) {
-          e.preventDefault();
-          target.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
+        const items = JSON.parse(gallery.dataset.lightboxItems || '[]');
+        if (window.lightbox && items.length > 0) {
+            window.lightbox.open(items, index);
         }
-      });
-    });
-  }
+    };
 
-  // =====================================================
-  // Loading States
-  // =====================================================
-  function addLoadingStates() {
-    document.querySelectorAll('form').forEach(form => {
-      form.addEventListener('submit', function() {
-        const submitBtn = this.querySelector('[type="submit"]');
-        if (submitBtn && !submitBtn.disabled) {
-          submitBtn.disabled = true;
-          submitBtn.innerHTML = `
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            Processing...
-          `;
+    // =====================================================
+    // Initialize Application
+    // =====================================================
+    function init() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+            return;
         }
-      });
-    });
-  }
 
-  // =====================================================
-  // Intersection Observer for Animations
-  // =====================================================
-  function setupIntersectionObserver() {
-    if (!('IntersectionObserver' in window)) return;
+        console.log('🚀 My Posts - Initializing...');
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
+        try {
+            const toast = new ToastManager();
+            const ajaxLoader = new AjaxContentLoader(toast);
+            const tabManager = new TabManager(ajaxLoader);
+            const filterManager = new FilterManager(ajaxLoader, tabManager);
+            new DeleteManager(toast);
 
-    // Observe cards and posts
-    document.querySelectorAll('.mp-card, .mp-rowpost, .mp-item').forEach(el => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(20px)';
-      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-      observer.observe(el);
-    });
-  }
+            // Initialize lightbox for initial content
+            ajaxLoader.initializeLightbox();
 
-  // =====================================================
-  // Initialize Application
-  // =====================================================
-  function init() {
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-      return;
+            console.log('✅ My Posts - Initialized successfully');
+        } catch (error) {
+            console.error('❌ My Posts - Initialization error:', error);
+        }
     }
 
-    console.log('🚀 My Posts - Initializing...');
-
-    try {
-      // Initialize managers
-      const toast = new ToastManager();
-      new DeleteManager(toast);
-      new FilterManager();
-      new LightboxManager();
-
-      // Enhance interactions
-      enhanceSmoothScroll();
-      addLoadingStates();
-      setupIntersectionObserver();
-
-      console.log('✅ My Posts - Initialized successfully');
-    } catch (error) {
-      console.error('❌ My Posts - Initialization error:', error);
-    }
-  }
-
-  // Start initialization
-  init();
+    init();
 
 })();

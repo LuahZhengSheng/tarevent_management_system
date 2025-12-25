@@ -4,6 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="user-authenticated" content="{{ auth()->check() ? 'true' : 'false' }}">
 
         <!-- Payment Gateway Keys -->
         <meta name="stripe-key" content="{{ config('services.stripe.key') }}">
@@ -21,6 +22,8 @@
 
         <!-- Custom Styles -->
         @stack('styles')
+        
+        @stack('head')
     </head>
     <body class="user-site" data-theme="light">
         <!-- Navigation -->

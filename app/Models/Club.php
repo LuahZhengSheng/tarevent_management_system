@@ -22,7 +22,6 @@ class Club extends Model {
         'approved_by',
         'club_user_id',
     ];
-
     protected $casts = [
         'approved_at' => 'datetime',
     ];
@@ -71,8 +70,7 @@ class Club extends Model {
     /**
      * Boot the model.
      */
-    protected static function boot()
-    {
+    protected static function boot() {
         parent::boot();
 
         static::creating(function ($club) {
@@ -81,5 +79,11 @@ class Club extends Model {
                 $club->slug = Str::slug($club->name);
             }
         });
+    }
+
+    public function posts() {
+        return $this->belongsToMany(Post::class, 'club_posts')
+                        ->withPivot(['pinned', 'status'])
+                        ->withTimestamps();
     }
 }

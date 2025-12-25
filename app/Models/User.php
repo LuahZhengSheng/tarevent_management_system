@@ -1,7 +1,9 @@
 <?php
+
 /**
  * Author: Tang Lit Xuan
  */
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +22,10 @@ use App\Models\Traits\HasNotifications;
 use App\Models\Traits\HasEventSubscriptions;
 use App\Models\Traits\HasEventPermissions;
 use App\Models\Traits\HasForumActivity;
+use Laravel\Sanctum\HasApiTokens;
+use App\Models\PostSave;
+use App\Models\PostComment;
+use App\Models\PostLike;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -172,6 +178,13 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function postLikes() {
         return $this->hasMany(PostLike::class);
+    }
+
+    /**
+     * User's post saves / bookmarks
+     */
+    public function postSaves() {
+        return $this->hasMany(PostSave::class, 'user_id');
     }
 
     // =============================
@@ -357,5 +370,4 @@ class User extends Authenticatable implements MustVerifyEmail
     public function scopeStudents($query) {
         return $query->where('role', 'student');
     }
-
 }
