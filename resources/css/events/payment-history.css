@@ -51,7 +51,7 @@ body {
     min-height: 100vh;
 }
 
-/* Page Header - Same as Registration History */
+/* Page Header */
 .page-header-custom {
     margin-bottom: 2rem;
 }
@@ -423,6 +423,12 @@ body {
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.status-refunded, .status-completed {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--refund-color);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
 /* Modal Styles */
 .modal-content {
     background: var(--bg-primary);
@@ -594,6 +600,22 @@ body {
     font-family: 'Courier New', monospace;
     color: var(--text-secondary);
     font-size: 0.875rem;
+}
+
+.btn-refund {
+    background-color: var(--refund-color); 
+    border-color: var(--refund-color);
+    color: white;
+    transition: all 0.2s;
+}
+
+.btn-refund:hover,
+.btn-refund:focus,
+.btn-refund:active {
+    background-color: #7c3aed; 
+    border-color: #7c3aed;
+    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.25); /* 紫色光圈 */
 }
 
 /* Toast Notification */

@@ -65,11 +65,7 @@ class StoreEventRequest extends FormRequest {
                 'string',
                 'max:255',
             ],
-            'category' => [
-                'required',
-                'string',
-                Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology']),
-            ],
+            'category' => ['required', new Enum(EventCategory::class)],
             'is_public' => [
                 'required',
                 'boolean',

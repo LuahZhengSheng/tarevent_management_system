@@ -700,13 +700,6 @@
                         </div>
                     </div>
 
-                    {{-- View Registration History Button --}}
-                    {{-- <a href="{{ route('registrations.history', ['event' => $event->id]) }}" --}}
-                    class="btn btn-outline-primary w-100 mt-3">
-                    <i class="bi bi-clock-history me-2"></i>
-                    View Registration History
-                    </a>
-
                     {{-- 根据状态互斥显示 --}}
 
                     {{-- Case A: Pending Payment (未付款) --}}
@@ -879,6 +872,13 @@
                     @endif
 
                     @endif {{-- End of isRegistered check --}}
+
+                    @if(isset($hasHistory) && $hasHistory)
+                    <a href="{{ route('registrations.history', $event) }}" class="btn btn-outline-secondary w-100 mt-3">
+                        <i class="bi bi-clock-history me-2"></i>
+                        View Registration History
+                    </a>
+                    @endif
 
                 </div>
 
@@ -1370,7 +1370,6 @@
     form.submit();
     }
     });
-    
     // Refund Reason Form Validation
     $('#refundReasonForm').on('submit', function(e) {
     const reason = $('#refundReason').val().trim();

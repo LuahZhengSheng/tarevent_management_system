@@ -16,6 +16,8 @@ export default defineConfig({
                 'resources/js/forum-create.js',
                 'resources/css/my-posts.js',
                 'resources/js/media-lightbox.js',
+                'resources/css/events/payment-history.css',
+                'resources/js/events/payment-history.js'
             ],
             refresh: true,
         }),

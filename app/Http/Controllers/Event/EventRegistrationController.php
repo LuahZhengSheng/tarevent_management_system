@@ -8,6 +8,7 @@ use App\Models\EventRegistration;
 use App\Models\Payment;
 use App\Support\PhoneHelper;
 use App\Enums\ProgramType;
+use App\Enums\EventCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -346,39 +347,13 @@ class EventRegistrationController extends Controller {
         }
     }
 
-//    /**
-//     * Show payment page
-//     */
-//    public function payment(EventRegistration $registration) {
-//        // Authorization check
-//        if ($registration->user_id !== auth()->id()) {
-//            abort(403, 'Unauthorized access to this registration.');
-//        }
-//
-//        // Check if payment is required
-//        if ($registration->status !== 'pending_payment') {
-//            return redirect()
-//                            ->route('events.my')
-//                            ->with('info', 'This registration does not require payment.');
-//        }
-//
-//        $event = $registration->event;
-//
-//        // Verify event still requires payment
-//        if (!$event->is_paid) {
-//            return redirect()
-//                            ->route('events.my')
-//                            ->with('info', 'This event no longer requires payment.');
-//        }
-//
-//        return view('events.payment', compact('event', 'registration'));
-//    }
-
     /**
      * Display user's registered events (My Events page)
      */
     public function myEvents() {
-        return view('events.my-events');
+        $categories = EventCategory::values();
+
+        return view('events.my-events', compact('categories'));
     }
 
     /**
@@ -454,6 +429,34 @@ class EventRegistrationController extends Controller {
                 ];
             }
 
+            // 定义状态优先级 (数字越小越靠前)
+            $statusPriority = [
+                'ongoing' => 1,
+                'upcoming' => 2,
+                'past' => 3,
+                'cancelled' => 4,
+            ];
+
+            // 使用 Laravel Collection 进行排序
+            $sortedEvents = collect($events)->sort(function ($a, $b) use ($statusPriority) {
+                        // 1. 先按状态优先级排序
+                        $priorityA = $statusPriority[$a['status']] ?? 99;
+                        $priorityB = $statusPriority[$b['status']] ?? 99;
+
+                        if ($priorityA !== $priorityB) {
+                            return $priorityA <=> $priorityB;
+                        }
+
+                        // 2. 状态相同，按时间排序
+                        // Ongoing/Upcoming: 按开始时间 (越早越靠前)
+                        // Past: 按结束时间 (越晚越靠前，即最近结束的在前面)
+                        if ($a['status'] === 'past') {
+                            return $b['end_time'] <=> $a['end_time']; // 降序
+                        } else {
+                            return $a['start_time'] <=> $b['start_time']; // 升序
+                        }
+                    })->values()->all();
+
             // Calculate statistics
             $stats = [
                 'ongoing' => collect($events)->where('status', 'ongoing')->count(),
@@ -465,7 +468,7 @@ class EventRegistrationController extends Controller {
 
             return response()->json([
                         'success' => true,
-                        'events' => $events,
+                        'events' => $sortedEvents,
                         'stats' => $stats,
             ]);
         } catch (\Exception $e) {
@@ -647,6 +650,106 @@ class EventRegistrationController extends Controller {
         }
 
         return 'This registration cannot be cancelled at this time.';
+    }
+
+    /**
+     * Show registration history for a specific event
+     */
+    public function history(Event $event) {
+        // Check if user has any registrations for this event
+        $hasRegistrations = EventRegistration::where('event_id', $event->id)
+                ->where('user_id', auth()->id())
+                ->exists();
+
+        if (!$hasRegistrations) {
+            return redirect()
+                            ->route('events.show', $event)
+                            ->with('info', 'You have no registration history for this event.');
+        }
+
+        return view('events.registration-history', compact('event'));
+    }
+
+    /**
+     * Fetch registration history via AJAX
+     */
+    public function fetchHistory(Request $request, Event $event) {
+        try {
+            $query = EventRegistration::where('event_id', $event->id)
+                    ->where('user_id', auth()->id())
+                    ->with(['payment']);
+
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('registration_number', 'like', "%{$search}%")
+                            ->orWhere('full_name', 'like', "%{$search}%");
+                });
+            }
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Sort
+            $sort = $request->input('sort', 'recent');
+            if ($sort === 'recent') {
+                $query->orderBy('created_at', 'desc');
+            } elseif ($sort === 'oldest') {
+                $query->orderBy('created_at', 'asc');
+            }
+
+            $registrations = $query->get();
+
+            $formattedRegistrations = $registrations->map(function ($reg) {
+                return [
+            'id' => $reg->id,
+            'registration_number' => $reg->registration_number,
+            'status' => $reg->status,
+            'full_name' => $reg->full_name,
+            'email' => $reg->email,
+            'phone' => $reg->phone,
+            'student_id' => $reg->student_id,
+            'program' => $reg->program,
+            'created_at' => $reg->created_at->toISOString(),
+            'cancelled_at' => $reg->cancelled_at ? $reg->cancelled_at->toISOString() : null,
+            'payment_status' => $reg->payment ? $reg->payment->status : null,
+            'refund_status' => $reg->refund_status,
+            'payment' => $reg->payment ? [
+        'id' => $reg->payment->id,
+        'amount' => $reg->payment->amount,
+        'method' => $reg->payment->method,
+        'status' => $reg->payment->status,
+        'paid_at' => $reg->payment->paid_at ? $reg->payment->paid_at->toISOString() : null,
+        'transaction_id' => $reg->payment->transaction_id,
+        'refund_amount' => $reg->payment->refund_amount,
+        'refund_status' => $reg->payment->refund_status,
+        'refund_reason' => $reg->payment->refund_reason,
+        'refund_requested_at' => $reg->payment->refund_requested_at ? $reg->payment->refund_requested_at->toISOString() : null,
+        'refund_processed_at' => $reg->payment->refund_processed_at ? $reg->payment->refund_processed_at->toISOString() : null,
+        'refund_rejection_reason' => $reg->payment->refund_rejection_reason,
+            ] : null,
+                ];
+            });
+
+            return response()->json([
+                        'success' => true,
+                        'registrations' => $formattedRegistrations,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Fetch registration history error', [
+                'event_id' => $event->id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to fetch registration history.',
+                            ], 500);
+        }
     }
 
     /**

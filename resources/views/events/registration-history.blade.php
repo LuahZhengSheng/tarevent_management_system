@@ -144,9 +144,17 @@
             </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                
+                 <!-- 按钮 1: 支付收据 (默认隐藏) -->
                 <button type="button" class="btn btn-primary d-none" id="downloadReceiptBtn">
                     <i class="bi bi-download me-2"></i>
                     Download Receipt
+                </button>
+
+                <!-- 按钮 2: 退款收据 (默认隐藏，用不同颜色区分) -->
+                <button type="button" class="btn btn-outline-danger d-none" id="downloadRefundReceiptBtn">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>
+                    Refund Receipt
                 </button>
             </div>
         </div>
@@ -158,5 +166,14 @@
 @endpush
 
 @push('scripts')
+<script>
+    window.RegistrationHistoryConfig = {
+    eventId: {{ $event -> id }},
+            fetchUrl: "{{ route('registrations.fetchHistory', $event) }}",
+            csrfToken: "{{ csrf_token() }}"
+    };
+</script>
 @vite('resources/js/events/registration-history.js')
 @endpush
+
+@endsection

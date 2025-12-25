@@ -10,7 +10,7 @@ $(document).ready(function() {
     let currentView = 'grid';
     let currentFilters = {
         search: '',
-        status: 'upcoming',
+        status: 'all',
         category: 'all',
         payment: 'all',
         sort: 'status_date'
@@ -193,11 +193,25 @@ $(document).ready(function() {
         events.sort((a, b) => {
             switch (sortBy) {
                 case 'status_date':
-                    // Ongoing first, then upcoming, then past
+                    // 1. 先按状态优先级排序: Ongoing (0) -> Upcoming (1) -> Past (2) -> Cancelled (3)
                     const statusOrder = { ongoing: 0, upcoming: 1, past: 2, cancelled: 3 };
-                    const statusDiff = (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+                    
+                    // 获取两者的状态权重，如果状态未知给 99 (排最后)
+                    const statusA = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 99;
+                    const statusB = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 99;
+
+                    const statusDiff = statusA - statusB;
+                    
+                    // 如果状态不同，直接按状态排
                     if (statusDiff !== 0) return statusDiff;
-                    // Then by start date (earliest first)
+
+                    // 2. 如果状态相同，再按时间排序
+                    // 如果是 'past' 或 'cancelled'，按结束时间倒序 (最近结束的排前面)
+                    if (a.status === 'past' || a.status === 'cancelled') {
+                        return new Date(b.end_time) - new Date(a.end_time);
+                    }
+                    
+                    // 如果是 'ongoing' 或 'upcoming'，按开始时间正序 (最早开始的排前面)
                     return new Date(a.start_time) - new Date(b.start_time);
                 
                 case 'date_asc':
@@ -521,14 +535,14 @@ $(document).ready(function() {
     function resetFilters() {
         $('#searchInput').val('');
         $('#clearSearch').hide();
-        $('#statusFilter').val('upcoming');
+        $('#statusFilter').val('all');
         $('#categoryFilter').val('all');
         $('#paymentFilter').val('all');
         $('#sortBy').val('status_date');
         
         currentFilters = {
             search: '',
-            status: 'upcoming',
+            status: 'all',
             category: 'all',
             payment: 'all',
             sort: 'status_date'

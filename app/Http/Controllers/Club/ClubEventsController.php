@@ -15,9 +15,15 @@ class ClubEventsController extends Controller
     public function index()
     {
         // Authorization: Must be club admin
-        // if (!auth()->user()->hasRole('club')) {
-        //     abort(403, 'Only club administrators can access this page.');
-        // }
+        $user = auth()->user();
+        if (!$user || !$user->hasRole('club')) {
+            abort(403, 'Only club administrators can access this page.');
+        }
+        
+        if (!$user->club_id) {
+             // 这是一个边缘情况：有角色但没绑定社团
+             abort(403, 'Your account is not associated with any club.');
+        }
 
         return view('clubs.events.index');
     }
@@ -28,18 +34,25 @@ class ClubEventsController extends Controller
     public function fetch(Request $request)
     {
         // Authorization check
-        // if (!auth()->user()->hasRole('club')) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Unauthorized access.',
-        //     ], 403);
-        // }
-
+        $user = auth()->user();
+        
+        if (!$user || !$user->hasRole('club')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.',
+            ], 403);
+        }
+        
+        $organizerId = $user->club_id;
+        
+        if (!$organizerId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Club association not found.',
+            ], 403);
+        }
+        
         try {
-            // Get club's organizer ID
-            // $organizerId = auth()->user()->club_id;
-            $organizerId = 1; // Temporary for testing
-
             // Start query - only show events created by this club
             $query = Event::where('organizer_id', $organizerId)
                           ->where('organizer_type', 'club')
