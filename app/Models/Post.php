@@ -1,4 +1,5 @@
 <?php
+
 // app/Models/Post.php
 
 namespace App\Models;
@@ -10,9 +11,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
-class Post extends Model
-{
-    use HasFactory, SoftDeletes;
+class Post extends Model {
+
+    use HasFactory,
+        SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -29,7 +31,6 @@ class Post extends Model
         'comments_count',
         'published_at',
     ];
-
     protected $casts = [
         'media_paths' => 'array',
         'views_count' => 'integer',
@@ -40,7 +41,6 @@ class Post extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
-
     protected $attributes = [
         'status' => 'published',
         'visibility' => 'public',
@@ -56,59 +56,52 @@ class Post extends Model
     /**
      * Post belongs to a user (author)
      */
-    public function user()
-    {
+    public function user() {
         return $this->belongsTo(User::class);
     }
 
     /**
      * Alias for user()
      */
-    public function author()
-    {
+    public function author() {
         return $this->user();
     }
 
     /**
      * Post belongs to a category
      */
-    public function category()
-    {
+    public function category() {
         return $this->belongsTo(Category::class);
     }
 
     /**
      * Post has many tags (many-to-many with pivot)
      */
-    public function tags()
-    {
+    public function tags() {
         return $this->belongsToMany(Tag::class, 'post_tag')
-                    ->withPivot(['tagged_by', 'source', 'order', 'is_confirmed'])
-                    ->withTimestamps()
-                    ->orderByPivot('order', 'asc');
+                        ->withPivot(['tagged_by', 'source', 'order', 'is_confirmed'])
+                        ->withTimestamps()
+                        ->orderByPivot('order', 'asc');
     }
 
     /**
      * Post belongs to a club (optional)
      */
-    public function club()
-    {
+    public function club() {
         return $this->belongsTo(Club::class);
     }
 
     /**
      * Post has many comments
      */
-    public function comments()
-    {
+    public function comments() {
         return $this->hasMany(PostComment::class, 'post_id');
     }
 
     /**
      * Post has many likes
      */
-    public function likes()
-    {
+    public function likes() {
         return $this->hasMany(PostLike::class, 'post_id');
     }
 
@@ -119,53 +112,48 @@ class Post extends Model
     /**
      * Get all media files
      */
-    public function getMediaAttribute()
-    {
+    public function getMediaAttribute() {
         if (!$this->media_paths || !is_array($this->media_paths)) {
             return collect([]);
         }
 
         return collect($this->media_paths)->map(function ($media) {
-            return (object) [
-                'type' => $media['type'] ?? 'image',
-                'path' => $media['path'] ?? '',
-                'mime_type' => $media['mime_type'] ?? '',
-                'size' => $media['size'] ?? 0,
-                'original_name' => $media['original_name'] ?? '',
-                'url' => isset($media['path']) ? Storage::url($media['path']) : '',
-            ];
-        });
+                    return (object) [
+                        'type' => $media['type'] ?? 'image',
+                        'path' => $media['path'] ?? '',
+                        'mime_type' => $media['mime_type'] ?? '',
+                        'size' => $media['size'] ?? 0,
+                        'original_name' => $media['original_name'] ?? '',
+                        'url' => isset($media['path']) ? Storage::url($media['path']) : '',
+                    ];
+                });
     }
 
     /**
      * Get only images
      */
-    public function getImagesAttribute()
-    {
+    public function getImagesAttribute() {
         return $this->media->where('type', 'image');
     }
 
     /**
      * Get only videos
      */
-    public function getVideosAttribute()
-    {
+    public function getVideosAttribute() {
         return $this->media->where('type', 'video');
     }
 
     /**
      * Check if post has media
      */
-    public function hasMedia()
-    {
+    public function hasMedia() {
         return !empty($this->media_paths) && is_array($this->media_paths) && count($this->media_paths) > 0;
     }
 
     /**
      * Add media files to post
      */
-    public function addMedia(array $mediaFiles)
-    {
+    public function addMedia(array $mediaFiles) {
         $currentMedia = $this->media_paths ?? [];
         $this->media_paths = array_merge($currentMedia, $mediaFiles);
         $this->save();
@@ -174,8 +162,7 @@ class Post extends Model
     /**
      * Replace all media files
      */
-    public function replaceMedia(array $mediaFiles)
-    {
+    public function replaceMedia(array $mediaFiles) {
         $this->deleteMediaFiles();
         $this->media_paths = $mediaFiles;
         $this->save();
@@ -184,8 +171,7 @@ class Post extends Model
     /**
      * Delete all media files from storage
      */
-    public function deleteMediaFiles()
-    {
+    public function deleteMediaFiles() {
         if ($this->hasMedia()) {
             foreach ($this->media_paths as $media) {
                 if (isset($media['path']) && Storage::disk('public')->exists($media['path'])) {
@@ -198,16 +184,14 @@ class Post extends Model
     /**
      * Get first media file
      */
-    public function getFirstMediaAttribute()
-    {
+    public function getFirstMediaAttribute() {
         return $this->media->first();
     }
 
     /**
      * Get media count
      */
-    public function getMediaCountAttribute()
-    {
+    public function getMediaCountAttribute() {
         return $this->media->count();
     }
 
@@ -218,11 +202,10 @@ class Post extends Model
     /**
      * Sync tags with usage count tracking
      */
-    public function syncTagsWithCount(array $tagIds, $userId = null)
-    {
+    public function syncTagsWithCount(array $tagIds, $userId = null) {
         // Get old tags
         $oldTagIds = $this->tags()->pluck('tags.id')->toArray();
-        
+
         // Prepare data with metadata
         $syncData = [];
         foreach ($tagIds as $index => $tagId) {
@@ -233,10 +216,10 @@ class Post extends Model
                 'is_confirmed' => true,
             ];
         }
-        
+
         // Sync tags
         $this->tags()->sync($syncData);
-        
+
         // Update usage counts for removed tags
         $removedTagIds = array_diff($oldTagIds, $tagIds);
         if (!empty($removedTagIds)) {
@@ -244,7 +227,7 @@ class Post extends Model
                 $tag->decrementUsage();
             });
         }
-        
+
         // Update usage counts for new tags
         $newTagIds = array_diff($tagIds, $oldTagIds);
         if (!empty($newTagIds)) {
@@ -257,31 +240,30 @@ class Post extends Model
     /**
      * Attach tags by names (create if not exist)
      */
-    public function attachTagsByNames(array $tagNames, $userId = null)
-    {
+    public function attachTagsByNames(array $tagNames, $userId = null) {
         $tagIds = [];
-        
+
         foreach ($tagNames as $index => $tagName) {
             $tagName = strtolower(trim($tagName));
-            
+
             if (empty($tagName)) {
                 continue;
             }
-            
+
             // Find or create tag
             $tag = Tag::firstOrCreate(
-                ['name' => $tagName],
-                [
-                    'slug' => Str::slug($tagName),
-                    'status' => 'pending',
-                    'type' => 'community',
-                    'created_by' => $userId ?? auth()->id(),
-                ]
+                            ['name' => $tagName],
+                            [
+                                'slug' => Str::slug($tagName),
+                                'status' => 'pending',
+                                'type' => 'community',
+                                'created_by' => $userId ?? auth()->id(),
+                            ]
             );
-            
+
             $tagIds[] = $tag->id;
         }
-        
+
         // Sync tags with count update
         if (!empty($tagIds)) {
             $this->syncTagsWithCount($tagIds, $userId);
@@ -291,8 +273,7 @@ class Post extends Model
     /**
      * Reorder tags
      */
-    public function reorderTags(array $tagIds)
-    {
+    public function reorderTags(array $tagIds) {
         foreach ($tagIds as $order => $tagId) {
             $this->tags()->updateExistingPivot($tagId, ['order' => $order]);
         }
@@ -301,8 +282,7 @@ class Post extends Model
     /**
      * Confirm a suggested tag
      */
-    public function confirmTag($tagId)
-    {
+    public function confirmTag($tagId) {
         $this->tags()->updateExistingPivot($tagId, [
             'is_confirmed' => true,
             'source' => 'user_manual',
@@ -312,24 +292,21 @@ class Post extends Model
     /**
      * Get tag names as array
      */
-    public function getTagNamesAttribute()
-    {
+    public function getTagNamesAttribute() {
         return $this->tags->pluck('name')->toArray();
     }
 
     /**
      * Get only confirmed tags
      */
-    public function getConfirmedTagsAttribute()
-    {
+    public function getConfirmedTagsAttribute() {
         return $this->tags()->wherePivot('is_confirmed', true)->get();
     }
 
     /**
      * Get only suggested (unconfirmed) tags
      */
-    public function getSuggestedTagsAttribute()
-    {
+    public function getSuggestedTagsAttribute() {
         return $this->tags()->wherePivot('is_confirmed', false)->get();
     }
 
@@ -340,52 +317,46 @@ class Post extends Model
     /**
      * Scope: Only published posts
      */
-    public function scopePublished($query)
-    {
+    public function scopePublished($query) {
         return $query->where('status', 'published')
-                     ->whereNotNull('published_at')
-                     ->where('published_at', '<=', now());
+                        ->whereNotNull('published_at')
+                        ->where('published_at', '<=', now());
     }
 
     /**
      * Scope: Only draft posts
      */
-    public function scopeDraft($query)
-    {
+    public function scopeDraft($query) {
         return $query->where('status', 'draft');
     }
 
     /**
      * Scope: Only public posts
      */
-    public function scopePublic($query)
-    {
+    public function scopePublic($query) {
         return $query->where('visibility', 'public');
     }
 
     /**
      * Scope: Filter by category
      */
-    public function scopeByCategory($query, $categoryId)
-    {
+    public function scopeByCategory($query, $categoryId) {
         return $query->where('category_id', $categoryId);
     }
 
     /**
      * Scope: Filter by tag
      */
-    public function scopeByTag($query, $tagId)
-    {
+    public function scopeByTag($query, $tagId) {
         return $query->whereHas('tags', function ($q) use ($tagId) {
-            $q->where('tags.id', $tagId);
-        });
+                    $q->where('tags.id', $tagId);
+                });
     }
 
     /**
      * Scope: Filter by multiple tags (AND logic)
      */
-    public function scopeByTags($query, array $tagIds)
-    {
+    public function scopeByTags($query, array $tagIds) {
         foreach ($tagIds as $tagId) {
             $query->whereHas('tags', function ($q) use ($tagId) {
                 $q->where('tags.id', $tagId);
@@ -397,63 +368,57 @@ class Post extends Model
     /**
      * Scope: Filter by any of the tags (OR logic)
      */
-    public function scopeByAnyTag($query, array $tagIds)
-    {
+    public function scopeByAnyTag($query, array $tagIds) {
         return $query->whereHas('tags', function ($q) use ($tagIds) {
-            $q->whereIn('tags.id', $tagIds);
-        });
+                    $q->whereIn('tags.id', $tagIds);
+                });
     }
 
     /**
      * Scope: Search by title or content
      */
-    public function scopeSearch($query, $search)
-    {
+    public function scopeSearch($query, $search) {
         return $query->where(function ($q) use ($search) {
-            $q->where('title', 'like', "%{$search}%")
-              ->orWhere('content', 'like', "%{$search}%");
-        });
+                    $q->where('title', 'like', "%{$search}%")
+                            ->orWhere('content', 'like', "%{$search}%");
+                });
     }
 
     /**
      * Scope: Order by recent
      */
-    public function scopeRecent($query)
-    {
+    public function scopeRecent($query) {
         return $query->orderBy('published_at', 'desc')
-                     ->orderBy('created_at', 'desc');
+                        ->orderBy('created_at', 'desc');
     }
 
     /**
      * Scope: Order by popular (likes + comments + views)
      */
-    public function scopePopular($query)
-    {
+    public function scopePopular($query) {
         return $query->orderByRaw('(likes_count * 3 + comments_count * 2 + views_count) DESC');
     }
 
     /**
      * Scope: With full relationships
      */
-    public function scopeWithFullRelations($query)
-    {
+    public function scopeWithFullRelations($query) {
         return $query->with(['user', 'category', 'tags', 'club']);
     }
 
     /**
      * Scope: Visible to user
      */
-    public function scopeVisibleTo($query, ?User $user = null)
-    {
+    public function scopeVisibleTo($query, ?User $user = null) {
         return $query->where(function ($q) use ($user) {
-            $q->where('visibility', 'public')
-              ->orWhere(function ($subQ) use ($user) {
-                  if ($user) {
-                      $subQ->where('visibility', 'club_only')
-                           ->where('club_id', $user->club_id);
-                  }
-              });
-        });
+                    $q->where('visibility', 'public')
+                            ->orWhere(function ($subQ) use ($user) {
+                                if ($user) {
+                                    $subQ->where('visibility', 'club_only')
+                                    ->where('club_id', $user->club_id);
+                                }
+                            });
+                });
     }
 
     // =============================
@@ -463,34 +428,28 @@ class Post extends Model
     /**
      * Get post excerpt
      */
-    public function getExcerptAttribute()
-    {
+    public function getExcerptAttribute() {
         return Str::limit(strip_tags($this->content), 150);
     }
 
     /**
      * Get custom excerpt with length
      */
-    public function excerpt($length = 150)
-    {
+    public function excerpt($length = 150) {
         return Str::limit(strip_tags($this->content), $length);
     }
 
     /**
      * Get formatted date
      */
-    public function getFormattedDateAttribute()
-    {
-        return $this->published_at 
-            ? $this->published_at->format('M d, Y')
-            : $this->created_at->format('M d, Y');
+    public function getFormattedDateAttribute() {
+        return $this->published_at ? $this->published_at->format('M d, Y') : $this->created_at->format('M d, Y');
     }
 
     /**
      * Get reading time in minutes
      */
-    public function getReadTimeAttribute()
-    {
+    public function getReadTimeAttribute() {
         $wordCount = str_word_count(strip_tags($this->content));
         $minutes = ceil($wordCount / 200); // Average reading speed: 200 words/min
         return $minutes . ' min read';
@@ -499,9 +458,8 @@ class Post extends Model
     /**
      * Get status badge color
      */
-    public function getStatusColorAttribute()
-    {
-        return match($this->status) {
+    public function getStatusColorAttribute() {
+        return match ($this->status) {
             'published' => 'success',
             'draft' => 'secondary',
             default => 'secondary',
@@ -511,9 +469,8 @@ class Post extends Model
     /**
      * Get visibility badge color
      */
-    public function getVisibilityColorAttribute()
-    {
-        return match($this->visibility) {
+    public function getVisibilityColorAttribute() {
+        return match ($this->visibility) {
             'public' => 'primary',
             'club_only' => 'warning',
             default => 'secondary',
@@ -527,10 +484,10 @@ class Post extends Model
     /**
      * Check if user can edit this post
      */
-    public function canBeEditedBy(?User $user)
-    {
-        if (!$user) return false;
-        
+    public function canBeEditedBy(?User $user) {
+        if (!$user)
+            return false;
+
         if ($user->hasRole('admin')) {
             return true;
         }
@@ -545,8 +502,7 @@ class Post extends Model
     /**
      * Check if user can view this post
      */
-    public function canBeViewedBy(?User $user)
-    {
+    public function canBeViewedBy(?User $user) {
         // Drafts only visible to author and admin
         if ($this->status !== 'published') {
             return $user && $this->canBeEditedBy($user);
@@ -560,9 +516,9 @@ class Post extends Model
         // Club-only posts require membership
         if ($this->visibility === 'club_only') {
             return $user && (
-                $user->club_id === $this->club_id || 
-                $user->hasRole('admin')
-            );
+                    $user->club_id === $this->club_id ||
+                    $user->hasRole('admin')
+                    );
         }
 
         return false;
@@ -571,18 +527,16 @@ class Post extends Model
     /**
      * Increment post views
      */
-    public function incrementViews()
-    {
+    public function incrementViews() {
         $this->increment('views_count');
     }
 
     /**
      * Toggle like for user
      */
-    public function toggleLike(User $user)
-    {
+    public function toggleLike(User $user) {
         $like = $this->likes()->where('user_id', $user->id)->first();
-        
+
         if ($like) {
             $like->delete();
             $this->decrement('likes_count');
@@ -597,25 +551,24 @@ class Post extends Model
     /**
      * Check if user has liked this post
      */
-    public function isLikedBy(?User $user)
-    {
-        if (!$user) return false;
-        
+    public function isLikedBy(?User $user) {
+        if (!$user)
+            return false;
+
         return $this->likes()->where('user_id', $user->id)->exists();
     }
 
     /**
      * Publish the post
      */
-    public function publish()
-    {
+    public function publish() {
         $wasPublished = $this->status === 'published';
-        
+
         $this->update([
             'status' => 'published',
             'published_at' => $this->published_at ?? now(),
         ]);
-        
+
         // Increment category post count if newly published
         if (!$wasPublished && $this->category) {
             $this->category->incrementPostCount();
@@ -627,15 +580,14 @@ class Post extends Model
     /**
      * Save as draft
      */
-    public function saveDraft()
-    {
+    public function saveDraft() {
         $wasPublished = $this->status === 'published';
-        
+
         $this->update([
             'status' => 'draft',
             'published_at' => null,
         ]);
-        
+
         // Decrement category post count if was published
         if ($wasPublished && $this->category) {
             $this->category->decrementPostCount();
@@ -647,8 +599,7 @@ class Post extends Model
     /**
      * Get the route key for the model
      */
-    public function getRouteKeyName()
-    {
+    public function getRouteKeyName() {
         return 'slug';
     }
 
@@ -659,40 +610,37 @@ class Post extends Model
     /**
      * Get popular posts
      */
-    public static function getPopular($limit = 5)
-    {
+    public static function getPopular($limit = 5) {
         return static::published()
-            ->public()
-            ->popular()
-            ->limit($limit)
-            ->get();
+                        ->public()
+                        ->popular()
+                        ->limit($limit)
+                        ->get();
     }
 
     /**
      * Get recent posts
      */
-    public static function getRecent($limit = 10)
-    {
+    public static function getRecent($limit = 10) {
         return static::published()
-            ->public()
-            ->recent()
-            ->limit($limit)
-            ->get();
+                        ->public()
+                        ->recent()
+                        ->limit($limit)
+                        ->get();
     }
 
     // =============================
     // Boot
     // =============================
 
-    protected static function boot()
-    {
+    protected static function boot() {
         parent::boot();
 
         // Auto-generate slug when creating
         static::creating(function ($post) {
             if (empty($post->slug)) {
                 $post->slug = Str::slug($post->title);
-                
+
                 // Ensure uniqueness
                 $originalSlug = $post->slug;
                 $count = 1;
@@ -701,7 +649,7 @@ class Post extends Model
                     $count++;
                 }
             }
-            
+
             // Set published_at if publishing
             if ($post->status === 'published' && !$post->published_at) {
                 $post->published_at = now();
@@ -714,7 +662,7 @@ class Post extends Model
             if ($post->isDirty('status') && $post->status === 'published' && !$post->published_at) {
                 $post->published_at = now();
             }
-            
+
             // Clear published_at when saving as draft
             if ($post->isDirty('status') && $post->status === 'draft') {
                 $post->published_at = null;
@@ -733,12 +681,12 @@ class Post extends Model
         static::deleting(function ($post) {
             // Delete media files
             $post->deleteMediaFiles();
-            
+
             // Update category count
             if ($post->status === 'published' && $post->category) {
                 $post->category->decrementPostCount();
             }
-            
+
             // Update tag usage counts and detach
             $tagIds = $post->tags()->pluck('tags.id')->toArray();
             if (!empty($tagIds)) {
@@ -747,11 +695,21 @@ class Post extends Model
                 });
                 $post->tags()->detach();
             }
-            
+
             // Delete related comments and likes (cascade should handle this)
             // But just in case soft delete doesn't trigger cascade:
             $post->comments()->delete();
             $post->likes()->delete();
         });
+    }
+
+    public function savedByUsers() {
+        return $this->belongsToMany(User::class, 'post_saves')
+                        ->withPivot(['pinned_at', 'last_viewed_at'])
+                        ->withTimestamps();
+    }
+
+    public function saves() {
+        return $this->hasMany(\App\Models\PostSave::class, 'post_id');
     }
 }

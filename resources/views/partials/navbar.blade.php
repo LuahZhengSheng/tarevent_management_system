@@ -54,6 +54,13 @@
                         <i class="bi bi-bookmark me-1"></i>My Events
                     </a>
                 </li>
+                
+                <!-- My Posts (for authenticated users) -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('forums.my-posts') ? 'active' : '' }}" href="{{ route('forums.my-posts') }}">
+                        <i class="bi bi-bookmark me-1"></i>My Posts
+                    </a>
+                </li>
 
                 <!-- Create Event (for club admins only) -->
                 @if(auth()->user()->hasRole('club'))
@@ -120,12 +127,15 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        @if(auth()->check())
                         <img src="{{ auth()->user()->profile_photo_url }}" 
                              alt="Profile" 
                              class="rounded-circle me-2" 
                              width="32" 
-                             height="32">
+                             height="32"
+                             onerror="this.onerror=null; this.src='{{ asset('images/avatar/default-student-avatar.png') }}';">
                         <span class="d-none d-lg-inline">{{ auth()->user()->name }}</span>
+                        @endif
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                         <li>
@@ -136,7 +146,7 @@
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('home') }}">
+                            <a class="dropdown-item" href="{{ route('profile.edit') }}">
                                 <i class="bi bi-person me-2"></i>My Profile
                             </a>
                         </li>
@@ -154,7 +164,7 @@
                         @endif
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <form action="{{ route('home') }}" method="POST">
+                            <form action="{{ route('logout') }}" method="POST">
                                 @csrf
                                 <button type="submit" class="dropdown-item text-danger">
                                     <i class="bi bi-box-arrow-right me-2"></i>Logout
@@ -166,12 +176,12 @@
                 @else
                 <!-- Guest Links -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('home') }}">
+                    <a class="nav-link" href="{{ route('login') }}">
                         <i class="bi bi-box-arrow-in-right me-1"></i>Login
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('home') }}">
+                    <a class="btn btn-primary btn-sm ms-lg-2" href="{{ route('register') }}">
                         <i class="bi bi-person-plus me-1"></i>Register
                     </a>
                 </li>

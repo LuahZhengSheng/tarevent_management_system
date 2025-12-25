@@ -205,28 +205,24 @@
 .alert-success {
     background-color: var(--success-light);
     color: var(--success);
-    border-left: 4px solid var(--success);
 }
 
 /* Danger Alert */
 .alert-danger {
     background-color: var(--error-light);
     color: var(--error);
-    border-left: 4px solid var(--error);
 }
 
 /* Warning Alert */
 .alert-warning {
     background-color: var(--warning-light);
     color: #856404;
-    border-left: 4px solid var(--warning);
 }
 
 /* Info Alert */
 .alert-info {
     background-color: var(--info-light);
     color: var(--info);
-    border-left: 4px solid var(--info);
 }
 
 /* Dark Mode Adjustments */

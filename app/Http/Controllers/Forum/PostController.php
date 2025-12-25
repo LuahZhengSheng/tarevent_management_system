@@ -24,11 +24,7 @@ use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller {
 
-    /**
-     * æž„é€ å‡½æ•° - å¼ºåˆ¶ç™»å½• User ID = 1ï¼ˆä»…å¼€å‘çŽ¯å¢ƒï¼‰
-     */
     public function __construct() {
-        // å¼€å‘çŽ¯å¢ƒè‡ªåŠ¨ç™»å½• User ID = 1
         if (config('app.env') === 'local' && !Auth::check()) {
             $user = User::find(1);
             if ($user) {
@@ -233,9 +229,17 @@ class PostController extends Controller {
             'category',
             'tags',
             'club',
-            'comments' => function ($query) {
-                $query->with('user')->latest()->limit(10);
-            }
+            'comments' => function ($q) {
+                $q->whereNull('parent_id')
+                        ->with([
+                            'user',
+                            'replyTo',
+                            'replies.user',
+                            'replies.replyTo',
+                        ])
+                        ->latest()
+                        ->limit(20);
+            },
         ]);
 
         $post->loadCount(['comments', 'likes']);
@@ -518,5 +522,139 @@ class PostController extends Controller {
                         'message' => 'Failed to submit tag request. ' . $e->getMessage(),
                             ], 500);
         }
+    }
+
+    public function toggleLike(Request $request, Post $post) {
+        $user = $request->user();
+
+        // 强制后端登录校验（前端已拦，但后端也要拦）
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        // 可选：可见性校验（避免对不可见帖子点赞）
+        if (!$post->canBeViewedBy($user)) {
+            return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+        }
+
+        DB::transaction(function () use ($post, $user, &$liked) {
+            $liked = $post->toggleLike($user); // 你 Post 模型已有 toggleLike [file:2]
+        });
+
+        return response()->json([
+                    'success' => true,
+                    'liked' => $liked,
+                    'likes_count' => $post->fresh()->likes_count,
+        ]);
+    }
+
+    public function storeComment(Request $request, Post $post) {
+        $user = $request->user();
+
+        if (!$post->canBeViewedBy($user)) {
+            return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+        }
+
+        $validated = $request->validate([
+            'body' => ['nullable', 'string', 'max:2000'],
+            'parent_id' => ['nullable', 'integer', 'exists:post_comments,id'],
+            'reply_to_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'media' => ['nullable'], // files
+            'media.*' => ['file', 'max:51200'], // 50MB each; 你可按需改
+        ]);
+
+        // 至少要有 body 或 media
+        if (empty(trim($validated['body'] ?? '')) && !$request->hasFile('media')) {
+            return response()->json(['success' => false, 'message' => 'Comment cannot be empty.'], 422);
+        }
+
+        // 如果是 reply：parent 必须属于同一个 post
+        $parent = null;
+        if (!empty($validated['parent_id'])) {
+            $parent = \App\Models\PostComment::where('id', $validated['parent_id'])
+                    ->where('post_id', $post->id)
+                    ->firstOrFail();
+        }
+
+        // reply_to_user_id：默认指向 parent 作者（前端也会传，但这里兜底）
+        $replyToUserId = $validated['reply_to_user_id'] ?? ($parent?->user_id);
+
+        // 上传 media：保存结构为 [{path,type,mime_type,original_name,size}, ...]
+        $mediaPaths = [];
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                $mime = $file->getMimeType();
+                $type = str_starts_with($mime, 'video/') ? 'video' : 'image';
+                $path = $file->store('comments/media', 'public');
+
+                $mediaPaths[] = [
+                    'path' => $path,
+                    'type' => $type,
+                    'mime_type' => $mime,
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                ];
+            }
+        }
+
+        $comment = \DB::transaction(function () use ($post, $user, $parent, $replyToUserId, $validated, $mediaPaths) {
+                    $comment = \App\Models\PostComment::create([
+                                'post_id' => $post->id,
+                                'user_id' => $user->id,
+                                'parent_id' => $parent?->id,
+                                'reply_to_user_id' => $replyToUserId,
+                                'body' => $validated['body'] ?? '',
+                                'media_paths' => !empty($mediaPaths) ? $mediaPaths : null,
+                    ]);
+
+                    $post->increment('comments_count');
+
+                    return $comment;
+                });
+
+        $comment->load(['user', 'replyTo', 'replies.user', 'replies.replyTo']);
+
+        $html = view('forums.partials._comment_item', [
+            'comment' => $comment,
+            'isReply' => $comment->parent_id !== null,
+                ])->render();
+
+        return response()->json([
+                    'success' => true,
+                    'html' => $html,
+                    'totalComments' => $post->fresh()->comments_count,
+                    'comment' => [
+                        'id' => $comment->id,
+                        'parent_id' => $comment->parent_id,
+                    ],
+        ]);
+    }
+
+    public function destroyComment(Request $request, PostComment $comment) {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        if (!$comment->canBeEditedBy($user)) { // 你 PostComment 已有 canBeEditedBy [file:7]
+            return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+        }
+
+        DB::transaction(function () use ($comment) {
+            $post = $comment->post()->lockForUpdate()->first();
+            $deletedCount = 1 + $comment->replies()->count();
+
+            $comment->replies()->delete();
+            $comment->delete();
+
+            if ($post) {
+                $post->decrement('comments_count', $deletedCount);
+            }
+        });
+
+        return response()->json([
+                    'success' => true,
+                    'totalComments' => $comment->post->fresh()->comments_count,
+        ]);
     }
 }

@@ -6,15 +6,16 @@ use App\Http\Controllers\Event\EventController;
 use App\Http\Controllers\Event\EventRegistrationController;
 use App\Http\Controllers\Club\ClubEventsController;
 use App\Http\Controllers\Notification\NotificationController;
-use App\Http\Controllers\Event\PaymentController;
-use App\Http\Controllers\Webhook\StripeWebhookController;
-use App\Http\Controllers\Webhook\PayPalWebhookController;
-use App\Http\Controllers\Event\RefundController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\ProfileController;
 //use App\Http\Controllers\Forum\ForumController;
 //use App\Http\Controllers\Club\ClubController;
 //use App\Http\Controllers\User\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Club\ClubController;
 
 if (app()->environment('local')) {
     Route::get('/__debug-which-app__', function () {
@@ -50,8 +51,79 @@ if (app()->environment('local')) {
     });
 }
 
+// Test routes for club creation form
+Route::get('/test/clubs/create', function () {
+    return view('clubs.test_create');
+})->name('test.clubs.create');
+
+// Test route for admin club creation form
+Route::get('/test/admin/clubs/create', function () {
+    return view('clubs.test_admin_create');
+})->name('test.admin.clubs.create');
+
+// Test route for adding member to club
+Route::get('/test/clubs/add-member', function () {
+    return view('clubs.test_add_member');
+})->name('test.clubs.add-member');
+
+// Test route for adding member action
+Route::middleware(['auth', 'club'])->post('/test/clubs/{club}/members/{user}/add', function (\App\Models\Club $club, \App\Models\User $user, \App\Services\ClubFacade $facade) {
+    $facade->addMember($club, $user);
+    return redirect()->back()->with('success', 'Member added successfully.');
+})->name('test.clubs.members.add');
+
+// Removed: Test routes for club approval (admin-created clubs are now immediately active)
+
+// Test route for club deactivation form
+Route::get('/test/clubs/{club}/deactivate', function ($clubId) {
+    return view('clubs.test_deactivate', ['clubId' => $clubId]);
+})->name('test.clubs.deactivate');
+
+// Test route for club deactivation action
+Route::put('/test/clubs/{club}/deactivate', function ($clubId, \App\Services\ClubFacade $facade, \Illuminate\Http\Request $request) {
+    $club = \App\Models\Club::findOrFail($clubId);
+    $deactivatedBy = auth()->user() ?? \App\Models\User::first();
+    $reason = $request->input('reason');
+
+    $facade->deactivateClub($club, $deactivatedBy, $reason);
+
+    return redirect()->back()->with('success', 'Club deactivated successfully.');
+})->name('test.clubs.deactivate.store');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::middleware(['auth'])->get('/test/clubs/all', function () {
+    return view('clubs.test_all');
+})->name('clubs.test_all');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::get('/test/club-api', function () {
+    return view('test.club_api_test');
+})->name('test.club.api');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION (Simple Version)
+Route::middleware(['auth'])->get('/test/join-club-modal-simple', function () {
+    return view('test.join_club_modal_simple');
+})->name('test.join.club.modal.simple');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::middleware(['auth'])->get('/test/user-clubs-api', function () {
+    return view('test.user_clubs_api_test');
+})->name('test.user.clubs.api');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::get('/test/club-user-api', function () {
+    return view('test.club_user_api_test');
+})->name('test.club.user.api');
+
+// TEST ROUTE – REMOVE BEFORE SUBMISSION
+Route::middleware(['auth'])->get('/test/select-club-modal', function () {
+    return view('test.select_club_modal_test');
+})->name('test.select.club.modal');
+
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
+use App\Http\Controllers\Forum\CommentController;
+use App\Http\Controllers\Forum\LikeController;
 
 /*
   |--------------------------------------------------------------------------
@@ -59,27 +131,30 @@ use App\Http\Controllers\Forum\MyPostController;
   |--------------------------------------------------------------------------
  */
 
+// Load authentication routes (login, register, password reset, etc.)
+require __DIR__.'/auth.php';
+
 // Public Routes
 
 
 Route::redirect('/', '/events')->name('home');
 
-Route::get('/login', function () {
-    // 简单占位，可以改成你的登录页面
-    return view('welcome'); // 确保有 resources/views/auth/login.blade.php
-})->name('login');
+// Route::get('/login', function () {
+//     // 简单占位，可以改成你的登录页面
+//     return view('welcome'); // 确保有 resources/views/auth/login.blade.php
+// })->name('login');
 
-// Authentication Routes
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [LoginController::class, 'login']);
-    Route::get('/register', [UserController::class, 'showRegistrationForm'])->name('register');
-    Route::post('/register', [UserController::class, 'register']);
-});
+// // Authentication Routes
+// Route::middleware('guest')->group(function () {
+//     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+//     Route::post('/login', [LoginController::class, 'login']);
+//     Route::get('/register', [UserController::class, 'showRegistrationForm'])->name('register');
+//     Route::post('/register', [UserController::class, 'register']);
+// });
 
-Route::post('/logout', [LoginController::class, 'logout'])
-        ->middleware('auth')
-        ->name('logout');
+// Route::post('/logout', [LoginController::class, 'logout'])
+//     ->middleware('auth')
+//     ->name('logout');
 
 // Public Event Browsing (No Auth Required)
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
@@ -110,7 +185,7 @@ Route::post('/webhook/paypal', [PayPalWebhookController::class, 'handle'])
   |--------------------------------------------------------------------------
  */
 
-// Notification Routes 
+// Notification Routes
 Route::middleware(['auth'])->group(function () {
 
     // Notification management
@@ -156,8 +231,8 @@ Route::middleware(['auth'])->group(function () {
   | User Routes
   |--------------------------------------------------------------------------
  */
-Route::middleware(['auth', 'user', 'check.active.user'])->group(function () {
-//    
+Route::middleware(['auth', 'user'])->group(function () {
+//
 //    // User Profile Management
 //    Route::prefix('profile')->name('profile.')->group(function () {
 //        Route::get('/', [UserController::class, 'show'])->name('show');
@@ -196,120 +271,82 @@ Route::middleware(['auth', 'user', 'check.active.user'])->group(function () {
 //        Route::post('/posts', [ForumController::class, 'store'])->name('posts.store');
 //        Route::put('/posts/{post}', [ForumController::class, 'update'])->name('posts.update');
 //        Route::delete('/posts/{post}', [ForumController::class, 'destroy'])->name('posts.destroy');
-//        
+//
 //        Route::post('/posts/{post}/comments', [ForumController::class, 'storeComment'])->name('comments.store');
 //        Route::delete('/comments/{comment}', [ForumController::class, 'destroyComment'])->name('comments.destroy');
 //    });
 });
 
-//// Forum Routes - Require Authentication
-//Route::middleware(['auth', 'check.active.user'])->group(function () {
-//    
-//    // Forum Main Routes
-//    Route::prefix('forums')->name('forums.')->group(function () {
-//        
-//        // Public forum index (all users can view)
-//        Route::get('/', [PostController::class, 'index'])->name('index');
-//        
-//        // Post CRUD Operations
-//        Route::prefix('posts')->name('posts.')->group(function () {
-//            Route::get('/create', [PostController::class, 'create'])->name('create');
-//            Route::post('/', [PostController::class, 'store'])->name('store');
-//            Route::get('/{post}', [PostController::class, 'show'])->name('show');
-//            Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-//            Route::put('/{post}', [PostController::class, 'update'])->name('update');
-//            Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-//            Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-//        });
-//        
-//        // My Posts Routes
-//        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-//        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-//    });
-//});
-// Forum Routes - Public Access (No Authentication Required)
+/*
+  |--------------------------------------------------------------------------
+  | Forum Routes
+  |--------------------------------------------------------------------------
+ */
+
 Route::prefix('forums')->name('forums.')->group(function () {
 
-    // Public Forum Index
+    // Public (view only)
     Route::get('/', [PostController::class, 'index'])->name('index');
+    Route::get('/posts/{post:slug}', [PostController::class, 'show'])->name('posts.show');
 
-    // Post CRUD Operations
-    Route::prefix('posts')->name('posts.')->group(function () {
-        Route::get('/create', [PostController::class, 'create'])->name('create');
-        Route::post('/', [PostController::class, 'store'])->name('store');
-        Route::get('/{post}', [PostController::class, 'show'])->name('show');
-        Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-        Route::put('/{post}', [PostController::class, 'update'])->name('update');
-        Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-        Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-
-        // Comment Routes
-        Route::post('/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
-
-        // Like Routes
-        Route::post('/{post}/like', [LikeController::class, 'toggle'])->name('like.toggle');
-        Route::get('/{post}/likes', [LikeController::class, 'users'])->name('likes.users');
-    });
-
-    // Tag Management Routes
+    // Tags: search public, request auth
     Route::prefix('tags')->name('tags.')->group(function () {
-        // Search tags for autocomplete (AJAX)
         Route::get('/search', [PostController::class, 'searchTags'])->name('search');
-
-        // Request new tag creation (requires authentication)
         Route::post('/request', [PostController::class, 'requestTag'])
                 ->middleware('auth')
                 ->name('request');
     });
 
-    // My Posts Routes
-    Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-    Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
+    // Auth required
+    Route::middleware(['auth', 'check.active.user'])->group(function () {
 
-    // Comment Delete Route
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+        Route::prefix('posts')->name('posts.')->group(function () {
+            Route::get('/{post:slug}/edit', [PostController::class, 'edit'])->name('edit');
+            Route::put('/{post:slug}', [PostController::class, 'update'])->name('update');
+            Route::delete('/{post:slug}', [PostController::class, 'destroy'])->name('destroy');
+            Route::post('/{post:slug}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
+
+            // Comment / Reply
+            Route::post('/{post:slug}/comments', [CommentController::class, 'store'])->name('comments.store');
+
+            // 按页获取 replies，用于“View X reply”
+            Route::get('/{post:slug}/comments/{comment}/replies', [CommentController::class, 'listReplies'])
+                    ->name('comments.replies');
+
+            // 顶层评论排序（AJAX）
+            Route::get('/{post:slug}/comments/top-level', [CommentController::class, 'listTopLevel'])
+                    ->name('comments.top-level');
+
+            // Post Like
+            Route::post('/{post:slug}/like', [LikeController::class, 'toggle'])->name('like.toggle');
+            Route::get('/{post:slug}/likes', [LikeController::class, 'users'])->name('likes.users');
+
+            // Save
+            Route::post('/{post:slug}/save', [PostSaveController::class, 'toggle'])->name('save.toggle');
+
+            // Report
+            Route::post('/{post:slug}/report', [PostReportController::class, 'store'])->name('report.store');
+        });
+
+        // Comment delete
+        Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+
+        // Comment update
+        Route::put('/comments/{comment}', [CommentController::class, 'update'])
+                ->name('comments.update');
+
+        // Comment Like
+        Route::post('/comments/{comment}/like', [LikeController::class, 'toggleComment'])
+                ->name('comments.like');
+
+        Route::get('/create', [PostController::class, 'create'])->name('create');
+        Route::post('/', [PostController::class, 'store'])->name('store');
+
+        // My posts
+        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
+        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
+    });
 });
-
-//// 1) 公开的论坛首页（不需登录）
-//// 论坛所有路由暂时公开（测试用）
-//Route::prefix('forums')->name('forums.')->group(function () {
-//    
-//    // 论坛首页
-//    Route::get('/', [PostController::class, 'index'])->name('index');
-//    
-//    // 帖子相关路由
-//    Route::prefix('posts')->name('posts.')->group(function () {
-//        Route::get('/create', [PostController::class, 'create'])->name('create');
-//        Route::post('/', [PostController::class, 'store'])->name('store');
-//        Route::get('/{post}', [PostController::class, 'show'])->name('show');
-//        Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-//        Route::put('/{post}', [PostController::class, 'update'])->name('update');
-//        Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-//        Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-//    });
-//    
-//    // 我的帖子
-//    Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-//    Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-//});
-// 2) 需要登录的部分（我的帖子、发帖等）
-//Route::middleware(['auth', 'check.active.user'])->group(function () {
-//    Route::prefix('forums')->name('forums.')->group(function () {
-//
-//        Route::prefix('posts')->name('posts.')->group(function () {
-//            Route::get('/create', [PostController::class, 'create'])->name('create');
-//            Route::post('/', [PostController::class, 'store'])->name('store');
-//            Route::get('/{post}/edit', [PostController::class, 'edit'])->name('edit');
-//            Route::put('/{post}', [PostController::class, 'update'])->name('update');
-//            Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
-//            Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-//        });
-//
-//        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-//        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-//    });
-//});
-
 
 /*
   |--------------------------------------------------------------------------
@@ -363,34 +400,69 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
     });
 });
 
+// Club Management Routes
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/admin/clubs/create', function () {
+        return view('admin.clubs.create');
+    })->name('admin.clubs.create');
+    
+    Route::post('/clubs', [ClubController::class, 'store'])
+        ->name('clubs.store');
+});
+
+Route::middleware(['auth', 'club'])->group(function () {
+    Route::put(
+        '/clubs/{club}/members/{user}',
+        [ClubController::class, 'updateMemberRole']
+    )->name('clubs.members.updateRole');
+});
+
 /*
   |--------------------------------------------------------------------------
   | Admin Routes
   |--------------------------------------------------------------------------
   | Only accessible by users with 'admin' role
  */
-//Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     // Dashboard
     Route::get('/dashboard', function () {
         return view('admin.dashboard');
     })->name('dashboard');
 
     // User Management
-//    Route::prefix('users')->name('users.')->group(function () {
-//        Route::get('/', [UserController::class, 'index'])->name('index');
-//        Route::get('/{user}', [UserController::class, 'adminShow'])->name('show');
-//        Route::put('/{user}/suspend', [UserController::class, 'suspend'])->name('suspend');
-//        Route::put('/{user}/activate', [UserController::class, 'activate'])->name('activate');
-//        Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
-//    });
-    // Admin Management
-//    Route::prefix('admins')->name('admins.')->group(function () {
-//        Route::get('/', [UserController::class, 'adminsIndex'])->name('index');
-//        Route::get('/create', [UserController::class, 'createAdmin'])->name('create');
-//        Route::post('/', [UserController::class, 'storeAdmin'])->name('store');
-//        Route::delete('/{user}', [UserController::class, 'destroyAdmin'])->name('destroy');
-//    });
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::get('/create', [UserController::class, 'create'])->name('create');
+        Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{user}', [UserController::class, 'show'])->name('show');
+        Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+        Route::put('/{user}', [UserController::class, 'update'])->name('update');
+    });
+
+    // Administrator Management
+    Route::prefix('administrators')->name('administrators.')->group(function () {
+        Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/create', [AdminController::class, 'create'])->name('create');
+        Route::post('/', [AdminController::class, 'store'])->name('store');
+        Route::patch('/{admin}/toggle-status', [AdminController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{admin}', [AdminController::class, 'show'])->name('show');
+        Route::get('/{admin}/edit', [AdminController::class, 'edit'])->name('edit');
+        Route::put('/{admin}', [AdminController::class, 'update'])->name('update');
+    });
+
+    // Permission Management (Super Admin Only)
+    Route::middleware('super_admin')->prefix('permissions')->name('permissions.')->group(function () {
+        Route::get('/', [PermissionController::class, 'index'])->name('index');
+        Route::get('/{admin}/edit', [PermissionController::class, 'edit'])->name('edit');
+        Route::put('/{admin}', [PermissionController::class, 'update'])->name('update');
+    });
+
+    // Admin Profile
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+        Route::patch('/update', [ProfileController::class, 'update'])->name('update');
+    });
     // All Events Management
     Route::prefix('events')->name('events.')->group(function () {
         Route::get('/', [EventController::class, 'adminIndex'])->name('index');

@@ -4,7 +4,7 @@
 @section('title', 'Create New Post - Forum')
 
 @push('styles')
-@vite(['resources/css/forum-create.css', 'resources/css/media-lightbox.css'])
+@vite(['resources/css/forums/forum-create.css', 'resources/css/forums/media-lightbox.css'])
 @endpush
 
 @section('content')
@@ -25,7 +25,7 @@
     </section>
 
     <div class="container forum-create-container">
-        <form id="createPostForm" method="POST" action="{{ route('forums.posts.store') }}" enctype="multipart/form-data">
+        <form id="createPostForm" method="POST" action="{{ route('forums.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="forum-layout">
