@@ -10,12 +10,16 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Forum\ForumMessageController;
 //use App\Http\Controllers\Forum\ForumController;
 //use App\Http\Controllers\Club\ClubController;
 //use App\Http\Controllers\User\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Club\ClubController;
+use App\Http\Controllers\TestApiController;
+use App\Models\Club;
+use Illuminate\Http\Request;
 
 if (app()->environment('local')) {
     Route::get('/__debug-which-app__', function () {
@@ -51,6 +55,74 @@ if (app()->environment('local')) {
     });
 }
 
+// TEST ROUTE
+//Route::middleware(['auth'])->get('/test/post-feed/{club}', function (\App\Models\Club $club) {
+//    $user = auth()->user();
+//
+//    if (!$user || !$club->members()->where('users.id', $user->id)->exists()) {
+//        // 选一种：403 或 redirect
+//        abort(403); 
+////        return redirect('/somewhere')->with('error', 'Forbidden');
+//    }
+//
+//    return view('test.post_feed', compact('club'));
+//})->name('test.post-feed');
+//if (app()->environment('local')) {
+//    Route::middleware('auth')->get('/test/post-feed', function () {
+//
+//        // 这里决定“当前 club”（示例：固定 club 1）
+//        $club = \App\Models\Club::findOrFail(1);
+//
+//        return view('test.post_feed', compact('club'));
+//    })->name('test.post-feed');
+//}
+
+if (app()->environment('local')) {
+    Route::middleware('auth')->get('/test/club-forum', function (Request $request) {
+        $clubs = Club::query()
+                ->where('status', 'active')   // 如果你有 status 字段
+                ->orderBy('name')
+                ->get();
+
+        return view('test.club_forum_picker', compact('clubs'));
+    })->name('test.club-forum');
+}
+
+if (app()->environment('local')) {
+
+    Route::middleware('auth')->post('/club/select', function (Request $request) {
+        $clubId = (int) $request->input('club_id');
+        abort_if(!$clubId, 422);
+
+        $club = Club::findOrFail($clubId);
+
+        // 必须验证：用户确实是这个 club member
+        abort_unless($club->members()->where('users.id', auth()->id())->exists(), 403);
+
+        $request->session()->put('active_club_id', $club->id);
+
+        return redirect()->route('test.club_show');
+    })->name('club.select');
+}
+
+if (app()->environment('local')) {
+    Route::middleware('auth')->get('/club', function (Request $request) {
+        $clubId = (int) $request->session()->get('active_club_id');
+        abort_if(!$clubId, 404);
+
+        $club = Club::findOrFail($clubId);
+
+        // 保险：再校验一次成员
+        abort_unless($club->members()->where('users.id', auth()->id())->exists(), 403);
+
+        return view('test.club_show', compact('club'));
+    })->name('test.club_show');
+}
+
+
+Route::get('/test/forum-user-stats', [TestApiController::class, 'testForumUserStats'])
+        ->name('test.forum-user-stats');
+
 // Test routes for club creation form
 Route::get('/test/clubs/create', function () {
     return view('clubs.test_create');
@@ -73,7 +145,6 @@ Route::middleware(['auth', 'club'])->post('/test/clubs/{club}/members/{user}/add
 })->name('test.clubs.members.add');
 
 // Removed: Test routes for club approval (admin-created clubs are now immediately active)
-
 // Test route for club deactivation form
 Route::get('/test/clubs/{club}/deactivate', function ($clubId) {
     return view('clubs.test_deactivate', ['clubId' => $clubId]);
@@ -127,7 +198,7 @@ use App\Http\Controllers\Forum\LikeController;
  */
 
 // Load authentication routes (login, register, password reset, etc.)
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 // Public Routes
 Route::redirect('/', '/events')->name('home');
@@ -136,7 +207,6 @@ Route::redirect('/', '/events')->name('home');
 //     // 简单占位，可以改成你的登录页面
 //     return view('welcome'); // 确保有 resources/views/auth/login.blade.php
 // })->name('login');
-
 // // Authentication Routes
 // Route::middleware('guest')->group(function () {
 //     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -144,11 +214,9 @@ Route::redirect('/', '/events')->name('home');
 //     Route::get('/register', [UserController::class, 'showRegistrationForm'])->name('register');
 //     Route::post('/register', [UserController::class, 'register']);
 // });
-
 // Route::post('/logout', [LoginController::class, 'logout'])
 //     ->middleware('auth')
 //     ->name('logout');
-
 // Public Event Browsing (No Auth Required)
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
@@ -156,7 +224,6 @@ Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('even
 //// Public Club Browsing
 //Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
 //Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
-
 //// Public Forum Browsing
 //Route::get('/forum', [ForumController::class, 'index'])->name('forum.index');
 //Route::get('/forum/{post}', [ForumController::class, 'show'])->name('forum.show');
@@ -332,6 +399,12 @@ Route::prefix('forums')->name('forums.')->group(function () {
         // My posts
         Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
         Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
+
+        // Messages (forum_notifications)
+        Route::get('messages', [ForumMessageController::class, 'index'])->name('messages.index');
+        Route::post('messages/mark-all-read', [ForumMessageController::class, 'markAllAsRead'])->name('messages.mark-all-read');
+        Route::post('messages/{notification}/read', [ForumMessageController::class, 'markAsRead'])->name('messages.read');
+        Route::post('messages/{notification}/unread', [ForumMessageController::class, 'markAsUnread'])->name('messages.unread');
     });
 });
 
@@ -379,15 +452,15 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/clubs/create', function () {
         return view('admin.clubs.create');
     })->name('admin.clubs.create');
-    
+
     Route::post('/clubs', [ClubController::class, 'store'])
-        ->name('clubs.store');
+            ->name('clubs.store');
 });
 
 Route::middleware(['auth', 'club'])->group(function () {
     Route::put(
-        '/clubs/{club}/members/{user}',
-        [ClubController::class, 'updateMemberRole']
+            '/clubs/{club}/members/{user}',
+            [ClubController::class, 'updateMemberRole']
     )->name('clubs.members.updateRole');
 });
 

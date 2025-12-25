@@ -12,8 +12,8 @@
     <div class="container py-4">
 
         {{-- Back Navigation --}}
-        <div class="back-navigation mb-4">
-            <a href="{{ route('forums.index') }}" class="btn-back-modern">
+        <div class="mb-4">
+            <a href="{{ route('forums.index') }}" class="btn-back-clean">
                 <i class="bi bi-arrow-left"></i>
                 <span>Back to Forum</span>
             </a>
@@ -23,36 +23,36 @@
             {{-- Main Content --}}
             <div class="col-lg-8">
                 {{-- Post Card --}}
-                <article class="post-detail-card">
+                <article class="post-container-clean">
 
                     {{-- Post Header --}}
-                    <header class="post-header">
-                        <div class="post-meta-top">
-                            <div class="badges-group">
-                                <span class="badge category-badge-modern">
-                                    <i class="bi bi-folder-fill"></i>
+                    <header class="post-header-clean">
+                        <div class="post-meta-row">
+                            <div class="post-badges">
+                                <span class="badge-clean badge-category">
+                                    <i class="bi bi-folder"></i>
                                     {{ $post->category->name ?? 'Uncategorized' }}
                                 </span>
 
                                 @if($post->visibility === 'clubonly')
-                                <span class="badge visibility-badge-modern">
-                                    <i class="bi bi-lock-fill"></i> Club Only
+                                <span class="badge-clean badge-club">
+                                    <i class="bi bi-lock"></i> Club Only
                                 </span>
                                 @endif
 
                                 @if($post->status === 'draft')
-                                <span class="badge draft-badge-modern">
-                                    <i class="bi bi-pencil-fill"></i> Draft
+                                <span class="badge-clean badge-draft">
+                                    <i class="bi bi-pencil"></i> Draft
                                 </span>
                                 @endif
                             </div>
 
                             @auth
                             <div class="dropdown">
-                                <button class="btn-dropdown-modern" type="button" data-bs-toggle="dropdown">
+                                <button class="post-menu-btn" type="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-three-dots"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                <ul class="dropdown-menu dropdown-menu-end">
                                     @if($post->canBeEditedBy(auth()->user()))
                                     <li>
                                         <a class="dropdown-item" href="{{ route('forums.posts.edit', $post) }}">
@@ -78,64 +78,58 @@
                             @endauth
                         </div>
 
-                        <h1 class="post-title-modern post-title">{{ $post->title }}</h1>
+                        <h1 class="post-title-clean">{{ $post->title }}</h1>
 
-                        {{-- Author Info --}}
-                        <div class="author-section-modern">
+                        {{-- Author Info Inline --}}
+                        <div class="author-info-inline">
                             <img
                                 src="{{ $post->user->profile_photo_url ?? asset('images/default-avatar.png') }}"
                                 alt="{{ $post->user->name }}"
-                                class="author-avatar-modern"
-                                >
-                            <div class="author-details-modern">
-                                <div class="author-name-row">
-                                    <span class="author-name-modern">{{ $post->user->name }}</span>
+                                class="author-avatar-inline"
+                            >
+                            <div class="author-details-inline">
+                                <div class="author-name-inline">
+                                    <span>{{ $post->user->name }}</span>
                                     @if($post->user->hasRole('admin'))
-                                    <span class="badge role-badge-modern admin-badge-modern">Admin</span>
+                                    <span class="role-badge-inline admin-badge-inline">Admin</span>
                                     @elseif($post->user->hasRole('club'))
-                                    <span class="badge role-badge-modern club-badge-modern">Club Admin</span>
+                                    <span class="role-badge-inline club-badge-inline">Club</span>
                                     @endif
                                 </div>
 
-                                <div class="post-meta-info-modern">
-                                    <span class="meta-item-modern">
-                                        <i class="bi bi-clock"></i> {{ $post->created_at->diffForHumans() }}
-                                    </span>
-
+                                <div class="post-meta-inline">
+                                    <span>{{ $post->created_at->diffForHumans() }}</span>
+                                    
                                     @if($post->created_at != $post->updated_at)
-                                    <span class="meta-divider">•</span>
-                                    <span class="meta-item-modern">
-                                        <i class="bi bi-pencil"></i> Edited {{ $post->updated_at->diffForHumans() }}
-                                    </span>
+                                    <span class="meta-separator">•</span>
+                                    <span>Edited {{ $post->updated_at->diffForHumans() }}</span>
                                     @endif
 
                                     @if($post->club)
-                                    <span class="meta-divider">•</span>
-                                    <span class="meta-item-modern">
-                                        <i class="bi bi-people-fill"></i> {{ $post->club->name }}
-                                    </span>
+                                    <span class="meta-separator">•</span>
+                                    <span><i class="bi bi-people"></i> {{ $post->club->name }}</span>
                                     @endif
                                 </div>
                             </div>
                         </div>
 
-                        {{-- Stats Bar --}}
-                        <div class="stats-bar-modern">
-                            <div class="stat-item-modern views">
-                                <i class="bi bi-eye-fill"></i>
-                                <span>{{ number_format($post->views_count) }}</span>
+                        {{-- Stats Row --}}
+                        <div class="stats-row-clean">
+                            <div class="stat-item-clean views">
+                                <i class="bi bi-eye"></i>
+                                <span class="stat-value" id="viewsCount">{{ number_format($post->views_count) }}</span>
                             </div>
-                            <div class="stat-item-modern likes">
-                                <i class="bi bi-heart-fill"></i>
-                                <span id="likesCount">{{ number_format($post->likes_count) }}</span>
+                            <div class="stat-item-clean likes">
+                                <i class="bi bi-heart"></i>
+                                <span class="stat-value" id="likesCount">{{ number_format($post->likes_count) }}</span>
                             </div>
-                            <div class="stat-item-modern comments">
-                                <i class="bi bi-chat-fill"></i>
-                                <span id="commentsCount">{{ number_format($post->comments_count) }}</span>
+                            <div class="stat-item-clean comments">
+                                <i class="bi bi-chat"></i>
+                                <span class="stat-value" id="commentsCount">{{ number_format($post->comments_count) }}</span>
                             </div>
-                            <div class="stat-item-modern read-time">
-                                <i class="bi bi-book-fill"></i>
-                                <span>{{ $post->read_time }}</span>
+                            <div class="stat-item-clean time">
+                                <i class="bi bi-clock"></i>
+                                <span class="stat-value">{{ $post->read_time }}</span>
                             </div>
                         </div>
                     </header>
@@ -181,21 +175,18 @@
                     @endif
 
                     {{-- Post Content --}}
-                    <div class="post-content-modern">
+                    <div class="post-content-clean">
                         {!! $post->content !!}
                     </div>
 
                     {{-- Tags --}}
                     @if($post->tags && count($post->tags) > 0)
-                    <div class="tags-section-modern">
-                        <div class="tags-label-modern">
-                            <i class="bi bi-tags-fill"></i>
-                            <span>Tags</span>
-                        </div>
-                        <div class="tags-list-modern">
+                    <div class="tags-section-clean">
+                        <div class="tags-label-clean">Tags</div>
+                        <div class="tags-list-clean">
                             @foreach($post->tags as $tag)
-                            <a href="{{ route('forums.index', ['tag' => $tag->slug]) }}" class="tag-badge-modern">
-                                <i class="bi bi-hash"></i> {{ $tag->name }}
+                            <a href="{{ route('forums.index', ['tag' => $tag->slug]) }}" class="tag-item-clean">
+                                {{ $tag->name }}
                             </a>
                             @endforeach
                         </div>
@@ -203,10 +194,10 @@
                     @endif
 
                     {{-- Actions Footer --}}
-                    <footer class="post-actions-modern">
-                        <div class="actions-left">
+                    <footer class="actions-row-clean">
+                        <div class="actions-group">
                             <button type="button"
-                                    class="action-btn-modern btn-like-modern {{ ($hasLiked ?? false) ? 'active' : '' }}"
+                                    class="action-btn-clean like-btn {{ ($hasLiked ?? false) ? 'active' : '' }}"
                                     id="likeBtn"
                                     data-post-slug="{{ $post->slug }}"
                                     data-requires-auth="true">
@@ -214,33 +205,32 @@
                                 <span>{{ ($hasLiked ?? false) ? 'Liked' : 'Like' }}</span>
                             </button>
 
-                            <button type="button" class="action-btn-modern btn-comment-modern"
+                            <button type="button" class="action-btn-clean comment-btn"
                                     onclick="document.getElementById('commentInput')?.focus()">
-                                <i class="bi bi-chat-dots"></i>
+                                <i class="bi bi-chat"></i>
                                 <span>Comment</span>
                             </button>
 
-                            <button type="button" class="action-btn-modern btn-save-modern"
+                            <button type="button" class="action-btn-clean save-btn"
                                     id="saveBtn" data-post-id="{{ $post->id }}" data-requires-auth="true">
                                 <i class="bi bi-bookmark"></i>
                                 <span>Save</span>
                             </button>
 
-                            <button type="button" class="action-btn-modern btn-share-modern" id="shareBtn">
+                            <button type="button" class="action-btn-clean share-btn" id="shareBtn">
                                 <i class="bi bi-share"></i>
                                 <span>Share</span>
                             </button>
                         </div>
 
-                        <div class="actions-right">
-                            <span class="post-date-modern">
-                                <i class="bi bi-calendar3"></i> {{ $post->created_at->format('M d, Y') }}
-                            </span>
+                        <div class="post-date-clean">
+                            <i class="bi bi-calendar3"></i>
+                            <span>{{ $post->created_at->format('M d, Y') }}</span>
                         </div>
                     </footer>
                 </article>
 
-                {{-- Comments Section --}}
+                {{-- Comments Section (Keep Original) --}}
                 <section class="comments-section-modern" id="commentsSection">
                     <div class="comments-header-modern">
                         <h3 class="comments-title-modern">
@@ -253,7 +243,6 @@
                                 <span>Most recent</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
-
 
                             <div class="comments-sort-menu" id="commentsSortMenu">
                                 <button type="button"
@@ -277,19 +266,16 @@
                         </div>
                     </div>
 
-
                     {{-- Composer shell (top) --}}
                     <div class="comment-composer-shell" id="commentComposerShell">
-                        {{-- Sentinel: NEVER moved, used by IntersectionObserver --}}
                         <div id="commentComposerSentinel" style="height:1px;"></div>
 
-                        {{-- Top composer: this node will be MOVED into stickyInner when needed --}}
                         <div class="comment-form-modern comment-form--flat" id="commentFormTop">
                             <img
                                 src="{{ auth()->check() ? (auth()->user()->profilePhotoUrl ?? asset('images/default-avatar.png')) : asset('images/default-avatar.png') }}"
                                 class="comment-avatar-modern"
                                 alt="You"
-                                />
+                            >
 
                             <div class="comment-input-wrapper-modern">
                                 <textarea
@@ -298,7 +284,7 @@
                                     rows="1"
                                     placeholder="Write a comment..."
                                     @guest disabled @endguest
-                                    ></textarea>
+                                ></textarea>
 
                                 <div class="comment-composer-actions">
                                     <button
@@ -307,7 +293,7 @@
                                         data-emoji-target="commentInput"
                                         data-requires-auth="true"
                                         title="Emoji"
-                                        >
+                                    >
                                         <i class="bi bi-emoji-smile"></i>
                                     </button>
 
@@ -318,7 +304,7 @@
                                         accept="image/*,video/*"
                                         hidden
                                         @guest disabled @endguest
-                                        />
+                                    />
 
                                     <button
                                         type="button"
@@ -326,7 +312,7 @@
                                         id="commentCameraBtn"
                                         data-requires-auth="true"
                                         title="Photo/Video"
-                                        >
+                                    >
                                         <i class="bi bi-camera"></i>
                                     </button>
 
@@ -337,7 +323,7 @@
                                         data-requires-auth="true"
                                         title="Post"
                                         disabled
-                                        >
+                                    >
                                         <i class="bi bi-send-fill"></i>
                                     </button>
                                 </div>
@@ -359,7 +345,7 @@
                         @endforelse
                     </div>
 
-                    {{-- Sticky container (BOTTOM of comments section) --}}
+                    {{-- Sticky container --}}
                     <div class="comment-form-sticky-wrap" id="commentFormStickyWrap" aria-hidden="true">
                         <div class="comment-form-sticky-inner" id="commentFormStickyInner"></div>
                     </div>
@@ -368,13 +354,51 @@
 
             {{-- Sidebar --}}
             <aside class="col-lg-4">
-                {{-- 你原本 sidebar 保持不动（此处略，继续用你原 show.blade.php 的 sidebar 内容即可） --}}
-                {{-- 为避免你本地 sidebar 与这里不同，请把你原本 sidebar 代码粘回这里 --}}
+                {{-- Author Card --}}
+                <div class="author-sidebar-card">
+                    <div class="author-card-header">
+                        <img
+                            src="{{ $post->user->profile_photo_url ?? asset('images/default-avatar.png') }}"
+                            alt="{{ $post->user->name }}"
+                            class="author-card-avatar"
+                        >
+                        <h3 class="author-card-name">{{ $post->user->name }}</h3>
+                        <p class="author-card-role">
+                            @if($post->user->hasRole('admin'))
+                                <i class="bi bi-shield-check"></i> Administrator
+                            @elseif($post->user->hasRole('club'))
+                                <i class="bi bi-people"></i> Club Admin
+                            @else
+                                <i class="bi bi-person"></i> Member
+                            @endif
+                        </p>
+                    </div>
+
+                    <div class="author-stats-grid">
+                        <div class="author-stat-item">
+                            <span class="author-stat-value">{{ $post->user->posts_count ?? 42 }}</span>
+                            <span class="author-stat-label">Posts</span>
+                        </div>
+                        <div class="author-stat-item">
+                            <span class="author-stat-value">{{ $post->user->total_likes ?? 1248 }}</span>
+                            <span class="author-stat-label">Likes</span>
+                        </div>
+                        <div class="author-stat-item">
+                            <span class="author-stat-value">{{ $post->user->saves_count ?? 356 }}</span>
+                            <span class="author-stat-label">Saves</span>
+                        </div>
+                    </div>
+                </div>
             </aside>
         </div>
 
     </div>
 </div>
+
+{{-- Dark Mode Toggle --}}
+<button class="dark-mode-toggle" id="darkModeToggle" aria-label="Toggle dark mode">
+    <i class="bi bi-moon-stars"></i>
+</button>
 
 {{-- Delete Confirmation Modal --}}
 <div class="modal fade" id="deleteModal" tabindex="-1">
@@ -397,6 +421,40 @@
         </div>
     </div>
 </div>
+
+
+<script>
+// Dark Mode Toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const html = document.documentElement;
+    const icon = darkModeToggle.querySelector('i');
+    
+    // Check saved preference
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+    updateIcon(savedTheme);
+    
+    darkModeToggle.addEventListener('click', function() {
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateIcon(newTheme);
+    });
+    
+    function updateIcon(theme) {
+        if (theme === 'dark') {
+            icon.classList.remove('bi-moon-stars');
+            icon.classList.add('bi-sun');
+        } else {
+            icon.classList.remove('bi-sun');
+            icon.classList.add('bi-moon-stars');
+        }
+    }
+});
+</script>
 @endsection
 
 @push('scripts')

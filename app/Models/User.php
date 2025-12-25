@@ -1,14 +1,15 @@
 <?php
+
 /**
  * Author: Tang Lit Xuan
  */
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
-
 // Import all traits
 use App\Models\Traits\HasRoles;
 use App\Models\Traits\HasPermissions;
@@ -18,10 +19,15 @@ use App\Models\Traits\HasNotifications;
 use App\Models\Traits\HasEventSubscriptions;
 use App\Models\Traits\HasEventPermissions;
 use App\Models\Traits\HasForumActivity;
+use Laravel\Sanctum\HasApiTokens;
+use App\Models\PostSave;
+use App\Models\PostComment;
+use App\Models\PostLike;
 
-class User extends Authenticatable implements MustVerifyEmail
-{
-    use HasFactory,
+class User extends Authenticatable implements MustVerifyEmail {
+
+    use HasApiTokens,
+        HasFactory,
         Notifiable,
         HasRoles,
         HasPermissions,
@@ -164,6 +170,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(PostLike::class);
     }
 
+    /**
+     * User's post saves / bookmarks
+     */
+    public function postSaves() {
+        return $this->hasMany(PostSave::class, 'user_id');
+    }
+
     // =============================
     // Scopes
     // =============================
@@ -179,5 +192,4 @@ class User extends Authenticatable implements MustVerifyEmail
     public function scopeStudents($query) {
         return $query->where('role', 'student');
     }
-
 }
