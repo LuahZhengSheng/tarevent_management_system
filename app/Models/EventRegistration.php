@@ -29,16 +29,28 @@ class EventRegistration extends Model {
         'checked_in_at', // Datetime of check-in
         'cancelled_at', // Datetime when cancelled
         'cancellation_reason', // Why wemaias it cancelled
-        'refund_status', // null / pending / processed / rejected
-        'refund_processed_at', // When refund was processed
+        'refund_status', // null / pending / completed / failed
+        'refund_requested_at', // When user/system requested refund
+        'refund_completed_at', // When refund actually completedF
+        'refund_auto_reject_at',
+        'expires_at',
+        'payment_gateway',
+        'gateway_session_id',
+        'expiry_notified',
         'notes', // Admin notes
+        'ip_address',
+        'user_agent',
     ];
     protected $casts = [
         'registration_data' => 'array',
         'attended' => 'boolean',
         'checked_in_at' => 'datetime',
         'cancelled_at' => 'datetime',
-        'refund_processed_at' => 'datetime',
+        'refund_requested_at' => 'datetime',
+        'refund_completed_at' => 'datetime',
+        'refund_auto_reject_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'expiry_notified' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -78,6 +90,16 @@ class EventRegistration extends Model {
         return $query->where('attended', true);
     }
 
+    public function scopeExpired($query) {
+        return $query->where('status', 'pending_payment')
+                        ->where('expires_at', '<', now());
+    }
+
+    public function scopePendingNotExpired($query) {
+        return $query->where('status', 'pending_payment')
+                        ->where('expires_at', '>', now());
+    }
+
     // Accessors
     public function getIsConfirmedAttribute() {
         return $this->status === 'confirmed';
@@ -94,25 +116,73 @@ class EventRegistration extends Model {
     public function getIsRefundEligibleAttribute() {
         // Refund eligible if:
         // 1. Event allows refunds
+        if (!$this->event || !$this->event->refund_available) {
+            return false;
+        }
+
         // 2. Registration is cancelled
-        // 3. Cancellation was before event start
-        return $this->event->refund_available &&
-                $this->is_cancelled &&
-                $this->cancelled_at < $this->event->start_time;
+        if ($this->status !== 'cancelled') {
+            return false;
+        }
+
+        // 3. Has payment
+        if (!$this->payment) {
+            return false;
+        }
+
+        // 4. Payment was successful
+        if ($this->payment->status !== 'success') {
+            return false;
+        }
+
+        // 5. Cancellation was before event start
+        if (!$this->cancelled_at || $this->cancelled_at >= $this->event->start_time) {
+            return false;
+        }
+
+        // 6. Not already refunded
+        if ($this->payment->refund_status === 'completed') {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function getIsExpiredAttribute() {
+        return $this->expires_at && $this->expires_at < now();
+    }
+
+    public function getRemainingTimeAttribute() {
+        if (!$this->expires_at || $this->is_expired) {
+            return null;
+        }
+
+        return $this->expires_at->diff(now());
+    }
+
+    public function getRemainingMinutesAttribute() {
+        if (!$this->expires_at || $this->is_expired) {
+            return 0;
+        }
+
+        return now()->diffInMinutes($this->expires_at, false);
     }
 
     // Methods
     public function cancel($reason = null) {
-        $this->update([
+        $data = [
             'status' => 'cancelled',
             'cancelled_at' => now(),
             'cancellation_reason' => $reason,
-        ]);
+        ];
 
-        // If eligible for refund, mark for processing
+        // 如果符合退款条件，标记为 refund pending，并记录请求时间
         if ($this->is_refund_eligible && $this->payment) {
-            $this->update(['refund_status' => 'pending']);
+            $data['refund_status'] = 'pending';
+            $data['refund_requested_at'] = now();
         }
+
+        $this->update($data);
     }
 
     /**
@@ -167,6 +237,24 @@ class EventRegistration extends Model {
      */
     public function belongsToUser($userId) {
         return $this->user_id == $userId;
+    }
+
+    /**
+     * Check if refund request is pending approval
+     */
+    public function getIsRefundPendingAttribute() {
+        return $this->refund_status === 'pending' &&
+                $this->payment &&
+                $this->payment->refund_status === 'pending';
+    }
+
+    /**
+     * Check if refund should be auto-rejected
+     */
+    public function shouldAutoRejectRefund() {
+        return $this->refund_status === 'pending' &&
+                $this->refund_auto_reject_at &&
+                now()->gte($this->refund_auto_reject_at);
     }
 
     public function confirm() {

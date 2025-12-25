@@ -22,6 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
                         'check.event.owner' => \App\Http\Middleware\CheckEventOwner::class,
                         'check.active.user' => CheckActiveUser::class,
                     ]);
+
+                    // 在这里添加排除 CSRF 的路由
+                    $middleware->validateCsrfTokens(except: [
+                        'webhook/stripe', // 这里填你的 URI，不需要写完整域名
+                        'webhook/paypal', // 如果有 Paypal webhook 也加在这里
+                    ]);
                 })
                 ->withExceptions(function (Exceptions $exceptions): void {
                     //

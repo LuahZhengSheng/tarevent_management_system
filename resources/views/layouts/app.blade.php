@@ -4,6 +4,10 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+
+        <!-- Payment Gateway Keys -->
+        <meta name="stripe-key" content="{{ config('services.stripe.key') }}">
+
         <title>@yield('title', 'TAREvent Management System')</title>
 
         <!-- Bootstrap CSS -->

@@ -6,6 +6,10 @@ use App\Http\Controllers\Event\EventController;
 use App\Http\Controllers\Event\EventRegistrationController;
 use App\Http\Controllers\Club\ClubEventsController;
 use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Event\PaymentController;
+use App\Http\Controllers\Webhook\StripeWebhookController;
+use App\Http\Controllers\Webhook\PayPalWebhookController;
+use App\Http\Controllers\Event\RefundController;
 //use App\Http\Controllers\Forum\ForumController;
 //use App\Http\Controllers\Club\ClubController;
 //use App\Http\Controllers\User\UserController;
@@ -56,9 +60,9 @@ use App\Http\Controllers\Forum\MyPostController;
  */
 
 // Public Routes
-Route::get('/', function () {
-    return view('events.index');
-})->name('home');
+
+
+Route::redirect('/', '/events')->name('home');
 
 Route::get('/login', function () {
     // 简单占位，可以改成你的登录页面
@@ -74,21 +78,31 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])
-    ->middleware('auth')
-    ->name('logout');
+        ->middleware('auth')
+        ->name('logout');
 
 // Public Event Browsing (No Auth Required)
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
 //Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
-
 //// Public Club Browsing
 //Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
 //Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
-
 //// Public Forum Browsing
 //Route::get('/forum', [ForumController::class, 'index'])->name('forum.index');
 //Route::get('/forum/{post}', [ForumController::class, 'show'])->name('forum.show');
+
+/*
+  |--------------------------------------------------------------------------
+  | Webhook Routes
+  |--------------------------------------------------------------------------
+ */
+
+Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle'])
+        ->name('webhook.stripe');
+
+Route::post('/webhook/paypal', [PayPalWebhookController::class, 'handle'])
+        ->name('webhook.paypal');
 
 /*
   |--------------------------------------------------------------------------
@@ -142,7 +156,7 @@ Route::middleware(['auth'])->group(function () {
   | User Routes
   |--------------------------------------------------------------------------
  */
-Route::middleware(['auth', 'user'])->group(function () {
+Route::middleware(['auth', 'user', 'check.active.user'])->group(function () {
 //    
 //    // User Profile Management
 //    Route::prefix('profile')->name('profile.')->group(function () {
@@ -162,14 +176,6 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::post('/events/register/validate-field', [EventRegistrationController::class, 'validateField'])
             ->name('events.register.validate');
 
-    // Payment Routes
-    Route::prefix('registrations')->name('registrations.')->group(function () {
-        Route::get('/{registration}/payment', [EventRegistrationController::class, 'payment'])
-                ->name('payment');
-        Route::post('/{registration}/pay', [EventRegistrationController::class, 'pay'])
-                ->name('pay');
-    });
-
     // My Events (User's registered events)
     Route::get('/my-events', [EventRegistrationController::class, 'myEvents'])
             ->name('events.my');
@@ -181,6 +187,9 @@ Route::middleware(['auth', 'user'])->group(function () {
     // Cancel Registration
     Route::delete('/registrations/{registration}', [EventRegistrationController::class, 'destroy'])
             ->name('registrations.cancel');
+    
+    // Registration History
+    Route::view('/registration-history', 'events.registration-history');
 
 //    // Forum Interactions (Authenticated Users)
 //    Route::prefix('forum')->name('forum.')->group(function () {
@@ -218,13 +227,12 @@ Route::middleware(['auth', 'user'])->group(function () {
 //        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
 //    });
 //});
-
 // Forum Routes - Public Access (No Authentication Required)
 Route::prefix('forums')->name('forums.')->group(function () {
-    
+
     // Public Forum Index
     Route::get('/', [PostController::class, 'index'])->name('index');
-    
+
     // Post CRUD Operations
     Route::prefix('posts')->name('posts.')->group(function () {
         Route::get('/create', [PostController::class, 'create'])->name('create');
@@ -234,34 +242,33 @@ Route::prefix('forums')->name('forums.')->group(function () {
         Route::put('/{post}', [PostController::class, 'update'])->name('update');
         Route::delete('/{post}', [PostController::class, 'destroy'])->name('destroy');
         Route::post('/{post}/toggle-status', [PostController::class, 'toggleStatus'])->name('toggle-status');
-        
+
         // Comment Routes
         Route::post('/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
-        
+
         // Like Routes
         Route::post('/{post}/like', [LikeController::class, 'toggle'])->name('like.toggle');
         Route::get('/{post}/likes', [LikeController::class, 'users'])->name('likes.users');
     });
-    
+
     // Tag Management Routes
     Route::prefix('tags')->name('tags.')->group(function () {
         // Search tags for autocomplete (AJAX)
         Route::get('/search', [PostController::class, 'searchTags'])->name('search');
-        
+
         // Request new tag creation (requires authentication)
         Route::post('/request', [PostController::class, 'requestTag'])
-            ->middleware('auth')
-            ->name('request');
+                ->middleware('auth')
+                ->name('request');
     });
-    
+
     // My Posts Routes
     Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
     Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
-    
+
     // Comment Delete Route
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 });
-
 
 //// 1) 公开的论坛首页（不需登录）
 //// 论坛所有路由暂时公开（测试用）
@@ -285,8 +292,6 @@ Route::prefix('forums')->name('forums.')->group(function () {
 //    Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
 //    Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
 //});
-
-
 // 2) 需要登录的部分（我的帖子、发帖等）
 //Route::middleware(['auth', 'check.active.user'])->group(function () {
 //    Route::prefix('forums')->name('forums.')->group(function () {
@@ -334,6 +339,19 @@ Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(fu
             ->name('registrations.index');
     Route::get('/{event}/registrations/export', [EventRegistrationController::class, 'export'])
             ->name('registrations.export');
+
+    // Refund management (organizer/admin)
+    Route::get('/refunds/manage', [RefundController::class, 'manage'])
+            ->name('refunds.manage');
+
+    Route::get('/refunds/fetch', [RefundController::class, 'fetchRequests'])
+            ->name('refunds.fetch');
+
+    Route::post('/refunds/{payment}/approve', [RefundController::class, 'approve'])
+            ->name('refunds.approve');
+
+    Route::post('/refunds/{payment}/reject', [RefundController::class, 'reject'])
+            ->name('refunds.reject');
 });
 
 Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(function () {
@@ -395,6 +413,62 @@ Route::prefix('admin')->name('admin.')->group(function () {
 //        Route::get('/registrations', [EventRegistrationController::class, 'registrationsReport'])->name('registrations');
 //        Route::get('/payments', [EventRegistrationController::class, 'paymentsReport'])->name('payments');
 //    });
+});
+
+/*
+  |--------------------------------------------------------------------------
+  | Payment Routes
+  |--------------------------------------------------------------------------
+ */
+
+Route::middleware(['auth', 'user', 'check.active.user'])->group(function () {
+    // Payment Page (Checkout Landing Page)
+    Route::get('/registrations/{registration}/payment', [PaymentController::class, 'payment'])
+            ->name('registrations.payment');
+
+    // ----------------------------------------------------
+    // Stripe Payment Routes
+    // ----------------------------------------------------
+    // 创建 Stripe Session (用于跳转到 Stripe 托管页面)
+//    Route::post('/payments/stripe/create-session', [PaymentController::class, 'createStripeSession'])
+//        ->name('payments.stripe.create-session');
+//
+//    // Stripe 成功回调页面 (从 Stripe 跳转回来)
+//    Route::get('/payments/stripe/success', [PaymentController::class, 'stripeSuccess'])
+//        ->name('payments.stripe.success');
+    // Stripe PaymentIntent 路由
+    Route::post('/payments/create-intent', [PaymentController::class, 'createIntent'])
+            ->name('payments.create-intent');
+
+    // 确认支付
+    Route::post('/payments/confirm', [PaymentController::class, 'confirmPayment'])
+            ->name('payments.confirm');
+
+    // ----------------------------------------------------
+    // PayPal Payment Routes
+    // ----------------------------------------------------
+    Route::post('/payments/paypal/create-order', [PaymentController::class, 'createPayPalOrder'])
+            ->name('payments.paypal.create-order');
+
+    Route::post('/payments/paypal/capture-order', [PaymentController::class, 'capturePayPalOrder'])
+            ->name('payments.paypal.capture-order');
+
+    // Payment receipt and refund routes
+    Route::get('/registrations/{registration}/receipt', [PaymentController::class, 'receipt'])
+            ->name('registrations.receipt');
+
+    Route::get('/registrations/{registration}/check-status', [PaymentController::class, 'checkStatus'])
+            ->name('registrations.check-status');
+
+    Route::get('/payments/{payment}/download-receipt', [RefundController::class, 'downloadReceipt'])
+            ->name('payments.download-receipt');
+
+    Route::get('/payments/{payment}/download-refund-receipt', [RefundController::class, 'downloadRefundReceipt'])
+            ->name('payments.download-refund-receipt');
+
+    // Refund request (user)
+    Route::post('/registrations/{registration}/request-refund', [RefundController::class, 'request'])
+            ->name('registrations.request-refund');
 });
 
 Route::get('/events/{event}', [EventController::class, 'show'])->name('events.show');

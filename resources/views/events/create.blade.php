@@ -69,7 +69,7 @@
         <div id="alert-container"></div>
 
         <!-- Main Form -->
-        <form id="eventForm" enctype="multipart/form-data" novalidate>
+        <form id="eventForm" action="{{ route('events.store') }}" enctype="multipart/form-data" novalidate>
             @csrf
 
             <div class="row g-4">
@@ -630,6 +630,9 @@
 @endpush
 
 @push('scripts')
+<script>
+    window.eventsIndexUrl = "{{ route('events.index') }}";
+</script>
 @vite('resources/js/validation/phone-validator.js')
 @vite('resources/js/events/event-form-preview.js')
 @vite('resources/js/events/event-form-validation.js')

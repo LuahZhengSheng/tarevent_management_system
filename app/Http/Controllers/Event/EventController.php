@@ -70,7 +70,7 @@ class EventController extends Controller {
         // Check if user can view this event
         if ($event->status === 'draft' || $event->status === 'pending') {
             // Only organizer/admin can view draft/pending events
-            if (!auth()->check() || (!$event->isOrganizer(auth()->user()) && !auth()->user()->isAdmin())) {
+            if (!auth()->check() || (!$event->canBeEditedBy(auth()->user()) && !auth()->user()->isAdmin())) {
                 abort(404);
             }
         }
@@ -82,7 +82,9 @@ class EventController extends Controller {
         if (auth()->check()) {
             $userRegistration = $event->registrations()
                     ->where('user_id', auth()->id())
-                    ->whereIn('status', ['confirmed', 'pending_payment', 'cancelled'])
+                    // 优先找 active 的，如果找不到再找 cancelled 的
+                    ->orderByRaw("FIELD(status, 'confirmed', 'pending_payment', 'cancelled')")
+                    ->latest() // 或者取最新的
                     ->first();
             $isRegistered = $userRegistration !== null && $userRegistration->status !== 'cancelled';
         }
@@ -224,9 +226,6 @@ class EventController extends Controller {
                                     ]
                     );
 
-//                    $data['poster_path'] = $imageResult['path'];
-//                    $data['poster_thumbnail_path'] = $imageResult['thumbnail_path'] ?? null;
-
                     $data['poster_path'] = $imageResult['filename'];
                     $data['poster_thumbnail_path'] = $imageResult['thumbnail_filename'] ?? null;
 
@@ -240,23 +239,15 @@ class EventController extends Controller {
                         'error' => $e->getMessage(),
                     ]);
 
-                    if ($request->expectsJson()) {
-                        return response()->json([
-                                    'success' => false,
-                                    'message' => 'Failed to process poster image: ' . $e->getMessage(),
-                                        ], 422);
-                    }
-
-                    return back()
-                                    ->withInput()
-                                    ->withErrors(['poster' => 'Failed to process poster image: ' . $e->getMessage()]);
+                    return response()->json([
+                                'success' => false,
+                                'message' => 'Failed to process poster image: ' . $e->getMessage(),
+                                    ], 422);
                 }
             }
 
             // Set organizer info
-            // Uncomment when auth is ready
-            // $data['organizer_id'] = $request->club_id ?? auth()->user()->club_id;
-            $data['organizer_id'] = $request->club_id ?? 1; // Temporary
+            $data['organizer_id'] = $request->club_id ?? 1; // 之后可换成 auth()->user()->club_id
             $data['organizer_type'] = 'club';
 
             $data['allow_cancellation'] = $request->has('allow_cancellation') ? 1 : 0;
@@ -273,7 +264,7 @@ class EventController extends Controller {
 
             $data['status'] = $request->input('status', 'draft');
 
-            // Create event using ORM (prepared statement automatically)
+            // Create event using ORM
             $event = Event::create($data);
 
             // Handle custom registration fields
@@ -301,22 +292,18 @@ class EventController extends Controller {
                 'user_id' => auth()->id() ?? 'guest',
             ]);
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                            'success' => true,
-                            'message' => $request->status === 'published' ? 'Event published successfully! 🎉' : 'Event saved as draft.',
-                            'redirect' => route('events.show', $event),
-                            'event' => [
-                                'id' => $event->id,
-                                'title' => $event->title,
-                                'slug' => $event->slug ?? $event->id,
-                            ]
-                ]);
-            }
-
-            return redirect()
-                            ->route('events.show', $event)
-                            ->with('success', 'Event created successfully! 🎉');
+            // RESTful API：只返回 JSON
+            return response()->json([
+                        'success' => true,
+                        'message' => $request->status === 'published' ? 'Event published successfully!' : 'Event saved as draft.',
+                        'data' => [
+                            'id' => $event->id,
+                            'title' => $event->title,
+                            'slug' => $event->slug ?? $event->id,
+                            'status' => $event->status,
+                            'show_url' => route('events.show', $event),
+                        ],
+                            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -326,19 +313,156 @@ class EventController extends Controller {
                 'user_id' => auth()->id() ?? 'guest',
             ]);
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to create event. Please try again.',
-                            'error' => config('app.debug') ? $e->getMessage() : null,
-                                ], 500);
-            }
-
-            return back()
-                            ->withInput()
-                            ->withErrors(['error' => 'Failed to create event. Please try again.']);
+            return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to create event. Please try again.',
+                        'error' => config('app.debug') ? $e->getMessage() : null,
+                            ], 500);
         }
     }
+
+//    public function store(StoreEventRequest $request) {
+//        // Authorization already checked in StoreEventRequest
+//
+//        try {
+//            DB::beginTransaction();
+//
+//            $data = $request->validated();
+//
+//            // Handle poster upload using MediaHelper
+//            if ($request->hasFile('poster')) {
+//                try {
+//                    $imageResult = MediaHelper::processImage(
+//                                    $request->file('poster'),
+//                                    'event-posters',
+//                                    [
+//                                        'max_size' => 5,
+//                                        'max_width' => 2000,
+//                                        'max_height' => 2000,
+//                                        'quality' => 85,
+//                                        'format' => 'jpg',
+//                                        'compress' => true,
+//                                        'thumbnail' => true,
+//                                        'thumbnail_width' => 400,
+//                                        'thumbnail_height' => 300,
+//                                    ]
+//                    );
+//
+////                    $data['poster_path'] = $imageResult['path'];
+////                    $data['poster_thumbnail_path'] = $imageResult['thumbnail_path'] ?? null;
+//
+//                    $data['poster_path'] = $imageResult['filename'];
+//                    $data['poster_thumbnail_path'] = $imageResult['thumbnail_filename'] ?? null;
+//
+//                    Log::info('Event poster processed', [
+//                        'path' => $imageResult['path'],
+//                        'size' => $imageResult['metadata']['size'],
+//                        'dimensions' => $imageResult['metadata']['width'] . 'x' . $imageResult['metadata']['height'],
+//                    ]);
+//                } catch (\Exception $e) {
+//                    Log::error('Poster upload failed', [
+//                        'error' => $e->getMessage(),
+//                    ]);
+//
+//                    if ($request->expectsJson()) {
+//                        return response()->json([
+//                                    'success' => false,
+//                                    'message' => 'Failed to process poster image: ' . $e->getMessage(),
+//                                        ], 422);
+//                    }
+//
+//                    return back()
+//                                    ->withInput()
+//                                    ->withErrors(['poster' => 'Failed to process poster image: ' . $e->getMessage()]);
+//                }
+//            }
+//
+//            // Set organizer info
+//            // Uncomment when auth is ready
+//            // $data['organizer_id'] = $request->club_id ?? auth()->user()->club_id;
+//            $data['organizer_id'] = $request->club_id ?? 1; // Temporary
+//            $data['organizer_type'] = 'club';
+//
+//            $data['allow_cancellation'] = $request->has('allow_cancellation') ? 1 : 0;
+//            $data['require_emergency_contact'] = $request->has('require_emergency_contact') ? 1 : 0;
+//            $data['require_dietary_info'] = $request->has('require_dietary_info') ? 1 : 0;
+//            $data['require_special_requirements'] = $request->has('require_special_requirements') ? 1 : 0;
+//            $data['registration_instructions'] = $request->registration_instructions;
+//
+//            $data['created_by'] = auth()->id() ?? 1; // Temporary
+//            // Handle tags if present
+//            if ($request->has('tags') && is_array($request->tags)) {
+//                $data['tags'] = $request->tags;
+//            }
+//
+//            $data['status'] = $request->input('status', 'draft');
+//
+//            // Create event using ORM (prepared statement automatically)
+//            $event = Event::create($data);
+//
+//            // Handle custom registration fields
+//            if ($request->has('custom_fields') && is_array($request->custom_fields)) {
+//                foreach ($request->custom_fields as $index => $fieldData) {
+//                    EventRegistrationField::create([
+//                        'event_id' => $event->id,
+//                        'name' => $fieldData['name'],
+//                        'label' => $fieldData['label'],
+//                        'type' => $fieldData['type'],
+//                        'required' => isset($fieldData['required']) ? 1 : 0,
+//                        'options' => isset($fieldData['options']) ? json_decode($fieldData['options'], true) : null,
+//                        'order' => $index,
+//                        'placeholder' => $fieldData['placeholder'] ?? null,
+//                        'help_text' => $fieldData['help_text'] ?? null,
+//                    ]);
+//                }
+//            }
+//
+//            DB::commit();
+//
+//            Log::info('Event created successfully', [
+//                'event_id' => $event->id,
+//                'title' => $event->title,
+//                'user_id' => auth()->id() ?? 'guest',
+//            ]);
+//
+//            if ($request->expectsJson()) {
+//                return response()->json([
+//                            'success' => true,
+//                            'message' => $request->status === 'published' ? 'Event published successfully! 🎉' : 'Event saved as draft.',
+//                            'redirect' => route('events.show', $event),
+//                            'event' => [
+//                                'id' => $event->id,
+//                                'title' => $event->title,
+//                                'slug' => $event->slug ?? $event->id,
+//                            ]
+//                ]);
+//            }
+//
+//            return redirect()
+//                            ->route('events.show', $event)
+//                            ->with('success', 'Event created successfully! 🎉');
+//        } catch (\Exception $e) {
+//            DB::rollBack();
+//
+//            Log::error('Event creation failed', [
+//                'error' => $e->getMessage(),
+//                'trace' => $e->getTraceAsString(),
+//                'user_id' => auth()->id() ?? 'guest',
+//            ]);
+//
+//            if ($request->expectsJson()) {
+//                return response()->json([
+//                            'success' => false,
+//                            'message' => 'Failed to create event. Please try again.',
+//                            'error' => config('app.debug') ? $e->getMessage() : null,
+//                                ], 500);
+//            }
+//
+//            return back()
+//                            ->withInput()
+//                            ->withErrors(['error' => 'Failed to create event. Please try again.']);
+//        }
+//    }
 
     /**
      * Fetch public events via AJAX
@@ -402,7 +526,7 @@ class EventController extends Controller {
             // Format events for response
             $formattedEvents = $events->map(function ($event) {
                 $registrationsCount = $event->registrations()
-                        ->where('status', 'confirmed')
+                        ->where('status', ['confirmed', 'pending_payment'])
                         ->count();
 
                 $remainingSeats = null;
@@ -783,6 +907,15 @@ class EventController extends Controller {
                 }
             }
 
+            // 处理正在付款的（直接取消，不退款因为钱还没进）
+            $event->registrations()
+                    ->where('status', 'pending_payment')
+                    ->update([
+                        'status' => 'cancelled',
+                        'cancelled_at' => now(),
+                        'cancelled_reason' => 'Event cancelled by organizer'
+            ]);
+
             DB::commit();
 
             Log::info('Event cancelled', [
@@ -827,82 +960,75 @@ class EventController extends Controller {
     public function publish(Request $request, Event $event) {
         $user = auth()->user();
 
-        // 1. 授权：只能 admin 或该 event 的 organizer club
-        if (
-                !$user ||
-                !(
-                $user->isAdmin() ||
-                ($user->hasRole('club') &&
-                $event->organizer_type === 'club' &&
-                $event->organizer_id === $user->club_id)
-                )
-        ) {
+        // --------------------------------------------------------
+        // 1. 权限检查 (Permission Check)
+        // --------------------------------------------------------
+        // (逻辑：Admin 可以，或者该 Event 的 Club Organizer 可以)
+        if (!$event->canBeEditedBy($user)) {
             if ($request->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => 'You do not have permission to publish this event.',
-                                ], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
             abort(403, 'You do not have permission to publish this event.');
         }
 
-        // 2. 只能从 draft/pending 状态发布（和前端按钮显示逻辑对应）
-        if (!in_array($event->status, ['draft', 'pending'], true)) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => 'Only draft or pending events can be published.',
-                                ], 422);
-            }
-
-            return back()->withErrors([
-                        'error' => 'Only draft or pending events can be published.',
-            ]);
+        // --------------------------------------------------------
+        // 2. 状态检查 (Status Check)
+        // --------------------------------------------------------
+        // 只有 draft (草稿) 或 pending (待审核) 状态才能被发布
+        if (!in_array($event->status, ['draft', 'pending'])) {
+            return back()->with('error', 'Only draft or pending events can be published. Current status: ' . $event->status);
         }
 
+        // --------------------------------------------------------
+        // 3. 逻辑/时间检查 (Logic Validation)
+        // --------------------------------------------------------
+        $now = now();
+
+        // 规则 1: Registration Start 必须在未来 (不能发布已经开始报名的活动)
+        if ($event->registration_start_time <= $now) {
+            return back()->with('error', 'Cannot publish: Registration start time must be in the future. Please update the dates.');
+        }
+
+        // 规则 2: Registration End 必须在 Registration Start 后面
+        // (Edit 时应该已经防住了，但双重保险)
+        if ($event->registration_end_time <= $event->registration_start_time) {
+            return back()->with('error', 'Invalid dates: Registration end time must be after start time.');
+        }
+
+        // 规则 3: Event Start 必须在 Registration End 后面
+        // (你的核心规则：必须等报名彻底结束，活动才开始)
+        if ($event->start_time <= $event->registration_end_time) {
+            return back()->with('error', 'Invalid dates: Event cannot start before registration ends.');
+        }
+
+        // 规则 4: Event End 必须在 Event Start 后面
+        if ($event->end_time <= $event->start_time) {
+            return back()->with('error', 'Invalid dates: Event end time must be after start time.');
+        }
+
+        // C. 检查是否有海报，因为首页没海报很难看
+//        if (empty($event->poster_path)) {
+//            // 如果你的 UI 允许没海报，这行可以注释掉
+//            return back()->with('error', 'Please upload a poster before publishing.');
+//        }
+        // --------------------------------------------------------
+        // 4. 执行发布 (Action)
+        // --------------------------------------------------------
         try {
-            // 如果你在 Event 模型里有 publish() 方法，可以用那一个
-            if (method_exists($event, 'publish')) {
-                $event->publish();
-            } else {
-                $event->status = 'published';
-                $event->published_at = now();
-                $event->save();
-            }
-
-            Log::info('Event published', [
-                'event_id' => $event->id,
-                'user_id' => $user->id,
+            // 直接变 Published，跳过审核
+            $event->update([
+                'status' => 'published',
+                'published_at' => $now, // 记录这一刻的时间
             ]);
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                            'success' => true,
-                            'message' => 'Event published successfully! 🎉',
-                            'redirect' => route('events.show', $event),
-                ]);
-            }
+            // 记录日志
+            \Log::info('Event published', ['event_id' => $event->id, 'user_id' => $user->id]);
 
-            return redirect()
-                            ->route('events.show', $event)
-                            ->with('success', 'Event published successfully! 🎉');
-        } catch (\Throwable $e) {
-            Log::error('Event publish failed', [
-                'event_id' => $event->id,
-                'user_id' => $user?->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to publish event.',
-                                ], 500);
-            }
-
-            return back()->withErrors([
-                        'error' => 'Failed to publish event.',
-            ]);
+            return redirect()->route('events.show', $event)
+                            ->with('success', 'Event published successfully! Registration is now open.');
+        } catch (\Exception $e) {
+            \Log::error('Event publish failed', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to publish event. Please try again.');
         }
     }
 
