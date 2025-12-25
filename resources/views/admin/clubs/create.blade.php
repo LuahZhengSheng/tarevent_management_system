@@ -551,6 +551,7 @@
                 program: document.getElementById('accountProgram').value.trim() || 'N/A',
                 status: 'active', // Always active, hidden field
                 club_id: clubId, // Link to the created club
+                timestamp: Math.floor(Date.now() / 1000), // Unix timestamp in seconds (required by API)
             };
 
             const accountResponse = await fetch('/api/v1/club-users', {

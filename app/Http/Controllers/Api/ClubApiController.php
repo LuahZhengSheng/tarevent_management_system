@@ -6,11 +6,93 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\User;
 use App\Services\ClubFacade;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ClubApiController extends Controller
 {
+    /**
+     * Format API response according to IFA standards
+     * 
+     * @param string $status Status code: S (Success), F (Fail), E (Error)
+     * @param array $data Response data
+     * @param int $httpStatusCode HTTP status code
+     * @param string|null $message Optional message
+     * @return JsonResponse
+     */
+    protected function formatResponse(
+        string $status,
+        array $data = [],
+        int $httpStatusCode = 200,
+        ?string $message = null
+    ): JsonResponse {
+        // IFA standard fields
+        $response = [
+            'status' => $status,  // IFA standard: S/F/E
+            'timestamp' => now()->format('Y-m-d H:i:s'),  // IFA standard: YYYY-MM-DD HH:MM:SS
+        ];
+
+        // Backward compatibility: add 'success' field for existing frontend code
+        $response['success'] = ($status === 'S');
+
+        if ($message !== null) {
+            $response['message'] = $message;
+        }
+
+        // Merge data into response
+        $response = array_merge($response, $data);
+
+        return response()->json($response, $httpStatusCode);
+    }
+
+    /**
+     * Format successful response (Status: S)
+     * 
+     * @param array $data Response data
+     * @param string|null $message Optional success message
+     * @param int $httpStatusCode HTTP status code (default: 200)
+     * @return JsonResponse
+     */
+    protected function successResponse(
+        array $data = [],
+        ?string $message = null,
+        int $httpStatusCode = 200
+    ): JsonResponse {
+        return $this->formatResponse('S', $data, $httpStatusCode, $message);
+    }
+
+    /**
+     * Format failure response (Status: F)
+     * 
+     * @param string $message Failure message
+     * @param array $data Additional data
+     * @param int $httpStatusCode HTTP status code (default: 400)
+     * @return JsonResponse
+     */
+    protected function failResponse(
+        string $message,
+        array $data = [],
+        int $httpStatusCode = 400
+    ): JsonResponse {
+        return $this->formatResponse('F', $data, $httpStatusCode, $message);
+    }
+
+    /**
+     * Format error response (Status: E)
+     * 
+     * @param string $message Error message
+     * @param array $data Additional data
+     * @param int $httpStatusCode HTTP status code (default: 500)
+     * @return JsonResponse
+     */
+    protected function errorResponse(
+        string $message,
+        array $data = [],
+        int $httpStatusCode = 500
+    ): JsonResponse {
+        return $this->formatResponse('E', $data, $httpStatusCode, $message);
+    }
     /**
      * Create a new club.
      *
@@ -40,11 +122,9 @@ class ClubApiController extends Controller
         // Pass validated data to ClubFacade
         $club = $facade->createClub($validated, auth()->user());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Club created successfully.',
+        return $this->successResponse([
             'data' => $club,
-        ], 201);
+        ], 'Club created successfully.', 201);
     }
 
     /**
@@ -68,11 +148,9 @@ class ClubApiController extends Controller
         // Update club
         $club->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Club updated successfully.',
+        return $this->successResponse([
             'data' => $club->fresh(),
-        ], 200);
+        ], 'Club updated successfully.');
     }
 
     /**
@@ -97,9 +175,7 @@ class ClubApiController extends Controller
 
             $joinRequest = $facade->requestJoin($club, auth()->user(), $description);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Join request submitted successfully.',
+            return $this->successResponse([
                 'data' => [
                     'id' => $joinRequest->id,
                     'club_id' => $joinRequest->club_id,
@@ -107,13 +183,11 @@ class ClubApiController extends Controller
                     'status' => $joinRequest->status,
                     'description' => $joinRequest->description,
                 ],
-            ], 200);
+            ], 'Join request submitted successfully.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
+            return $this->failResponse($e->getMessage(), [
                 'error' => $e->getMessage(),
-            ], 400);
+            ]);
         }
     }
 
@@ -127,12 +201,15 @@ class ClubApiController extends Controller
      */
     public function approveJoin(Club $club, User $user, ClubFacade $facade)
     {
-        $facade->approveJoin($club, $user, auth()->user());
+        try {
+            $facade->approveJoin($club, $user, auth()->user());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Join request approved successfully.',
-        ], 200);
+            return $this->successResponse([], 'Join request approved successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -145,12 +222,15 @@ class ClubApiController extends Controller
      */
     public function rejectJoin(Club $club, User $user, ClubFacade $facade)
     {
-        $facade->rejectJoin($club, $user, auth()->user());
+        try {
+            $facade->rejectJoin($club, $user, auth()->user());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Join request rejected successfully.',
-        ], 200);
+            return $this->successResponse([], 'Join request rejected successfully.');
+        } catch (\Exception $e) {
+            return $this->failResponse($e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -175,6 +255,7 @@ class ClubApiController extends Controller
                     'logo' => $club->logo,
                     'status' => $club->status,
                     'member_role' => $club->pivot->role ?? null,
+                    'is_member' => ($club->pivot->status ?? 'active') === 'active',
                     'joined_at' => $club->pivot->created_at ?? null,
                     'creator' => $club->creator ? [
                         'id' => $club->creator->id,
@@ -188,16 +269,64 @@ class ClubApiController extends Controller
                 ];
             });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Clubs retrieved successfully.',
+        return $this->successResponse([
             'data' => [
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'total_clubs' => $clubs->count(),
                 'clubs' => $clubs,
             ],
-        ], 200);
+        ], 'Clubs retrieved successfully.');
+    }
+
+    /**
+     * Get a single club by ID with membership status for the authenticated user.
+     *
+     * @param Club $club
+     * @param ClubFacade $facade
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Club $club, ClubFacade $facade)
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return $this->failResponse('Unauthenticated.', [], 401);
+        }
+
+        // Check if user is a member (only for student role)
+        $isMember = false;
+        if ($user->role === 'student') {
+            $isMember = $facade->hasMember($club, $user);
+        }
+
+        // Load relationships
+        $club->load(['creator', 'clubUser']);
+
+        return $this->successResponse([
+            'data' => [
+                'id' => $club->id,
+                'name' => $club->name,
+                'slug' => $club->slug,
+                'description' => $club->description,
+                'email' => $club->email,
+                'phone' => $club->phone,
+                'logo' => $club->logo ? Storage::url($club->logo) : null,
+                'status' => $club->status,
+                'is_member' => $isMember,
+                'creator' => $club->creator ? [
+                    'id' => $club->creator->id,
+                    'name' => $club->creator->name,
+                ] : null,
+                'club_user' => $club->clubUser ? [
+                    'id' => $club->clubUser->id,
+                    'name' => $club->clubUser->name,
+                    'email' => $club->clubUser->email,
+                ] : null,
+                'created_at' => $club->created_at?->toISOString(),
+                'updated_at' => $club->updated_at?->toISOString(),
+            ],
+        ], 'Club retrieved successfully.');
     }
 
     /**
@@ -212,10 +341,7 @@ class ClubApiController extends Controller
         $user = auth()->user();
         
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return $this->failResponse('Unauthenticated.', [], 401);
         }
 
         // Get all active clubs
@@ -256,14 +382,12 @@ class ClubApiController extends Controller
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Available clubs retrieved successfully.',
+        return $this->successResponse([
             'data' => [
                 'clubs' => $clubsWithStatus,
                 'total' => $clubsWithStatus->count(),
             ],
-        ], 200);
+        ], 'Available clubs retrieved successfully.');
     }
 }
 

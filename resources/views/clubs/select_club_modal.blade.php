@@ -825,6 +825,12 @@
             if (backBtn) backBtn.style.display = 'inline-block';
             if (cancelBtn) cancelBtn.style.display = 'none';
             if (modalTitleText) modalTitleText.textContent = 'Join Club Request';
+            
+            // Ensure footer is visible
+            const footer = document.querySelector('.select-club-modal-footer');
+            const successDiv = document.getElementById('selectClubSuccessMessage');
+            if (footer) footer.style.display = 'flex';
+            if (successDiv) successDiv.style.display = 'none';
 
             // Render selected club info
             if (selectedClubInfo && selectedClubData) {
@@ -858,6 +864,12 @@
             if (backBtn) backBtn.style.display = 'none';
             if (cancelBtn) cancelBtn.style.display = 'inline-block';
             if (modalTitleText) modalTitleText.textContent = 'Select a Club to Join';
+
+            // Ensure footer is visible
+            const footer = document.querySelector('.select-club-modal-footer');
+            const successDiv = document.getElementById('selectClubSuccessMessage');
+            if (footer) footer.style.display = 'flex';
+            if (successDiv) successDiv.style.display = 'none';
 
             selectedClubId = null;
             selectedClubData = null;
@@ -990,12 +1002,16 @@
         function showSuccess() {
             const successDiv = document.getElementById('selectClubSuccessMessage');
             const formContainer = document.getElementById('clubFormView');
+            const listView = document.getElementById('clubListView');
             const footer = document.querySelector('.select-club-modal-footer');
             
-            if (successDiv && formContainer) {
-                formContainer.style.display = 'none';
+            if (successDiv) {
+                // Hide all views and show success message
+                if (formContainer) formContainer.style.display = 'none';
+                if (listView) listView.style.display = 'none';
                 successDiv.style.display = 'block';
                 
+                // Hide footer during success message
                 if (footer) {
                     footer.style.display = 'none';
                 }
@@ -1036,6 +1052,16 @@
             successCallback = null;
             clubsData = [];
             filteredClubs = [];
+            
+            // Reset success message and footer visibility
+            const successDiv = document.getElementById('selectClubSuccessMessage');
+            const footer = document.querySelector('.select-club-modal-footer');
+            if (successDiv) {
+                successDiv.style.display = 'none';
+            }
+            if (footer) {
+                footer.style.display = 'flex'; // Restore footer display
+            }
         }
 
         function escapeHtml(text) {

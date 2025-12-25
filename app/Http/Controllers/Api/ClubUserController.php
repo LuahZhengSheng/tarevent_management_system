@@ -19,16 +19,85 @@ class ClubUserController extends Controller
     ) {}
 
     /**
-     * Format API response with status and timestamp
+     * Format API response according to IFA standards
+     * 
+     * @param string $status Status code: S (Success), F (Fail), E (Error)
+     * @param array $data Response data
+     * @param int $httpStatusCode HTTP status code
+     * @param string|null $message Optional message
+     * @return JsonResponse
      */
-    private function formatResponse(array $data, int $statusCode = 200): JsonResponse
-    {
-        $response = array_merge([
-            'status' => $statusCode >= 200 && $statusCode < 300 ? 'success' : 'error',
-            'timestamp' => now()->timestamp,
-        ], $data);
+    protected function formatResponse(
+        string $status,
+        array $data = [],
+        int $httpStatusCode = 200,
+        ?string $message = null
+    ): JsonResponse {
+        // IFA standard fields
+        $response = [
+            'status' => $status,  // IFA standard: S/F/E
+            'timestamp' => now()->format('Y-m-d H:i:s'),  // IFA standard: YYYY-MM-DD HH:MM:SS
+        ];
 
-        return response()->json($response, $statusCode);
+        // Backward compatibility: add 'success' field for existing frontend code
+        $response['success'] = ($status === 'S');
+
+        if ($message !== null) {
+            $response['message'] = $message;
+        }
+
+        // Merge data into response
+        $response = array_merge($response, $data);
+
+        return response()->json($response, $httpStatusCode);
+    }
+
+    /**
+     * Format successful response (Status: S)
+     * 
+     * @param array $data Response data
+     * @param string|null $message Optional success message
+     * @param int $httpStatusCode HTTP status code (default: 200)
+     * @return JsonResponse
+     */
+    protected function successResponse(
+        array $data = [],
+        ?string $message = null,
+        int $httpStatusCode = 200
+    ): JsonResponse {
+        return $this->formatResponse('S', $data, $httpStatusCode, $message);
+    }
+
+    /**
+     * Format failure response (Status: F)
+     * 
+     * @param string $message Failure message
+     * @param array $data Additional data
+     * @param int $httpStatusCode HTTP status code (default: 400)
+     * @return JsonResponse
+     */
+    protected function failResponse(
+        string $message,
+        array $data = [],
+        int $httpStatusCode = 400
+    ): JsonResponse {
+        return $this->formatResponse('F', $data, $httpStatusCode, $message);
+    }
+
+    /**
+     * Format error response (Status: E)
+     * 
+     * @param string $message Error message
+     * @param array $data Additional data
+     * @param int $httpStatusCode HTTP status code (default: 500)
+     * @return JsonResponse
+     */
+    protected function errorResponse(
+        string $message,
+        array $data = [],
+        int $httpStatusCode = 500
+    ): JsonResponse {
+        return $this->formatResponse('E', $data, $httpStatusCode, $message);
     }
 
     /**
@@ -42,8 +111,7 @@ class ClubUserController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return $this->formatResponse([
-            'success' => true,
+        return $this->successResponse([
             'data' => $users->items(),
             'meta' => [
                 'current_page' => $users->currentPage(),
@@ -51,7 +119,7 @@ class ClubUserController extends Controller
                 'total' => $users->total(),
                 'last_page' => $users->lastPage(),
             ],
-        ]);
+        ], 'Club users retrieved successfully.');
     }
 
     /**
@@ -64,16 +132,14 @@ class ClubUserController extends Controller
             // Reuse existing AdminCreatedStudentStrategy with 'club' role
             $strategy = new AdminCreatedStudentStrategy('club');
             
-            // Get validated data (excluding timestamp as it's only for tracking)
+            // Get validated data (excluding timestamp/requestID as they're only for tracking)
             $validated = $request->validated();
-            unset($validated['timestamp']); // Remove timestamp from user creation data
+            unset($validated['timestamp'], $validated['requestID']); // Remove tracking fields from user creation data
             
             // Reuse existing UserService to create user
             $user = $this->userService->createUser($validated, $strategy);
 
-            return $this->formatResponse([
-                'success' => true,
-                'message' => 'Club user created successfully.',
+            return $this->successResponse([
                 'data' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -86,14 +152,14 @@ class ClubUserController extends Controller
                     'club_id' => $user->club_id,
                     'created_at' => $user->created_at->toISOString(),
                 ],
-            ], 201);
+            ], 'Club user created successfully.', 201);
 
         } catch (\Exception $e) {
-            return $this->formatResponse([
-                'success' => false,
-                'message' => 'Failed to create club user.',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error.',
-            ], 500);
+            return $this->errorResponse(
+                'Failed to create club user.',
+                ['error' => config('app.debug') ? $e->getMessage() : 'Internal server error.'],
+                500
+            );
         }
     }
 
@@ -105,14 +171,10 @@ class ClubUserController extends Controller
     {
         // Ensure it's a club user
         if ($user->role !== 'club') {
-            return $this->formatResponse([
-                'success' => false,
-                'message' => 'User is not a club user.',
-            ], 404);
+            return $this->failResponse('User is not a club user.', [], 404);
         }
 
-        return $this->formatResponse([
-            'success' => true,
+        return $this->successResponse([
             'data' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -126,7 +188,7 @@ class ClubUserController extends Controller
                 'created_at' => $user->created_at->toISOString(),
                 'updated_at' => $user->updated_at->toISOString(),
             ],
-        ]);
+        ], 'Club user retrieved successfully.');
     }
 }
 
