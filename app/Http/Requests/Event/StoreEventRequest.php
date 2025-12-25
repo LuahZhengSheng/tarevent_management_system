@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Event;
 
 use App\Support\PhoneHelper;
+use App\Enums\EventCategory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Enum;
 
 class StoreEventRequest extends FormRequest {
 

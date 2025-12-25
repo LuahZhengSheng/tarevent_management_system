@@ -5,8 +5,10 @@ namespace App\Http\Requests\Event;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Enum;
 use App\Models\Event;
 use App\Support\PhoneHelper;
+use App\Enums\EventCategory;
 
 class UpdateEventRequest extends FormRequest {
 
