@@ -57,6 +57,9 @@
         <!-- Common JS -->
         <script src="{{ asset('js/theme-toggle.js') }}"></script>
 
+        <!-- API Token Management -->
+        @include('partials.api-token-handler')
+
         <!-- Custom Scripts -->
         @stack('scripts')
     </body>
