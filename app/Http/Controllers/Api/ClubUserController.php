@@ -19,25 +19,50 @@ class ClubUserController extends Controller
     ) {}
 
     /**
+     * Get error code based on HTTP status code
+     * 
+     * @param string $status Status code: S (Success), F (Fail), E (Error)
+     * @param int $httpStatusCode HTTP status code
+     * @return string Error code (HTTP status code as string)
+     */
+    protected function getErrorCode(string $status, int $httpStatusCode): string
+    {
+        // Success: no error code
+        if ($status === 'S') {
+            return '';
+        }
+
+        // Return HTTP status code as error code
+        return (string) $httpStatusCode;
+    }
+
+    /**
      * Format API response according to IFA standards
      * 
      * @param string $status Status code: S (Success), F (Fail), E (Error)
      * @param array $data Response data
      * @param int $httpStatusCode HTTP status code
      * @param string|null $message Optional message
+     * @param string|null $errorCode Optional error code (auto-generated if not provided)
      * @return JsonResponse
      */
     protected function formatResponse(
         string $status,
         array $data = [],
         int $httpStatusCode = 200,
-        ?string $message = null
+        ?string $message = null,
+        ?string $errorCode = null
     ): JsonResponse {
         // IFA standard fields
         $response = [
             'status' => $status,  // IFA standard: S/F/E
             'timestamp' => now()->format('Y-m-d H:i:s'),  // IFA standard: YYYY-MM-DD HH:MM:SS
         ];
+
+        // Add error code for Fail and Error status
+        if ($status !== 'S') {
+            $response['error_code'] = $errorCode ?? $this->getErrorCode($status, $httpStatusCode);
+        }
 
         // Backward compatibility: add 'success' field for existing frontend code
         $response['success'] = ($status === 'S');
@@ -74,14 +99,16 @@ class ClubUserController extends Controller
      * @param string $message Failure message
      * @param array $data Additional data
      * @param int $httpStatusCode HTTP status code (default: 400)
+     * @param string|null $errorCode Optional error code (auto-generated if not provided)
      * @return JsonResponse
      */
     protected function failResponse(
         string $message,
         array $data = [],
-        int $httpStatusCode = 400
+        int $httpStatusCode = 400,
+        ?string $errorCode = null
     ): JsonResponse {
-        return $this->formatResponse('F', $data, $httpStatusCode, $message);
+        return $this->formatResponse('F', $data, $httpStatusCode, $message, $errorCode);
     }
 
     /**
@@ -90,14 +117,16 @@ class ClubUserController extends Controller
      * @param string $message Error message
      * @param array $data Additional data
      * @param int $httpStatusCode HTTP status code (default: 500)
+     * @param string|null $errorCode Optional error code (auto-generated if not provided)
      * @return JsonResponse
      */
     protected function errorResponse(
         string $message,
         array $data = [],
-        int $httpStatusCode = 500
+        int $httpStatusCode = 500,
+        ?string $errorCode = null
     ): JsonResponse {
-        return $this->formatResponse('E', $data, $httpStatusCode, $message);
+        return $this->formatResponse('E', $data, $httpStatusCode, $message, $errorCode);
     }
 
     /**
