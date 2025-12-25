@@ -1,565 +1,582 @@
-{{-- resources/views/forums/my-posts.blade.php - Enhanced Version --}}
+{{-- resources/views/forums/my-posts.blade.php --}}
 @extends('layouts.app')
 
-@section('title', 'My Posts')
+@section('title', 'My Posts - Forum')
 
 @push('styles')
-@vite([
-    'resources/css/forums/my-posts.css',
-    'resources/css/forums/forum-media-gallery.css',
-    'resources/css/forums/media-lightbox.css'
-])
+@vite('resources/css/forums/my-posts.css')
+@vite('resources/css/forums/forum-media-gallery.css')
+@vite('resources/css/forums/media-lightbox.css')
 @endpush
 
 @section('content')
-@php
-    $tab = request('tab', 'posts');
+<div class="my-posts-page">
 
-    // Stats
-    $totalPosts = $stats['total'] ?? ($postsTotal ?? (is_countable($posts ?? null) ? count($posts) : 0));
-    $publishedPosts = $stats['published'] ?? ($publishedTotal ?? null);
-    $draftPosts = $stats['draft'] ?? ($draftTotal ?? null);
+    {{-- Hero Section with User Info --}}
+    <section class="user-hero">
+        <div class="user-hero-bg"></div>
+        <div class="user-hero-overlay"></div>
 
-    // Profile
-    $displayName = $profile['name'] ?? (auth()->user()->name ?? 'User');
-    $displayHandle = $profile['handle'] ?? (auth()->user()->username ?? ('@' . (auth()->user()->id ?? 'me')));
-    $bio = $profile['bio'] ?? 'Manage your posts, drafts and activity in one place.';
-    $coverUrl = $profile['cover_url'] ?? null;
-    $avatarUrl = $profile['avatar_url'] ?? null;
-
-    // Additional stats
-    $followers = $profile['followers'] ?? null;
-    $following = $profile['following'] ?? null;
-    $likesTotal = $profile['likes_total'] ?? null;
-    $commentsTotal = $profile['comments_total'] ?? null;
-@endphp
-
-<div class="mp-page">
-    {{-- ===== Hero Cover Section ===== --}}
-    <section class="mp-cover">
-        @if($coverUrl)
-            <div class="mp-cover__bg" style="background-image:url('{{ $coverUrl }}');" role="img" aria-label="Cover image"></div>
-        @else
-            <div class="mp-cover__bg" role="img" aria-label="Default cover"></div>
-        @endif
-        <div class="mp-cover__overlay" aria-hidden="true"></div>
-
-        <div class="mp-container">
-            <div class="mp-cover__inner">
-                {{-- Left: Avatar + Identity --}}
-                <div class="mp-cover__left">
-                    <div class="mp-avatar" role="img" aria-label="Profile avatar">
-                        @if($avatarUrl)
-                            <img class="mp-avatar__img" src="{{ $avatarUrl }}" alt="{{ $displayName }}'s avatar">
-                        @else
-                            <div class="mp-avatar__fallback" aria-label="Avatar placeholder">
-                                {{ strtoupper(mb_substr($displayName, 0, 1)) }}
-                            </div>
-                        @endif
+        <div class="container">
+            <div class="user-hero-content">
+                {{-- Left: Avatar & Info --}}
+                <div class="user-profile">
+                    <div class="user-avatar-wrapper">
+                        <img
+                            src="{{ $user->profile_photo ? Storage::url($user->profile_photo) : asset('images/default-avatar.png') }}"
+                            alt="{{ $user->name }}"
+                            class="user-avatar-img"
+                            >
+                        <div class="user-status-indicator"></div>
                     </div>
 
-                    <div class="mp-identity">
-                        <h1 class="mp-identity__name">{{ $displayName }}</h1>
-                        <div class="mp-identity__handle">{{ $displayHandle }}</div>
-                        <p class="mp-identity__bio">{{ $bio }}</p>
+                    <div class="user-info">
+                        <h1 class="user-display-name">{{ $user->name }}</h1>
+                        <p class="user-handle">
+                            {{ '@' . ($user->student_id ?: Str::slug($user->name)) }}
+                        </p>
 
-                        <div class="mp-kpis" role="list">
-                            <div class="mp-kpi" role="listitem">
-                                <span class="mp-kpi__label">Posts</span>
-                                <span class="mp-kpi__value">{{ number_format($totalPosts) }}</span>
+                        @if($user->bio ?? false)
+                        <p class="user-bio">{{ $user->bio }}</p>
+                        @endif
+
+                        {{-- Stats Grid --}}
+                        <div class="user-stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ $stats['total_posts'] ?? 0 }}</div>
+                                <div class="stat-label">Posts</div>
                             </div>
-                            @if(!is_null($likesTotal))
-                                <div class="mp-kpi" role="listitem">
-                                    <span class="mp-kpi__label">Likes</span>
-                                    <span class="mp-kpi__value">{{ number_format($likesTotal) }}</span>
-                                </div>
-                            @endif
-                            @if(!is_null($commentsTotal))
-                                <div class="mp-kpi" role="listitem">
-                                    <span class="mp-kpi__label">Comments</span>
-                                    <span class="mp-kpi__value">{{ number_format($commentsTotal) }}</span>
-                                </div>
-                            @endif
-                            @if(!is_null($followers))
-                                <div class="mp-kpi" role="listitem">
-                                    <span class="mp-kpi__label">Followers</span>
-                                    <span class="mp-kpi__value">{{ number_format($followers) }}</span>
-                                </div>
-                            @endif
-                            @if(!is_null($following))
-                                <div class="mp-kpi" role="listitem">
-                                    <span class="mp-kpi__label">Following</span>
-                                    <span class="mp-kpi__value">{{ number_format($following) }}</span>
-                                </div>
-                            @endif
+                            <div class="stat-item">
+                                <div class="stat-value">{{ $stats['total_drafts'] ?? 0 }}</div>
+                                <div class="stat-label">Drafts</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ $stats['total_likes_received'] ?? 0 }}</div>
+                                <div class="stat-label">Likes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ $stats['total_saves_received'] ?? 0 }}</div>
+                                <div class="stat-label">Saves</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Right: Actions + Mini Stats --}}
-                <div class="mp-cover__right">
-                    <nav class="mp-actions" aria-label="Quick actions">
-                        <a href="{{ route('forums.create') }}" class="btn btn-light mp-btn-pill">
-                            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
-                            <span>Create Post</span>
-                        </a>
-                        <a href="{{ route('forums.index') }}" class="btn btn-outline-light mp-btn-pill mp-btn-glass">
-                            <i class="bi bi-grid me-1" aria-hidden="true"></i>
-                            <span>Browse Forum</span>
-                        </a>
-                    </nav>
+                {{-- Right: Actions --}}
+                <div class="user-actions">
+                    <a href="{{ route('forums.create') }}" class="action-btn action-btn-primary">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Create Post</span>
+                    </a>
 
-                    <div class="mp-mini" role="complementary" aria-label="Post statistics">
-                        <div class="mp-mini__row">
-                            <span class="mp-mini__label">Published</span>
-                            <span class="mp-mini__value">{{ $publishedPosts ?? '—' }}</span>
-                        </div>
-                        <div class="mp-mini__row">
-                            <span class="mp-mini__label">Drafts</span>
-                            <span class="mp-mini__value">{{ $draftPosts ?? '—' }}</span>
-                        </div>
-                    </div>
+                    <a href="#" class="action-btn action-btn-secondary">
+                        <i class="bi bi-chat-dots"></i>
+                        <span>Messages</span>
+                    </a>
+
+                    <a href="{{ route('notifications.index') }}" class="action-btn action-btn-icon">
+                        <i class="bi bi-bell"></i>
+                        @if(($stats['unread_notifications'] ?? 0) > 0)
+                        <span class="notification-dot">{{ $stats['unread_notifications'] }}</span>
+                        @endif
+                    </a>
+
+                    <a href="{{ route('profile.edit') }}" class="action-btn action-btn-icon">
+                        <i class="bi bi-gear"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </section>
 
-    {{-- ===== Main Content ===== --}}
-    <main class="mp-main">
-        <div class="mp-container">
-            <div class="mp-layout">
-                {{-- ===== Left Sidebar: Filters ===== --}}
-                <aside class="mp-left" role="complementary" aria-label="Filters and navigation">
-                    <div class="mp-card mp-card--soft">
-                        <div class="mp-card__title">
-                            <i class="bi bi-sliders" aria-hidden="true"></i>
-                            <span>Quick Filters</span>
+    {{-- Main Content --}}
+    <div class="container main-container">
+        <div class="content-layout">
+            {{-- Sidebar --}}
+            <aside class="content-sidebar">
+                {{-- Quick Search --}}
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="bi bi-search"></i>
+                        Search & Filter
+                    </h3>
+                    <form id="filterForm" class="filter-form">
+                        <input type="hidden" name="tab" id="currentTab" value="{{ $activeTab }}">
+
+                        <div class="filter-group">
+                            <div class="search-input-wrapper">
+                                <i class="bi bi-search search-icon"></i>
+                                <input
+                                    type="text"
+                                    name="q"
+                                    id="searchInput"
+                                    class="filter-input search-input"
+                                    placeholder="Search your posts..."
+                                    value="{{ $search['q'] ?? '' }}"
+                                    >
+                                <button type="button" id="clearSearch" class="clear-btn" style="display: none;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
                         </div>
 
-                        <form class="mp-quickform" role="search" aria-label="Filter posts">
-                            <div class="mp-field">
-                                <label for="mpSearchInput" class="mp-label">Search</label>
-                                <div class="mp-input mp-input--icon mp-input--mini">
-                                    <i class="bi bi-search" aria-hidden="true"></i>
-                                    <input id="mpSearchInput" 
-                                           type="text" 
-                                           class="form-control" 
-                                           placeholder="Search title / content..."
-                                           aria-label="Search posts">
-                                </div>
-                            </div>
-
-                            <div class="mp-field">
-                                <label for="mpSortSelect" class="mp-label">Sort By</label>
-                                <select id="mpSortSelect" class="form-select" aria-label="Sort posts">
-                                    <option value="latest" selected>Latest First</option>
-                                    <option value="oldest">Oldest First</option>
-                                    <option value="most_viewed">Most Viewed</option>
-                                    <option value="most_liked">Most Liked</option>
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <i class="bi bi-flag"></i>
+                                Status
+                            </label>
+                            <div class="select-wrapper">
+                                <select name="status" id="statusFilter" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="published" {{ ($filters['status'] ?? '') === 'published' ? 'selected' : '' }}>
+                                        Published
+                                    </option>
+                                    <option value="draft" {{ ($filters['status'] ?? '') === 'draft' ? 'selected' : '' }}>
+                                        Draft
+                                    </option>
                                 </select>
+                                <i class="bi bi-chevron-down select-icon"></i>
                             </div>
-
-                            <div class="mp-actions-col">
-                                <button class="btn btn-primary mp-btn-pill" 
-                                        id="mpApplyClientFilter" 
-                                        type="button"
-                                        aria-label="Apply filters">
-                                    <i class="bi bi-funnel me-1" aria-hidden="true"></i>
-                                    <span>Apply Filters</span>
-                                </button>
-                                <button class="btn btn-outline-secondary mp-btn-pill" 
-                                        id="mpResetClientFilter" 
-                                        type="button"
-                                        aria-label="Reset filters">
-                                    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>
-                                    <span>Reset</span>
-                                </button>
-                            </div>
-                        </form>
-
-                        <nav class="mp-links" aria-label="Quick navigation">
-                            <a class="mp-link" href="{{ route('forums.create') }}">
-                                <i class="bi bi-plus-circle" aria-hidden="true"></i>
-                                <span>Create new post</span>
-                            </a>
-                            <a class="mp-link" href="{{ route('forums.index') }}">
-                                <i class="bi bi-grid" aria-hidden="true"></i>
-                                <span>Browse forum</span>
-                            </a>
-                        </nav>
-                    </div>
-                </aside>
-
-                {{-- ===== Right Content: Posts/Drafts/Liked/Comments ===== --}}
-                <section class="mp-content" role="main" aria-label="Posts content">
-                    {{-- Tabs Navigation --}}
-                    <nav class="mp-tabs" role="tablist" aria-label="Content tabs">
-                        <a class="mp-tab {{ $tab === 'posts' ? 'active' : '' }}" 
-                           href="{{ request()->fullUrlWithQuery(['tab' => 'posts']) }}"
-                           role="tab"
-                           aria-selected="{{ $tab === 'posts' ? 'true' : 'false' }}"
-                           aria-label="My posts">
-                            <i class="bi bi-file-text" aria-hidden="true"></i>
-                            <span>Posts</span>
-                        </a>
-                        <a class="mp-tab {{ $tab === 'drafts' ? 'active' : '' }}" 
-                           href="{{ request()->fullUrlWithQuery(['tab' => 'drafts']) }}"
-                           role="tab"
-                           aria-selected="{{ $tab === 'drafts' ? 'true' : 'false' }}"
-                           aria-label="Draft posts">
-                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                            <span>Drafts</span>
-                        </a>
-                        <a class="mp-tab {{ $tab === 'liked' ? 'active' : '' }}" 
-                           href="{{ request()->fullUrlWithQuery(['tab' => 'liked']) }}"
-                           role="tab"
-                           aria-selected="{{ $tab === 'liked' ? 'true' : 'false' }}"
-                           aria-label="Liked posts">
-                            <i class="bi bi-heart" aria-hidden="true"></i>
-                            <span>Liked</span>
-                        </a>
-                        <a class="mp-tab {{ $tab === 'comments' ? 'active' : '' }}" 
-                           href="{{ request()->fullUrlWithQuery(['tab' => 'comments']) }}"
-                           role="tab"
-                           aria-selected="{{ $tab === 'comments' ? 'true' : 'false' }}"
-                           aria-label="My comments">
-                            <i class="bi bi-chat-dots" aria-hidden="true"></i>
-                            <span>Comments</span>
-                        </a>
-                    </nav>
-
-                    {{-- Content Header --}}
-                    <header class="mp-strip">
-                        <div class="mp-strip__left">
-                            <h2 class="mp-strip__title">
-                                @if($tab === 'drafts')
-                                    Draft Posts
-                                @elseif($tab === 'liked')
-                                    Liked Posts
-                                @elseif($tab === 'comments')
-                                    My Comments
-                                @else
-                                    My Posts
-                                @endif
-                            </h2>
-                            <p class="mp-strip__sub">
-                                @if($tab === 'comments')
-                                    All comments you've made on posts
-                                @else
-                                    One row per post (desktop-friendly list layout)
-                                @endif
-                            </p>
                         </div>
-                    </header>
 
-                    {{-- Posts / Drafts / Liked Content --}}
-                    @if(in_array($tab, ['posts', 'drafts', 'liked']))
-                        <div class="mp-list-posts" id="mpPostGrid" role="list" aria-label="Post list">
-                            @forelse(($posts ?? []) as $post)
-                                @php
-                                    $mediaPaths = $post->media_paths ?? $post->mediapaths ?? [];
-                                    $mediaCount = is_array($mediaPaths) ? count($mediaPaths) : 0;
-                                    
-                                    $isDraft = ($post->status ?? null) === 'draft';
-                                    $isPinned = (bool)($post->is_pinned ?? false);
-                                    $isClubOnly = ($post->visibility ?? null) === 'club_only';
-                                    
-                                    $excerpt = $post->excerpt ?? \Illuminate\Support\Str::limit(strip_tags($post->content ?? ''), 180);
-                                    $views = $post->views_count ?? 0;
-                                    $likes = $post->likes_count ?? 0;
-                                    $comments = $post->comments_count ?? 0;
-                                    $createdAt = $post->created_at ?? null;
-                                @endphp
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <i class="bi bi-eye"></i>
+                                Visibility
+                            </label>
+                            <div class="select-wrapper">
+                                <select name="visibility" id="visibilityFilter" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="public" {{ ($filters['visibility'] ?? '') === 'public' ? 'selected' : '' }}>
+                                        Public
+                                    </option>
+                                    <option value="club_only" {{ ($filters['visibility'] ?? '') === 'club_only' ? 'selected' : '' }}>
+                                        Club only
+                                    </option>
+                                </select>
+                                <i class="bi bi-chevron-down select-icon"></i>
+                            </div>
+                        </div>
 
-                                <article class="mp-rowpost"
-                                         role="listitem"
-                                         data-post-title="{{ strtolower($post->title ?? '') }}"
-                                         data-post-excerpt="{{ strtolower($excerpt ?? '') }}"
-                                         data-post-views="{{ (int)$views }}"
-                                         data-post-likes="{{ (int)$likes }}"
-                                         data-post-created="{{ $createdAt ? $createdAt->timestamp : 0 }}"
-                                         aria-label="Post: {{ $post->title }}">
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <i class="bi bi-sort-down"></i>
+                                Sort by
+                            </label>
+                            <div class="select-wrapper">
+                                <select name="sort" id="sortFilter" class="filter-select">
+                                    <option value="latest" {{ ($sort ?? 'latest') === 'latest' ? 'selected' : '' }}>Latest</option>
+                                    <option value="oldest" {{ ($sort ?? 'latest') === 'oldest' ? 'selected' : '' }}>Oldest</option>
+                                    <option value="mostliked" {{ ($sort ?? 'latest') === 'mostliked' ? 'selected' : '' }}>Most liked</option>
+                                    <option value="mostcommented" {{ ($sort ?? 'latest') === 'mostcommented' ? 'selected' : '' }}>Most commented</option>
+                                </select>
+                                <i class="bi bi-chevron-down select-icon"></i>
+                            </div>
+                        </div>
 
-                                    <div class="mp-rowpost__main">
-                                        {{-- Media Gallery (if exists) --}}
-                                        @if($mediaCount > 0)
-                                            <div class="mp-rowpost__media-top">
-                                                <div class="media-gallery-facebook layout-{{ min($mediaCount, 5) }}"
-                                                     role="img"
-                                                     aria-label="Post media gallery with {{ $mediaCount }} {{ Str::plural('item', $mediaCount) }}">
-                                                    @foreach($post->media_paths as $index => $media)
-                                                        @php
-                                                            $mediaPath = is_array($media) ? ($media['path'] ?? '') : $media;
-                                                            $mediaType = is_array($media) ? ($media['type'] ?? 'image') : 'image';
-                                                            $mimeType = is_array($media) ? ($media['mime_type'] ?? 'image/jpeg') : 'image/jpeg';
-                                                            $isVideo = $mediaType === 'video' || str_starts_with($mimeType, 'video/');
-                                                            
-                                                            if (empty($mediaPath)) continue;
-                                                            $isVisible = $index < 5;
-                                                        @endphp
+                        <button type="button" id="resetFilters" class="filter-reset">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            Reset Filters
+                        </button>
+                    </form>
+                </div>
 
-                                                        <div class="fb-media-item media-item item-{{ $index + 1 }} {{ !$isVisible ? 'd-none' : '' }}"
-                                                             data-index="{{ $index }}"
-                                                             data-lightbox="true"
-                                                             data-group="post-{{ $post->id }}"
-                                                             data-type="{{ $isVideo ? 'video' : 'image' }}"
-                                                             data-src="{{ Storage::url($mediaPath) }}"
-                                                             tabindex="0"
-                                                             role="button"
-                                                             aria-label="View {{ $isVideo ? 'video' : 'image' }} {{ $index + 1 }}">
-                                                            
-                                                            @if($isVideo)
-                                                                <video class="fb-media-content" preload="metadata" aria-label="Video preview">
-                                                                    <source src="{{ Storage::url($mediaPath) }}" type="{{ $mimeType }}">
-                                                                </video>
-                                                                <div class="fb-media-badge video-badge" aria-label="Video">
-                                                                    <i class="bi bi-play-circle-fill" aria-hidden="true"></i>
-                                                                </div>
-                                                            @else
-                                                                <img src="{{ Storage::url($mediaPath) }}"
-                                                                     alt="Media {{ $index + 1 }}"
-                                                                     class="fb-media-content"
-                                                                     loading="lazy">
-                                                            @endif
+                {{-- Quick Links --}}
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="bi bi-link-45deg"></i>
+                        Quick Links
+                    </h3>
+                    <div class="quick-links">
+                        <a href="{{ route('forums.index') }}" class="quick-link">
+                            <i class="bi bi-grid"></i>
+                            <span>All Posts</span>
+                        </a>
+                        <a href="{{ route('forums.create') }}" class="quick-link">
+                            <i class="bi bi-pencil-square"></i>
+                            <span>Create New</span>
+                        </a>
+                        <a href="{{-- route('profile.show') --}}" class="quick-link">
+                            <i class="bi bi-person"></i>
+                            <span>My Profile</span>
+                        </a>
+                    </div>
+                </div>
+            </aside>
 
-                                                            @if($index == 4 && $mediaCount > 5)
-                                                                <div class="fb-overlay-more" aria-label="{{ $mediaCount - 5 }} more items">
-                                                                    <span class="overlay-number">+{{ $mediaCount - 5 }}</span>
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endif
+            {{-- Main Content Area --}}
+            <main class="content-main">
+                {{-- Tabs Navigation --}}
+                <nav class="tabs-nav">
+                    @foreach($tabs as $tabKey => $tab)
+                    <button
+                        class="tab-item {{ $activeTab === $tabKey ? 'active' : '' }}"
+                        data-tab="{{ $tabKey }}"
+                        >
+                        <span class="tab-label">{{ $tab['label'] }}</span>
+                        @if(isset($tab['count']))
+                        <span class="tab-count">{{ $tab['count'] }}</span>
+                        @endif
+                    </button>
+                    @endforeach
+                </nav>
 
+                {{-- Posts Content Container --}}
+                <div class="posts-container" id="postsContainer">
+                    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Loading...</p>
+                        </div>
+                    </div>
+
+                    {{-- 首次加载当前 tab 内容 --}}
+                    <div class="tab-content active" id="tabContent">
+                        @include('forums.partials.my-posts-tab', ['activeTab'=>$activeTab,'tabs'=>$tabs])
+                    </div>
+
+                </div>
+
+
+                {{-- Posts Content --}}
+                <!--                <div class="tab-content active" id="tab-posts">
+                                    @if($activeTab === 'posts')
+                                    @forelse($tabs['posts']['items'] ?? [] as $item)
+                                    @php $post = $item['post']; @endphp
+                                    <article class="post-item" data-post-id="{{ $post->id }}">
                                         {{-- Post Header --}}
-                                        <div class="mp-rowpost__top">
-                                            <div class="mp-rowpost__titlewrap">
-                                                <h3 class="mp-rowpost__title">
-                                                    <a href="{{ route('forums.posts.show', $post->slug) }}">
-                                                        {{ $post->title }}
-                                                    </a>
-                                                </h3>
-
-                                                <div class="mp-rowpost__badges" role="list">
-                                                    @if($isPinned)
-                                                        <span class="badge text-bg-warning" role="listitem">
-                                                            <i class="bi bi-pin-angle-fill me-1" aria-hidden="true"></i>Pinned
-                                                        </span>
-                                                    @endif
-                                                    @if($isDraft)
-                                                        <span class="badge text-bg-secondary" role="listitem">
-                                                            <i class="bi bi-pencil-fill me-1" aria-hidden="true"></i>Draft
-                                                        </span>
-                                                    @endif
-                                                    @if($isClubOnly)
-                                                        <span class="badge text-bg-dark" role="listitem">
-                                                            <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Club Only
-                                                        </span>
-                                                    @endif
-                                                    @if(isset($post->category) && $post->category)
-                                                        <span class="badge text-bg-primary" role="listitem">
-                                                            {{ $post->category->name ?? 'Category' }}
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            <div class="mp-rowpost__meta" role="list">
-                                                <span class="mp-stat" role="listitem">
-                                                    <i class="bi bi-clock" aria-hidden="true"></i>
-                                                    <time datetime="{{ $createdAt ? $createdAt->toIso8601String() : '' }}">
-                                                        {{ $createdAt ? $createdAt->diffForHumans() : '—' }}
-                                                    </time>
+                                        <div class="post-header">
+                                            <div class="post-meta-left">
+                                                <span class="post-status status-{{ $post->status }}">
+                                                    {{ ucfirst($post->status) }}
                                                 </span>
-                                                <span class="mp-stat" role="listitem">
-                                                    <i class="bi bi-eye" aria-hidden="true"></i>
-                                                    <span>{{ number_format((int)$views) }}</span>
+                
+                                                @if($post->visibility === 'club_only')
+                                                <span class="post-visibility visibility-locked">
+                                                    <i class="bi bi-lock-fill"></i> Club only
                                                 </span>
-                                                <span class="mp-stat" role="listitem">
-                                                    <i class="bi bi-heart" aria-hidden="true"></i>
-                                                    <span>{{ number_format((int)$likes) }}</span>
+                                                @else
+                                                <span class="post-visibility visibility-public">
+                                                    <i class="bi bi-globe"></i> Public
                                                 </span>
-                                                <span class="mp-stat" role="listitem">
-                                                    <i class="bi bi-chat" aria-hidden="true"></i>
-                                                    <span>{{ number_format((int)$comments) }}</span>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {{-- Excerpt --}}
-                                        <p class="mp-rowpost__excerpt">{{ $excerpt }}</p>
-
-                                        {{-- Tags --}}
-                                        @if(!empty($post->tags) && $post->tags->count() > 0)
-                                            <div class="mp-tags mp-rowpost__tags" role="list">
-                                                @foreach($post->tags->take(6) as $tag)
-                                                    <span class="mp-tag" role="listitem">#{{ $tag->name }}</span>
-                                                @endforeach
-                                                @if($post->tags->count() > 6)
-                                                    <span class="mp-tag mp-tag--more" role="listitem">
-                                                        +{{ $post->tags->count() - 6 }}
-                                                    </span>
                                                 @endif
                                             </div>
-                                        @endif
-
-                                        {{-- Actions --}}
-                                        <div class="mp-rowpost__actions">
-                                            <a href="{{ route('forums.posts.show', $post->slug) }}" 
-                                               class="btn btn-outline-primary mp-btn-pill"
-                                               aria-label="View post">
-                                                <i class="bi bi-eye me-1" aria-hidden="true"></i>
-                                                <span>View</span>
-                                            </a>
-                                            <a href="{{ route('forums.posts.edit', $post->slug) }}" 
-                                               class="btn btn-outline-secondary mp-btn-pill"
-                                               aria-label="Edit post">
-                                                <i class="bi bi-pencil me-1" aria-hidden="true"></i>
-                                                <span>Edit</span>
-                                            </a>
-                                            <button type="button"
-                                                    class="btn btn-danger mp-btn-pill js-delete-post"
-                                                    data-delete-url="{{ route('forums.posts.destroy', $post->slug) }}"
-                                                    data-post-title="{{ $post->title }}"
-                                                    aria-label="Delete post">
-                                                <i class="bi bi-trash me-1" aria-hidden="true"></i>
-                                                <span>Delete</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </article>
-                            @empty
-                                <div class="mp-empty" role="status">
-                                    <div class="mp-empty__icon">
-                                        <i class="bi bi-inboxes" aria-hidden="true"></i>
-                                    </div>
-                                    <h3 class="mp-empty__title">No posts found</h3>
-                                    <p class="mp-empty__text">
-                                        Create a new post, or adjust your filters to see results.
-                                    </p>
-                                    <a href="{{ route('forums.posts.create') }}" 
-                                       class="btn btn-primary mp-btn-pill"
-                                       aria-label="Create your first post">
-                                        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
-                                        <span>Create Post</span>
-                                    </a>
-                                </div>
-                            @endforelse
-                        </div>
-
-                        {{-- Pagination --}}
-                        @if(method_exists($posts ?? null, 'links'))
-                            <nav class="mp-pagination" aria-label="Posts pagination">
-                                {{ $posts->links() }}
-                            </nav>
-                        @endif
-                    @endif
-
-                    {{-- Comments Tab Content --}}
-                    @if($tab === 'comments')
-                        <div class="mp-list" role="list" aria-label="Comments list">
-                            @forelse(($comments ?? []) as $comment)
-                                <article class="mp-item" role="listitem">
-                                    <header class="mp-item__head">
-                                        <a class="mp-item__title" 
-                                           href="{{ route('forums.posts.show', $comment->post->slug ?? '') }}">
-                                            {{ \Illuminate\Support\Str::limit($comment->post->title ?? 'Post', 80) }}
-                                        </a>
-                                        <span class="mp-badge">
-                                            <i class="bi bi-clock" aria-hidden="true"></i>
-                                            <time datetime="{{ $comment->created_at ? $comment->created_at->toIso8601String() : '' }}">
-                                                {{ $comment->created_at ? $comment->created_at->diffForHumans() : '—' }}
+                
+                                            <time class="post-date">
+                                                {{ $post->created_at->format('M d, Y') }}
                                             </time>
-                                        </span>
-                                    </header>
-                                    <div class="mp-item__body">
-                                        {{ \Illuminate\Support\Str::limit(strip_tags($comment->content ?? ''), 220) }}
+                                        </div>
+                
+                                        {{-- Post Title --}}
+                                        <h2 class="post-title">
+                                            <a href="{{ route('forums.posts.show', $post->slug) }}">
+                                                {{ $post->title }}
+                                            </a>
+                                        </h2>
+                
+                                        {{-- Post Excerpt --}}
+                                        <p class="post-excerpt">
+                                            {{ $item['excerpt'] }}
+                                        </p>
+                
+                                        {{-- Media Gallery --}}
+                                        @if(!empty($item['media']) && count($item['media']) > 0)
+                                        <div class="post-media">
+                                            @php
+                                            $mediaCount = count($item['media']);
+                                            $layoutClass = 'layout-' . min($mediaCount, 5);
+                                            @endphp
+                                            <div class="media-gallery-facebook {{ $layoutClass }}">
+                                                @foreach($item['media'] as $index => $media)
+                                                @if($index < 5)
+                                                @php
+                                                $isVideo = str_starts_with($media['type'], 'video');
+                                                $thumbUrl = $media['thumbnail_url'] ?? $media['url'];
+                                                @endphp
+                                                <button
+                                                    type="button"
+                                                    class="fb-media-item item-{{ $index + 1 }}"
+                                                    onclick="openLightbox({{ $index }})"
+                                                    data-type="{{ $media['type'] }}"
+                                                    data-src="{{ $media['url'] }}"
+                                                    >
+                                                    <img src="{{ $thumbUrl }}" alt="Media" class="fb-media-content">
+                
+                                                    @if($isVideo)
+                                                    <span class="fb-media-badge video-badge">
+                                                        <i class="bi bi-play-fill"></i> Video
+                                                    </span>
+                                                    @endif
+                
+                                                    @if($index === 4 && $mediaCount > 5)
+                                                    <div class="fb-overlay-more">
+                                                        <span class="overlay-number">+{{ $mediaCount - 5 }}</span>
+                                                    </div>
+                                                    @endif
+                                                </button>
+                                                @endif
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                        @endif
+                
+                                        {{-- Post Footer --}}
+                                        <div class="post-footer">
+                                            <div class="post-stats">
+                                                <span class="stat">
+                                                    <i class="bi bi-chat"></i>
+                                                    {{ $item['comments_count'] }}
+                                                </span>
+                                                <span class="stat">
+                                                    <i class="bi bi-heart"></i>
+                                                    {{ $item['likes_count'] }}
+                                                </span>
+                                                <span class="stat">
+                                                    <i class="bi bi-bookmark"></i>
+                                                    {{ $item['saves_count'] }}
+                                                </span>
+                                            </div>
+                
+                                            <div class="post-actions">
+                                                <a href="{{ route('forums.posts.edit', $post) }}" class="action-link">
+                                                    <i class="bi bi-pencil"></i>
+                                                    Edit
+                                                </a>
+                                                <button 
+                                                    class="action-link action-delete js-delete-post"
+                                                    data-delete-url="{{ route('forums.posts.destroy', $post) }}"
+                                                    data-post-title="{{ $post->title }}"
+                                                    >
+                                                    <i class="bi bi-trash"></i>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    @empty
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bi bi-inbox"></i>
+                                        </div>
+                                        <h3 class="empty-title">No posts yet</h3>
+                                        <p class="empty-text">Start sharing your thoughts with the community!</p>
+                                        <a href="{{ route('forums.create') }}" class="empty-action">
+                                            <i class="bi bi-plus-circle"></i>
+                                            Create Your First Post
+                                        </a>
                                     </div>
-                                </article>
-                            @empty
-                                <div class="mp-empty" role="status">
-                                    <div class="mp-empty__icon">
-                                        <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+                                    @endforelse
+                                    @endif
+                
+                                    @if($activeTab === 'drafts')
+                                    @forelse($tabs['drafts']['items'] ?? [] as $item)
+                                    @php $post = $item['post']; @endphp
+                                    <article class="post-item post-draft" data-post-id="{{ $post->id }}">
+                                        <div class="post-header">
+                                            <span class="post-status status-draft">Draft</span>
+                                            <time class="post-date">
+                                                Updated {{ $post->updated_at->format('M d, Y') }}
+                                            </time>
+                                        </div>
+                
+                                        <h2 class="post-title">
+                                            <a href="{{ route('forums.posts.edit', $post) }}">
+                                                {{ $post->title }}
+                                            </a>
+                                        </h2>
+                
+                                        <p class="post-excerpt">{{ $item['excerpt'] }}</p>
+                
+                                        <div class="post-footer">
+                                            <div class="post-actions">
+                                                <a href="{{ route('forums.posts.edit', $post) }}" class="action-link action-primary">
+                                                    <i class="bi bi-pencil"></i>
+                                                    Continue Editing
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    @empty
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bi bi-file-earmark"></i>
+                                        </div>
+                                        <h3 class="empty-title">No drafts</h3>
+                                        <p class="empty-text">All your posts are published!</p>
                                     </div>
-                                    <h3 class="mp-empty__title">No comments yet</h3>
-                                    <p class="mp-empty__text">
-                                        Comments you leave on posts will appear here.
-                                    </p>
-                                </div>
-                            @endforelse
-                        </div>
-                    @endif
-                </section>
-            </div>
+                                    @endforelse
+                                    @endif
+                
+                                    @if($activeTab === 'likes')
+                                    @forelse($tabs['likes']['items'] ?? [] as $item)
+                                    @php $post = $item['post']; @endphp
+                                    <article class="post-item" data-post-id="{{ $post->id }}">
+                                        <div class="post-header">
+                                            <span class="post-meta-text">
+                                                <i class="bi bi-heart-fill text-danger"></i>
+                                                You liked this on {{ $item['created_at']->format('M d, Y') }}
+                                            </span>
+                                        </div>
+                
+                                        <h2 class="post-title">
+                                            <a href="{{ route('forums.posts.show', $post->slug) }}">
+                                                {{ $post->title }}
+                                            </a>
+                                        </h2>
+                
+                                        <p class="post-excerpt">{{ $item['excerpt'] }}</p>
+                
+                                        <div class="post-footer">
+                                            <div class="post-stats">
+                                                <span class="stat">
+                                                    <i class="bi bi-chat"></i>
+                                                    {{ $item['comments_count'] }}
+                                                </span>
+                                                <span class="stat">
+                                                    <i class="bi bi-heart"></i>
+                                                    {{ $item['likes_count'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    @empty
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bi bi-heart"></i>
+                                        </div>
+                                        <h3 class="empty-title">No liked posts</h3>
+                                        <p class="empty-text">Start liking posts to save them here!</p>
+                                    </div>
+                                    @endforelse
+                                    @endif
+                
+                                    @if($activeTab === 'saves')
+                                    @forelse($tabs['saves']['items'] ?? [] as $item)
+                                    @php $post = $item['post']; @endphp
+                                    <article class="post-item" data-post-id="{{ $post->id }}">
+                                        <div class="post-header">
+                                            <span class="post-meta-text">
+                                                <i class="bi bi-bookmark-fill text-primary"></i>
+                                                Saved on {{ $item['created_at']->format('M d, Y') }}
+                                            </span>
+                                        </div>
+                
+                                        <h2 class="post-title">
+                                            <a href="{{ route('forums.posts.show', $post->slug) }}">
+                                                {{ $post->title }}
+                                            </a>
+                                        </h2>
+                
+                                        <p class="post-excerpt">{{ $item['excerpt'] }}</p>
+                
+                                        <div class="post-footer">
+                                            <div class="post-stats">
+                                                <span class="stat">
+                                                    <i class="bi bi-chat"></i>
+                                                    {{ $item['comments_count'] }}
+                                                </span>
+                                                <span class="stat">
+                                                    <i class="bi bi-heart"></i>
+                                                    {{ $item['likes_count'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    @empty
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bi bi-bookmark"></i>
+                                        </div>
+                                        <h3 class="empty-title">No saved posts</h3>
+                                        <p class="empty-text">Bookmark posts to read them later!</p>
+                                    </div>
+                                    @endforelse
+                                    @endif
+                
+                                    @if($activeTab === 'comments')
+                                    @forelse($tabs['comments']['items'] ?? [] as $item)
+                                    @php
+                                    $comment = $item['comment'];
+                                    $post = $item['post'];
+                                    @endphp
+                                    <article class="comment-item">
+                                        <div class="comment-header">
+                                            <span class="comment-meta">
+                                                Commented on
+                                                <a href="{{ route('forums.posts.show', $post->slug) }}" class="post-link">
+                                                    {{ $post->title }}
+                                                </a>
+                                            </span>
+                                            <time class="comment-date">
+                                                {{ $comment->created_at->format('M d, Y') }}
+                                            </time>
+                                        </div>
+                                        <p class="comment-content">{{ $comment->content }}</p>
+                                    </article>
+                                    @empty
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bi bi-chat-left-text"></i>
+                                        </div>
+                                        <h3 class="empty-title">No comments yet</h3>
+                                        <p class="empty-text">Join the conversation and share your thoughts!</p>
+                                    </div>
+                                    @endforelse
+                                    @endif
+                                </div>-->
+                {{-- End of Posts Container --}}
+            </main>
         </div>
-    </main>
+    </div>
+</div>
 
-    {{-- Toast Notifications Container --}}
-    <div id="myToastHost" 
-         class="mp-toast-host" 
-         role="region" 
-         aria-live="polite" 
-         aria-atomic="true"
-         aria-label="Notifications"></div>
-
-    {{-- Delete Confirmation Modal --}}
-    <div class="modal fade" 
-         id="deleteConfirmModal" 
-         tabindex="-1" 
-         aria-labelledby="deleteConfirmModalLabel"
-         aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content mp-modal">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteConfirmModalLabel">
-                        <i class="bi bi-exclamation-triangle-fill text-warning me-2" aria-hidden="true"></i>
-                        <span>Confirm Delete</span>
-                    </h5>
-                    <button type="button" 
-                            class="btn-close" 
-                            data-bs-dismiss="modal" 
-                            aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body">
-                    <div class="mp-warn" role="alert">
-                        <div class="mp-warn__icon" aria-hidden="true">
-                            <i class="bi bi-trash3"></i>
-                        </div>
-                        <div>
-                            <div class="mp-warn__title">Delete this post?</div>
-                            <div class="text-muted mt-1" id="deleteConfirmText">
-                                This action cannot be undone.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" 
-                            class="btn btn-outline-secondary mp-btn-pill" 
-                            data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle me-1" aria-hidden="true"></i>
-                        <span>Cancel</span>
-                    </button>
-                    <button type="button" 
-                            class="btn btn-danger mp-btn-pill" 
-                            id="confirmDeleteBtn">
-                        <i class="bi bi-trash me-1" aria-hidden="true"></i>
-                        <span>Delete</span>
-                    </button>
-                </div>
+{{-- Delete Confirmation Modal --}}
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle text-warning"></i>
+                    Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmText">Are you sure you want to delete this post?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+{{-- Toast Container --}}
+<div id="myToastHost" class="toast-container"></div>
+
 @endsection
 
 @push('scripts')
-@vite([
-    'resources/js/my-posts.js',
-    'resources/js/media-lightbox.js'
-])
+<script>
+    window.AJAX_CONFIG = {!! json_encode([
+            'baseUrl' => route('forums.my-posts'),
+            'csrfToken' => csrf_token()
+    ]) !!}
+    ;
+
+    window.currentState = {!! json_encode([
+            'tab' => $activeTab,
+            'search' => is_array($search) ? ($search['q'] ?? '') : ($search ?? ''),
+            'status' => $filters['status'] ?? '',
+            'visibility' => $filters['visibility'] ?? '',
+            'sort' => $sort ?? 'latest'
+    ]) !!}
+    ;
+</script>
+
+@vite('resources/js/my-posts.js')
+@vite('resources/js/media-lightbox.js')
 @endpush

@@ -10,38 +10,38 @@ class MediaPostDecorator extends BasePostDecorator
 {
     /**
      * Process media files
-     *
-     * @return array
      */
     public function process(): array
     {
         $data = parent::process();
-        
-        // Process media files if present
+
         if ($this->request->hasFile('media')) {
             try {
                 $files = $this->request->file('media');
-                
+
                 // Validate total count
-                if (count($files) > MediaHelper::POST_MAX_MEDIA_COUNT) {
+                if (count($files) > PostMediaHelper::POST_MAX_MEDIA_COUNT) {
                     throw new \Exception(
-                        'Maximum ' . MediaHelper::POST_MAX_MEDIA_COUNT . ' media files allowed. ' .
+                        'Maximum ' . PostMediaHelper::POST_MAX_MEDIA_COUNT . ' media files allowed. ' .
                         'You uploaded ' . count($files) . ' files.'
                     );
                 }
-                
-                // Process all media files (convert to JPEG/MP4, rename with UUID)
-                $processedMedia = MediaHelper::processPostMedia($files);
-                
-                // Add to data
+
+                // Decide storage disk based on visibility
+                $visibility = $this->request->input('visibility', 'public');
+                $disk = $visibility === 'club_only' ? 'local' : 'public';
+
+                // Process all media files (UUID rename etc.)
+                $processedMedia = PostMediaHelper::processPostMedia($files, $disk);
+
                 $data['media_paths'] = $processedMedia;
-                
+
                 Log::info('Media processed successfully', [
                     'count' => count($processedMedia),
+                    'disk' => $disk,
                     'types' => array_column($processedMedia, 'type'),
                     'total_size' => array_sum(array_column($processedMedia, 'size')),
                 ]);
-                
             } catch (\Exception $e) {
                 Log::error('Media processing failed', [
                     'error' => $e->getMessage(),
@@ -50,7 +50,7 @@ class MediaPostDecorator extends BasePostDecorator
                 throw $e;
             }
         }
-        
+
         return $data;
     }
 }

@@ -8,8 +8,8 @@ use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
-class MediaHelper
-{
+class MediaHelper {
+
     /**
      * Allowed image MIME types
      */
@@ -38,8 +38,7 @@ class MediaHelper
     public const DEFAULT_IMAGE_MAX_SIZE = 5;
     public const DEFAULT_VIDEO_MAX_SIZE = 50;
 
-    protected static function imageManager(): ImageManager
-    {
+    protected static function imageManager(): ImageManager {
         return new ImageManager(new Driver());
     }
 
@@ -52,9 +51,9 @@ class MediaHelper
      * @return array ['path' => string, 'url' => string, 'metadata' => array]
      */
     public static function processImage(
-        UploadedFile $file,
-        string $directory = 'images',
-        array $options = []
+            UploadedFile $file,
+            string $directory = 'images',
+            array $options = []
     ): array {
         $config = array_merge([
             'max_size' => self::DEFAULT_IMAGE_MAX_SIZE,
@@ -67,7 +66,7 @@ class MediaHelper
             'thumbnail' => false,
             'thumbnail_width' => 300,
             'thumbnail_height' => 300,
-        ], $options);
+                ], $options);
 
         self::validateImage($file, $config['max_size']);
 
@@ -104,26 +103,37 @@ class MediaHelper
 
         Storage::disk($config['disk'])->put($path, (string) $encoded);
 
+//        $result = [
+//            'filename' => $filename,
+//            'path' => $path,
+//            'url' => Storage::disk($config['disk'])->url($path),
+//            'metadata' => [
+//                'width' => $image->width(),
+//                'height' => $image->height(),
+//                'size' => Storage::disk($config['disk'])->size($path),
+//                'mime_type' => Storage::disk($config['disk'])->mimeType($path),
+//            ],
+//        ];
+
         $result = [
-            'filename' => $filename,
+            'disk' => $config['disk'],
+            'type' => 'image',
             'path' => $path,
-            'url' => Storage::disk($config['disk'])->url($path),
-            'metadata' => [
-                'width' => $image->width(),
-                'height' => $image->height(),
-                'size' => Storage::disk($config['disk'])->size($path),
-                'mime_type' => Storage::disk($config['disk'])->mimeType($path),
-            ],
+            'mime_type' => Storage::disk($config['disk'])->mimeType($path),
+            'size' => Storage::disk($config['disk'])->size($path),
+            'original_name' => $file->getClientOriginalName(),
+            'stored_name' => $filename,
+                // 'sha256' => hash_file('sha256', $file->getRealPath()),
         ];
 
         if ($config['thumbnail']) {
             $thumbnailPath = self::createThumbnail(
-                $image,
-                $directory,
-                $filename,
-                $config['thumbnail_width'],
-                $config['thumbnail_height'],
-                $config['disk']
+                            $image,
+                            $directory,
+                            $filename,
+                            $config['thumbnail_width'],
+                            $config['thumbnail_height'],
+                            $config['disk']
             );
 
             $result['thumbnail_filename'] = basename($thumbnailPath);
@@ -143,15 +153,15 @@ class MediaHelper
      * @return array
      */
     public static function processVideo(
-        UploadedFile $file,
-        string $directory = 'videos',
-        array $options = []
+            UploadedFile $file,
+            string $directory = 'videos',
+            array $options = []
     ): array {
         $config = array_merge([
             'max_size' => self::DEFAULT_VIDEO_MAX_SIZE,
             'disk' => 'public',
             'generate_thumbnail' => true,
-        ], $options);
+                ], $options);
 
         self::validateVideo($file, $config['max_size']);
 
@@ -161,14 +171,24 @@ class MediaHelper
 
         $file->storeAs($directory, $filename, $config['disk']);
 
+//        $result = [
+//            'path' => $path,
+//            'url' => Storage::disk($config['disk'])->url($path),
+//            'metadata' => [
+//                'size' => Storage::disk($config['disk'])->size($path),
+//                'mime_type' => Storage::disk($config['disk'])->mimeType($path),
+//                'extension' => $extension,
+//            ],
+//        ];
+
         $result = [
+            'disk' => $config['disk'],
+            'type' => 'video',
             'path' => $path,
-            'url' => Storage::disk($config['disk'])->url($path),
-            'metadata' => [
-                'size' => Storage::disk($config['disk'])->size($path),
-                'mime_type' => Storage::disk($config['disk'])->mimeType($path),
-                'extension' => $extension,
-            ],
+            'mime_type' => Storage::disk($config['disk'])->mimeType($path),
+            'size' => Storage::disk($config['disk'])->size($path),
+            'original_name' => $file->getClientOriginalName(),
+            'stored_name' => $filename,
         ];
 
         // Generate video thumbnail (requires FFmpeg)
@@ -184,8 +204,7 @@ class MediaHelper
     /**
      * Validate image file
      */
-    public static function validateImage(UploadedFile $file, float $maxSizeMB = null): void
-    {
+    public static function validateImage(UploadedFile $file, float $maxSizeMB = null): void {
         $maxSizeMB = $maxSizeMB ?? self::DEFAULT_IMAGE_MAX_SIZE;
 
         if (!$file->isValid()) {
@@ -215,8 +234,7 @@ class MediaHelper
     /**
      * Validate video file
      */
-    public static function validateVideo(UploadedFile $file, float $maxSizeMB = null): void
-    {
+    public static function validateVideo(UploadedFile $file, float $maxSizeMB = null): void {
         $maxSizeMB = $maxSizeMB ?? self::DEFAULT_VIDEO_MAX_SIZE;
 
         if (!$file->isValid()) {
@@ -233,20 +251,19 @@ class MediaHelper
         }
     }
 
-    protected static function generateFilename(UploadedFile $file, string $format = 'jpg'): string
-    {
+    protected static function generateFilename(UploadedFile $file, string $format = 'jpg'): string {
         $timestamp = now()->format('Ymd_His');
         $random = Str::random(8);
         return "{$timestamp}_{$random}.{$format}";
     }
 
     protected static function createThumbnail(
-        $image,
-        string $directory,
-        string $filename,
-        int $width,
-        int $height,
-        string $disk
+            $image,
+            string $directory,
+            string $filename,
+            int $width,
+            int $height,
+            string $disk
     ): string {
         $thumbnail = clone $image;
 
@@ -263,8 +280,7 @@ class MediaHelper
     /**
      * Delete image and its thumbnail
      */
-    public static function deleteImage(string $path, string $disk = 'public'): bool
-    {
+    public static function deleteImage(string $path, string $disk = 'public'): bool {
         $deleted = Storage::disk($disk)->delete($path);
 
         $directory = dirname($path);
@@ -278,8 +294,7 @@ class MediaHelper
         return $deleted;
     }
 
-    public static function getSupportedFormats(): array
-    {
+    public static function getSupportedFormats(): array {
         return [
             'jpg' => [
                 'mime' => 'image/jpeg',
@@ -302,8 +317,7 @@ class MediaHelper
         ];
     }
 
-    public static function formatBytes(int $bytes): string
-    {
+    public static function formatBytes(int $bytes): string {
         if ($bytes >= 1073741824) {
             return number_format($bytes / 1073741824, 2) . ' GB';
         } elseif ($bytes >= 1048576) {

@@ -7,20 +7,22 @@ use App\Models\Post;
 use App\Models\PostSave;
 use Illuminate\Http\Request;
 
-class PostSaveController extends Controller
-{
-    public function __construct()
-    {
+class PostSaveController extends Controller {
+
+    public function __construct() {
         $this->middleware(['auth', 'check.active.user']);
     }
 
-    public function toggle(Request $request, Post $post)
-    {
+    public function toggle(Request $request, Post $post) {
+        if (!$post->canBeViewedBy($request->user())) {
+            return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+        }
+
         $userId = $request->user()->id;
 
         $existing = PostSave::where('post_id', $post->id)
-            ->where('user_id', $userId)
-            ->first();
+                ->where('user_id', $userId)
+                ->first();
 
         if ($existing) {
             $existing->delete();
