@@ -11,9 +11,11 @@ class Club extends Model {
         'name',
         'slug',
         'description',
+        'category',
         'email',
         'phone',
         'logo',
+        'background_image',
         'status',
         'created_by',
         'approved_at',
@@ -56,6 +58,14 @@ class Club extends Model {
         return $this->belongsToMany(User::class, 'club_blacklist')
                     ->withPivot('reason', 'blacklisted_by')
                     ->withTimestamps();
+    }
+
+    public function announcements() {
+        return $this->hasMany(ClubAnnouncement::class);
+    }
+
+    public function publishedAnnouncements() {
+        return $this->hasMany(ClubAnnouncement::class)->published();
     }
 
     /**

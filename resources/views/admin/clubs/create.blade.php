@@ -73,6 +73,26 @@
                                 <div class="form-text">Brief description of the club's purpose and activities</div>
                             </div>
 
+                            <div class="mb-4">
+                                <label for="clubCategory" class="form-label">
+                                    Category
+                                </label>
+                                <select class="form-select form-control-modern" 
+                                        id="clubCategory" 
+                                        name="category">
+                                    <option value="">Select a category (optional)</option>
+                                    <option value="academic">Academic</option>
+                                    <option value="sports">Sports</option>
+                                    <option value="cultural">Cultural</option>
+                                    <option value="social">Social</option>
+                                    <option value="volunteer">Volunteer</option>
+                                    <option value="professional">Professional</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <div class="form-text">Select the category that best describes the club</div>
+                                <div class="invalid-feedback" id="clubCategoryError"></div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-6 mb-4">
                                     <label for="clubEmail" class="form-label">
@@ -466,6 +486,18 @@
         validateEmail('clubEmail');
     });
 
+    // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
+    function generateTimestamp() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     // Combined Form Handler
     document.getElementById('createClubForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -479,8 +511,14 @@
         try {
             // Step 1: Create Club
             const clubFormData = new FormData();
+            // Add timestamp for IFA standard
+            clubFormData.append('timestamp', generateTimestamp());
             clubFormData.append('name', document.getElementById('clubName').value.trim());
             clubFormData.append('description', document.getElementById('clubDescription').value.trim());
+            const categoryValue = document.getElementById('clubCategory').value.trim();
+            if (categoryValue) {
+                clubFormData.append('category', categoryValue);
+            }
             clubFormData.append('email', document.getElementById('clubEmail').value.trim());
             clubFormData.append('phone', document.getElementById('clubPhone').value.trim());
             
@@ -541,6 +579,17 @@
 
             // Step 2: Create Club Account with club_id
             // Use club email and phone for account (same values)
+            
+            // Format timestamp as YYYY-MM-DD HH:MM:SS (IFA standard)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
             const accountFormData = {
                 name: document.getElementById('accountName').value.trim(),
                 email: document.getElementById('clubEmail').value.trim(), // Use club email
@@ -551,7 +600,7 @@
                 program: document.getElementById('accountProgram').value.trim() || 'N/A',
                 status: 'active', // Always active, hidden field
                 club_id: clubId, // Link to the created club
-                timestamp: Math.floor(Date.now() / 1000), // Unix timestamp in seconds (required by API)
+                timestamp: timestamp, // IFA standard format: YYYY-MM-DD HH:MM:SS
             };
 
             const accountResponse = await fetch('/api/v1/club-users', {
@@ -609,6 +658,7 @@
 
             // Step 3: Update club with club_user_id
             const updateClubData = {
+                timestamp: generateTimestamp(), // Add timestamp for IFA standard
                 club_user_id: accountData.data.id,
             };
 
