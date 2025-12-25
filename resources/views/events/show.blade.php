@@ -702,9 +702,9 @@
 
                     {{-- View Registration History Button --}}
                     {{-- <a href="{{ route('registrations.history', ['event' => $event->id]) }}" --}}
-                       class="btn btn-outline-primary w-100 mt-3">
-                        <i class="bi bi-clock-history me-2"></i>
-                        View Registration History
+                    class="btn btn-outline-primary w-100 mt-3">
+                    <i class="bi bi-clock-history me-2"></i>
+                    View Registration History
                     </a>
 
                     {{-- 根据状态互斥显示 --}}
@@ -833,7 +833,12 @@
                         <div class="status-icon"><i class="bi bi-lock-fill"></i></div>
                         <div class="status-text"><h4>Club Members Only</h4><p>Restricted to members.</p></div>
                     </div>
-                    <a href="{{ route('home') }}" class="btn btn-outline-primary w-100 mt-3">Join This Club</a>
+                    <button 
+                        type="button" 
+                        class="btn btn-outline-primary w-100 mt-3"
+                        onclick="window.openJoinClubModal({{ $event->organizer_id }})">
+                        <i class="bi bi-person-plus me-1"></i> Join This Club
+                    </button>
 
                     @elseif($event->is_full)
                     <div class="registration-status status-full">
@@ -1336,19 +1341,16 @@
     // Cancel Registration Flow with Refund Reason
     const isRefundAvailable = @json($event -> is_paid && $event -> refund_available);
     const isPaid = @json($event -> is_paid);
-    
     // 先定义 route 变量，如果有 userRegistration 才赋值
     let cancelRoute = '';
-    @if($userRegistration)
-        cancelRoute = '{{ route("registrations.cancel", $userRegistration) }}';
+    @if ($userRegistration)
+            cancelRoute = '{{ route("registrations.cancel", $userRegistration) }}';
     @endif
-    
-    $('#proceedCancelBtn').on('click', function() {
+
+            $('#proceedCancelBtn').on('click', function() {
     $('#cancelRegistrationModal').modal('hide');
-    
     // 安全检查：如果没有 route (比如 organizer 视角)，直接停止
-    if (!cancelRoute) return; 
-        
+    if (!cancelRoute) return;
     // 如果是付费且可退款，显示退款原因表单
     if (isPaid && isRefundAvailable) {
     $('#refundReasonModal').modal('show');
@@ -1368,7 +1370,8 @@
     form.submit();
     }
     });
-// Refund Reason Form Validation
+    
+    // Refund Reason Form Validation
     $('#refundReasonForm').on('submit', function(e) {
     const reason = $('#refundReason').val().trim();
     const btn = $('#confirmRefundCancelBtn');
@@ -1389,4 +1392,5 @@
 </script>
 @endpush
 
+@include('clubs.join_modal')
 @endsection

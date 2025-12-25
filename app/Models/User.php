@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens; 
 
 // Import all traits
 use App\Models\Traits\HasRoles;
@@ -21,7 +22,8 @@ use App\Models\Traits\HasForumActivity;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory,
+    use HasApiTokens,
+        HasFactory,
         Notifiable,
         HasRoles,
         HasPermissions,

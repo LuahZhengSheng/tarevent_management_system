@@ -4,15 +4,20 @@ use Illuminate\Support\Facades\Route;
 //use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Event\EventController;
 use App\Http\Controllers\Event\EventRegistrationController;
+use App\Http\Controllers\Event\PaymentController;
+use App\Http\Controllers\Webhook\StripeWebhookController;
+use App\Http\Controllers\Webhook\PayPalWebhookController;
+use App\Http\Controllers\Event\RefundController;
 use App\Http\Controllers\Club\ClubEventsController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\ProfileController;
-//use App\Http\Controllers\Forum\ForumController;
-//use App\Http\Controllers\Club\ClubController;
-//use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Forum\PostController;
+use App\Http\Controllers\Forum\MyPostController;
+use App\Http\Controllers\Forum\CommentController;
+use App\Http\Controllers\Forum\LikeController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Club\ClubController;
@@ -119,11 +124,6 @@ Route::get('/test/club-user-api', function () {
 Route::middleware(['auth'])->get('/test/select-club-modal', function () {
     return view('test.select_club_modal_test');
 })->name('test.select.club.modal');
-
-use App\Http\Controllers\Forum\PostController;
-use App\Http\Controllers\Forum\MyPostController;
-use App\Http\Controllers\Forum\CommentController;
-use App\Http\Controllers\Forum\LikeController;
 
 /*
   |--------------------------------------------------------------------------
@@ -232,49 +232,101 @@ Route::middleware(['auth'])->group(function () {
   |--------------------------------------------------------------------------
  */
 Route::middleware(['auth', 'user'])->group(function () {
-//
-//    // User Profile Management
-//    Route::prefix('profile')->name('profile.')->group(function () {
-//        Route::get('/', [UserController::class, 'show'])->name('show');
-//        Route::get('/edit', [UserController::class, 'edit'])->name('edit');
-//        Route::put('/update', [UserController::class, 'update'])->name('update');
-//        Route::get('/change-password', [UserController::class, 'showChangePasswordForm'])->name('change-password');
-//        Route::put('/change-password', [UserController::class, 'changePassword'])->name('update-password');
-//    });
-    // Event Registration Routes (For Students)
+        
+    // ==========================================
+    // 1. Event Registration
+    // ==========================================
     Route::prefix('events/{event}')->name('events.register.')->group(function () {
         Route::get('/register', [EventRegistrationController::class, 'create'])->name('create');
         Route::post('/register', [EventRegistrationController::class, 'store'])->name('store');
     });
 
-    // AJAX Validation for Registration
+    // AJAX Validation for Registration Form
     Route::post('/events/register/validate-field', [EventRegistrationController::class, 'validateField'])
             ->name('events.register.validate');
-
-    // My Events (User's registered events)
-    Route::get('/my-events', [EventRegistrationController::class, 'myEvents'])
-            ->name('events.my');
-
-    // Fetch my events via AJAX
-    Route::get('/my-events/fetch', [EventRegistrationController::class, 'fetchMyEvents'])
-            ->name('events.my.fetch');
 
     // Cancel Registration
     Route::delete('/registrations/{registration}', [EventRegistrationController::class, 'destroy'])
             ->name('registrations.cancel');
-    
-    // Registration History
-    Route::view('/registration-history', 'events.registration-history');
 
-//    // Forum Interactions (Authenticated Users)
-//    Route::prefix('forum')->name('forum.')->group(function () {
-//        Route::post('/posts', [ForumController::class, 'store'])->name('posts.store');
-//        Route::put('/posts/{post}', [ForumController::class, 'update'])->name('posts.update');
-//        Route::delete('/posts/{post}', [ForumController::class, 'destroy'])->name('posts.destroy');
-//
-//        Route::post('/posts/{post}/comments', [ForumController::class, 'storeComment'])->name('comments.store');
-//        Route::delete('/comments/{comment}', [ForumController::class, 'destroyComment'])->name('comments.destroy');
-//    });
+
+    // ==========================================
+    // 2. My Events & Dashboard
+    // ==========================================
+    // My Events Page
+    Route::get('/my-events', [EventRegistrationController::class, 'myEvents'])
+            ->name('events.my');
+
+    // Fetch My Events (AJAX)
+    Route::get('/my-events/fetch', [EventRegistrationController::class, 'fetchMyEvents'])
+            ->name('events.my.fetch');
+
+    
+    // ==========================================
+    // 3. Registration History
+    // ==========================================
+    // History Page
+    Route::get('/events/{event}/registrations/history', [EventRegistrationController::class, 'history'])
+        ->name('registrations.history');
+        
+    // Fetch History Data (AJAX)
+    Route::get('/events/{event}/registrations/fetch-history', [EventRegistrationController::class, 'fetchHistory'])
+        ->name('registrations.fetchHistory');
+
+
+    // ==========================================
+    // 4. Payment System
+    // ==========================================
+    
+    // --- Checkout / Landing ---
+    Route::get('/registrations/{registration}/payment', [PaymentController::class, 'payment'])
+            ->name('registrations.payment');
+
+    // --- Payment History ---
+    Route::get('/payments/history', [PaymentController::class, 'history'])
+        ->name('payments.history');
+    Route::get('/payments/fetch-history', [PaymentController::class, 'fetchHistory'])
+        ->name('payments.fetchHistory');
+
+    // --- Stripe Integration ---
+    Route::post('/payments/create-intent', [PaymentController::class, 'createIntent'])
+            ->name('payments.create-intent');
+    Route::post('/payments/confirm', [PaymentController::class, 'confirmPayment'])
+            ->name('payments.confirm');
+
+    // --- PayPal Integration ---
+    Route::post('/payments/paypal/create-order', [PaymentController::class, 'createPayPalOrder'])
+            ->name('payments.paypal.create-order');
+    Route::post('/payments/paypal/capture-order', [PaymentController::class, 'capturePayPalOrder'])
+            ->name('payments.paypal.capture-order');
+
+    // --- Payment Status Check ---
+    Route::get('/registrations/{registration}/check-status', [PaymentController::class, 'checkStatus'])
+            ->name('registrations.check-status');
+
+            
+    // ==========================================
+    // 5. Receipts & Refunds
+    // ==========================================
+    
+    // View Receipt (HTML Page)
+    Route::get('/registrations/{registration}/receipt', [PaymentController::class, 'receipt'])
+            ->name('registrations.receipt');
+            
+    // Download Payment Receipt (PDF) -> Pointing to PaymentController
+//    Route::get('/payments/{payment}/download-receipt', [PaymentController::class, 'downloadPaymentReceipt'])
+//            ->name('payments.download-receipt');
+    
+    Route::get('/payments/{payment}/download-receipt', [RefundController::class, 'downloadReceipt'])
+            ->name('payments.download-receipt');
+
+    // Download Refund Receipt (PDF) -> Pointing to PaymentController
+    Route::get('/payments/{payment}/download-refund-receipt', [PaymentController::class, 'downloadRefundReceipt'])
+            ->name('payments.download-refund-receipt');
+
+    // Request Refund
+    Route::post('/registrations/{registration}/request-refund', [RefundController::class, 'request'])
+            ->name('registrations.request-refund');
 });
 
 /*
@@ -485,62 +537,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 //        Route::get('/registrations', [EventRegistrationController::class, 'registrationsReport'])->name('registrations');
 //        Route::get('/payments', [EventRegistrationController::class, 'paymentsReport'])->name('payments');
 //    });
-});
-
-/*
-  |--------------------------------------------------------------------------
-  | Payment Routes
-  |--------------------------------------------------------------------------
- */
-
-Route::middleware(['auth', 'user', 'check.active.user'])->group(function () {
-    // Payment Page (Checkout Landing Page)
-    Route::get('/registrations/{registration}/payment', [PaymentController::class, 'payment'])
-            ->name('registrations.payment');
-
-    // ----------------------------------------------------
-    // Stripe Payment Routes
-    // ----------------------------------------------------
-    // 创建 Stripe Session (用于跳转到 Stripe 托管页面)
-//    Route::post('/payments/stripe/create-session', [PaymentController::class, 'createStripeSession'])
-//        ->name('payments.stripe.create-session');
-//
-//    // Stripe 成功回调页面 (从 Stripe 跳转回来)
-//    Route::get('/payments/stripe/success', [PaymentController::class, 'stripeSuccess'])
-//        ->name('payments.stripe.success');
-    // Stripe PaymentIntent 路由
-    Route::post('/payments/create-intent', [PaymentController::class, 'createIntent'])
-            ->name('payments.create-intent');
-
-    // 确认支付
-    Route::post('/payments/confirm', [PaymentController::class, 'confirmPayment'])
-            ->name('payments.confirm');
-
-    // ----------------------------------------------------
-    // PayPal Payment Routes
-    // ----------------------------------------------------
-    Route::post('/payments/paypal/create-order', [PaymentController::class, 'createPayPalOrder'])
-            ->name('payments.paypal.create-order');
-
-    Route::post('/payments/paypal/capture-order', [PaymentController::class, 'capturePayPalOrder'])
-            ->name('payments.paypal.capture-order');
-
-    // Payment receipt and refund routes
-    Route::get('/registrations/{registration}/receipt', [PaymentController::class, 'receipt'])
-            ->name('registrations.receipt');
-
-    Route::get('/registrations/{registration}/check-status', [PaymentController::class, 'checkStatus'])
-            ->name('registrations.check-status');
-
-    Route::get('/payments/{payment}/download-receipt', [RefundController::class, 'downloadReceipt'])
-            ->name('payments.download-receipt');
-
-    Route::get('/payments/{payment}/download-refund-receipt', [RefundController::class, 'downloadRefundReceipt'])
-            ->name('payments.download-refund-receipt');
-
-    // Refund request (user)
-    Route::post('/registrations/{registration}/request-refund', [RefundController::class, 'request'])
-            ->name('registrations.request-refund');
 });
 
 Route::get('/events/{event}', [EventController::class, 'show'])->name('events.show');

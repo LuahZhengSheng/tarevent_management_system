@@ -247,8 +247,6 @@ class PayPalWebhookController extends Controller {
      */
     protected function handleCaptureRefunded(array $payload) {
         try {
-            Log::info('DEBUG: Entering NEW handleCaptureRefunded code!');
-            
             $resource = $payload['resource'] ?? [];
             $eventType = $payload['event_type'] ?? 'UNKNOWN';
 
