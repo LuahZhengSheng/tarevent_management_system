@@ -32,8 +32,8 @@ class CheckUserRole
 
         $user = auth()->user();
 
-        // 只允许 role = user
-        if (! $user->hasRole('user')) {   
+        // 只允许 role = student
+        if (! $user->hasRole('student')) {   
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,

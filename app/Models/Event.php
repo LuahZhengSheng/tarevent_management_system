@@ -124,18 +124,27 @@ class Event extends Model {
     // Accessors
     public function getIsRegistrationOpenAttribute() {
         $now = now();
+        // 计算已用名额时，把正在付钱的人也算上
+        $occupied = $this->registrations()
+                ->whereIn('status', ['confirmed', 'pending_payment'])
+                ->count();
+
         return $this->status === 'published' &&
                 $this->registration_start_time <= $now &&
                 $this->registration_end_time >= $now &&
-                ($this->max_participants === null ||
-                $this->registrations()->where('status', 'confirmed')->count() < $this->max_participants);
+                ($this->max_participants === null || $occupied < $this->max_participants);
     }
 
     public function getRemainingSeatsAttribute() {
         if ($this->max_participants === null) {
             return null;
         }
-        return $this->max_participants - $this->registrations()->where('status', 'confirmed')->count();
+        // 把 pending 也减掉
+        $occupied = $this->registrations()
+                ->whereIn('status', ['confirmed', 'pending_payment'])
+                ->count();
+
+        return max(0, $this->max_participants - $occupied);
     }
 
     public function getIsFullAttribute() {
@@ -148,20 +157,25 @@ class Event extends Model {
 
     // Methods
     public function canBeEditedBy(User $user) {
-        if ($user->hasRole('club')) {
-            return true;
+        // 1. Admin 永远有权编辑 (作为兜底)
+//        if ($user->isAdmin()) {
+//            return true;
+//        }
+        // 2. 只有该活动的 Organizer (Club) 才有权编辑
+        if ($this->organizer_type === 'club' && $user->hasRole('club')) {
+            // 使用 User 模型里的辅助方法 isClubAdmin 来比对 ID
+            return $user->isClubAdmin($this->organizer_id);
         }
-
-        if ($this->organizer_type === 'club' && $user->isClubAdmin($this->organizer_id)) {
-            return true;
-        }
-
-        return false;
     }
 
     public function canBeDeleted() {
-        return $this->end_time >= now() &&
-                $this->registrations()->where('status', 'confirmed')->count() === 0;
+        // 已经有 confirmed 或 pending_payment 的报名者，不能硬删除，建议 Cancel
+        $hasRegistrants = $this->registrations()
+                ->whereIn('status', ['confirmed', 'pending_payment']) 
+                ->exists();
+        
+        // 只有没结束且没人报名的，才能删
+        return $this->end_time >= now() && !$hasRegistrants;
     }
 
     public function canBeCancelled() {

@@ -102,6 +102,12 @@ $(function () {
     }
 
     function setupEventListeners() {
+        $form.on('keydown', function (e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+            }
+        });
+
         const $textInputs = $form.find(
                 'input[type="text"]:not([readonly]), ' +
                 'input[type="email"]:not([readonly]), ' +
@@ -660,6 +666,16 @@ $(function () {
         const submitter = e.originalEvent.submitter;
         const status = submitter ? submitter.value : 'draft';
 
+        // 如果是 Publish，加确认
+        if (status === 'published') {
+            const ok = window.confirm(
+                    'Are you sure you want to publish this event? It will be visible to all students.'
+                    );
+            if (!ok) {
+                return; // 用户按取消，直接中断，不提交
+            }
+        }
+
         if (typeof PhoneValidator !== 'undefined') {
             const $phone = $('#contact_phone');
             const raw = $phone.data('formatted-phone') || $phone.val();
@@ -691,8 +707,19 @@ $(function () {
 
             if (response.ok && data.success) {
                 showAlert(data.message, 'success');
+
+                const fallbackUrl = (typeof window.eventsIndexUrl !== 'undefined')
+                        ? window.eventsIndexUrl
+                        : '/events';
+
+                // 从 API 返回的 data.data.show_url 里拿跳转地址
+                const redirectUrl =
+                        (data.data && data.data.show_url)
+                        ? data.data.show_url
+                        : (data.redirect || fallbackUrl);
+
                 setTimeout(() => {
-                    window.location.href = data.redirect;
+                    window.location.href = redirectUrl;
                 }, 1500);
             } else {
                 // 422 或自定义失败
@@ -714,9 +741,52 @@ $(function () {
                     });
                 }
 
-                showAlert(data.message || 'An error occurred. Please fix the errors and try again.', 'danger');
+                showAlert(
+                        data.message || 'An error occurred. Please fix the errors and try again.',
+                        'danger'
+                        );
                 resetButtons($submitButtons);
             }
+
+//            const response = await fetch($form.attr('action') || '/events', {
+//                method: 'POST',
+//                headers: {
+//                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+//                    'Accept': 'application/json'
+//                },
+//                body: formData
+//            });
+//
+//            const data = await response.json();
+//
+//            if (response.ok && data.success) {
+//                showAlert(data.message, 'success');
+//                setTimeout(() => {
+//                    window.location.href = data.redirect;
+//                }, 1500);
+//            } else {
+//                // 422 或自定义失败
+//                if (data.errors) {
+//                    // 先清掉旧状态
+//                    $form.find('.is-invalid').each(function () {
+//                        clearFieldValidation($(this));
+//                    });
+//
+//                    // 遍历每个错误字段
+//                    Object.keys(data.errors).forEach(name => {
+//                        const messages = data.errors[name];
+//                        const msg = Array.isArray(messages) ? messages[0] : messages;
+//                        const $field = $form.find(`[name="${name}"]`);
+//
+//                        if ($field.length) {
+//                            showFieldError($field, msg);
+//                        }
+//                    });
+//                }
+//
+//                showAlert(data.message || 'An error occurred. Please fix the errors and try again.', 'danger');
+//                resetButtons($submitButtons);
+//            }
         } catch (error) {
             console.error('Submit error:', error);
             showAlert('An unexpected error occurred. Please try again.', 'danger');

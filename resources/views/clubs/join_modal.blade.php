@@ -128,7 +128,7 @@
 }
 
 .join-club-modal-header {
-    background: linear-gradient(135deg, var(--user-primary) 0%, var(--admin-primary) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     color: white;
     border: none;
     padding: 1.5rem 2rem;
@@ -158,7 +158,7 @@
 
 .join-club-message {
     background: var(--bg-secondary);
-    border-left: 4px solid var(--user-primary);
+    border-left: 4px solid var(--primary);
     padding: 1rem 1.25rem;
     border-radius: 8px;
     margin-bottom: 1.5rem;
@@ -178,8 +178,8 @@
 }
 
 .join-club-textarea:focus {
-    border-color: var(--user-primary);
-    box-shadow: 0 0 0 3px var(--user-primary-light);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
     outline: none;
 }
 
@@ -215,12 +215,12 @@
 }
 
 .join-club-checkbox .form-check-input:checked {
-    background-color: var(--user-primary);
-    border-color: var(--user-primary);
+    background-color: var(--primary);
+    border-color: var(--primary);
 }
 
 .join-club-checkbox .form-check-input:focus {
-    box-shadow: 0 0 0 3px var(--user-primary-light);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .join-club-checkbox .form-check-label {
@@ -302,21 +302,21 @@
 }
 
 .join-club-btn-submit {
-    background: linear-gradient(135deg, var(--user-primary) 0%, var(--admin-primary) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     color: white;
     border: none;
     padding: 0.625rem 1.5rem;
     border-radius: 8px;
     font-weight: 600;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     min-width: 160px;
 }
 
 .join-club-btn-submit:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
-    background: linear-gradient(135deg, var(--user-primary-hover) 0%, var(--admin-primary-hover) 100%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, var(--primary-hover) 0%, var(--secondary-hover) 100%);
 }
 
 .join-club-btn-submit:active:not(:disabled) {
@@ -341,7 +341,7 @@
 }
 
 [data-theme="dark"] .join-club-modal-header {
-    background: linear-gradient(135deg, var(--user-primary) 0%, var(--admin-primary) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
 }
 
 [data-theme="dark"] .join-club-success-icon {
@@ -448,6 +448,18 @@
         });
     }
 
+    // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
+    function generateTimestamp() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     function handleSubmit() {
         if (!currentClubId) {
             showError('Club ID is missing. Please try again.');
@@ -471,6 +483,9 @@
         hideError();
         hideSuccess();
 
+        // Add timestamp for IFA standard
+        const timestamp = generateTimestamp();
+
         // Submit request
         fetch(`/api/clubs/${currentClubId}/join`, {
             method: 'POST',
@@ -481,6 +496,7 @@
             },
             credentials: 'same-origin',
             body: JSON.stringify({
+                timestamp: timestamp,
                 reason: reason,
                 agree: agree
             })

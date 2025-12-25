@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\HasApiTokens; 
+
 // Import all traits
 use App\Models\Traits\HasRoles;
 use App\Models\Traits\HasPermissions;
@@ -24,8 +27,8 @@ use App\Models\PostSave;
 use App\Models\PostComment;
 use App\Models\PostLike;
 
-class User extends Authenticatable implements MustVerifyEmail {
-
+class User extends Authenticatable implements MustVerifyEmail
+{
     use HasApiTokens,
         HasFactory,
         Notifiable,
@@ -98,8 +101,15 @@ class User extends Authenticatable implements MustVerifyEmail {
     // 学生加入的 clubs（通过 club_user 中间表）
     public function clubs() {
         return $this->belongsToMany(Club::class, 'club_user')
-                        ->withPivot('role')
+                        ->withPivot('role', 'status')
                         ->withTimestamps();
+    }
+
+    // 被加入黑名单的俱乐部
+    public function blacklistedClubs() {
+        return $this->belongsToMany(Club::class, 'club_blacklist')
+                    ->withPivot('reason', 'blacklisted_by')
+                    ->withTimestamps();
     }
 
     // 判断是否是某个 club 的成员
@@ -176,6 +186,174 @@ class User extends Authenticatable implements MustVerifyEmail {
     public function postSaves() {
         return $this->hasMany(PostSave::class, 'user_id');
     }
+
+    // =============================
+    // Role checking methods
+    // =============================
+
+    public function hasRole(string $role): bool {
+        return $this->role === $role;
+    }
+
+    public function hasAnyRole(array $roles): bool {
+        return in_array($this->role, $roles);
+    }
+
+    public function isStudent(): bool {
+        return $this->role === 'student';
+    }
+
+    public function isClub(): bool {
+        return $this->role === 'club';
+    }
+
+    public function isAdmin(): bool {
+        return $this->role === 'admin';
+    }
+
+    public function isClubAdmin(int $clubId = null): bool {
+        if (!$this->isClub()) {
+            return false;
+        }
+
+        if ($clubId === null) {
+            return $this->club_id !== null;
+        }
+
+        return $this->club_id === $clubId;
+    }
+
+    // =============================
+    // Status checking methods
+    // =============================
+
+    public function isActive(): bool {
+        return $this->status === 'active';
+    }
+
+    public function isSuspended(): bool {
+        return $this->status === 'suspended';
+    }
+
+    // =============================
+    // Permission checking
+    // =============================
+
+    public function canCreateEvent(): bool {
+        return $this->isClub() || $this->isAdmin();
+    }
+
+    public function canEditEvent(Event $event): bool {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isClub() && $event->organizer_type === 'club') {
+            return $event->organizer_id === $this->club_id;
+        }
+
+        return false;
+    }
+
+    public function canDeleteEvent(Event $event): bool {
+        return $this->canEditEvent($event);
+    }
+
+    public function canRegisterForEvent(Event $event): bool {
+        // Check if user is active
+        if (!$this->isActive()) {
+            return false;
+        }
+
+        // Check if already registered
+        if ($this->isRegisteredForEvent($event)) {
+            return false;
+        }
+
+        // Check if event is open for registration
+        return $event->is_registration_open;
+    }
+
+    public function isRegisteredForEvent(Event $event): bool {
+        return $this->eventRegistrations()
+                        ->where('event_id', $event->id)
+                        ->whereIn('status', ['confirmed', 'pending_payment'])
+                        ->exists();
+    }
+
+    // =============================
+    // Accessors
+    // =============================
+
+    /**
+     * Get the user's profile photo URL
+     * 
+     * @return string
+     */
+    public function getProfilePhotoUrlAttribute()
+    {
+        // 如果有上传的头像且文件存在
+        if ($this->profile_photo && Storage::disk('public')->exists($this->profile_photo)) {
+            return asset('storage/' . $this->profile_photo);
+        }
+
+        // 返回默认头像（基于角色）
+        $defaultAvatars = [
+            'student' => 'images/default-student-avatar.png',
+            'club' => 'images/default-club-avatar.png',
+            'admin' => 'images/default-admin-avatar.png',
+        ];
+
+        return asset($defaultAvatars[$this->role] ?? $defaultAvatars['student']);
+    }
+
+    /**
+     * Get the storage path for profile photo
+     * 
+     * @return string|null
+     */
+    public function getProfilePhotoPathAttribute()
+    {
+        if ($this->profile_photo) {
+            return storage_path('app/public/' . $this->profile_photo);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Check if user has uploaded profile photo
+     * 
+     * @return bool
+     */
+    public function hasProfilePhoto(): bool
+    {
+        return $this->profile_photo && Storage::disk('public')->exists($this->profile_photo);
+    }
+
+    /**
+     * Delete user's profile photo
+     * 
+     * @return bool
+     */
+    public function deleteProfilePhoto(): bool
+    {
+        if ($this->hasProfilePhoto()) {
+            Storage::disk('public')->delete($this->profile_photo);
+            $this->profile_photo = null;
+            $this->save();
+            return true;
+        }
+        
+        return false;
+    }
+    
+//    public function getUnreadNotificationsCountAttribute()
+//    {
+//        return $this->notifications()
+//                    ->whereNull('read_at')
+//                    ->count();
+//    }
 
     // =============================
     // Scopes

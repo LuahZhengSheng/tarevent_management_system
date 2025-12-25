@@ -27,63 +27,63 @@
             <!-- Event Stage Indicator -->
             <div class="event-stage-indicator">
                 @php
-                    $now = now();
-                    $stage = 'draft';
-                    $stageLabel = 'Draft';
-                    $stageIcon = 'file-earmark';
-                    $stageColor = 'secondary';
-                    
-                    if ($event->status === 'draft') {
-                        $stage = 'draft';
-                        $stageLabel = 'Draft';
-                        $stageIcon = 'file-earmark';
-                        $stageColor = 'secondary';
-                    } elseif ($event->status === 'cancelled') {
-                        $stage = 'cancelled';
-                        $stageLabel = 'Cancelled';
-                        $stageIcon = 'x-circle';
-                        $stageColor = 'danger';
-                    } elseif ($event->end_time < $now) {
-                        $stage = 'past';
-                        $stageLabel = 'Past Event';
-                        $stageIcon = 'check-circle';
-                        $stageColor = 'success';
-                    } elseif ($event->start_time <= $now && $event->end_time >= $now) {
-                        $stage = 'ongoing';
-                        $stageLabel = 'Event Ongoing';
-                        $stageIcon = 'play-circle';
-                        $stageColor = 'primary';
-                    } elseif ($event->registration_start_time <= $now && $event->registration_end_time >= $now) {
-                        $stage = 'registration';
-                        $stageLabel = 'Registration Open';
-                        $stageIcon = 'door-open';
-                        $stageColor = 'info';
-                    } elseif ($event->registration_start_time > $now) {
-                        $stage = 'before-registration';
-                        $stageLabel = 'Before Registration';
-                        $stageIcon = 'clock';
-                        $stageColor = 'warning';
-                    } elseif ($event->status === 'published') {
-                        $stage = 'published';
-                        $stageLabel = 'Published';
-                        $stageIcon = 'check2-circle';
-                        $stageColor = 'success';
-                    }
+                $now = now();
+                $stage = 'draft';
+                $stageLabel = 'Draft';
+                $stageIcon = 'file-earmark';
+                $stageColor = 'secondary';
+
+                if ($event->status === 'draft') {
+                $stage = 'draft';
+                $stageLabel = 'Draft';
+                $stageIcon = 'file-earmark';
+                $stageColor = 'secondary';
+                } elseif ($event->status === 'cancelled') {
+                $stage = 'cancelled';
+                $stageLabel = 'Cancelled';
+                $stageIcon = 'x-circle';
+                $stageColor = 'danger';
+                } elseif ($event->end_time < $now) {
+                $stage = 'past';
+                $stageLabel = 'Past Event';
+                $stageIcon = 'check-circle';
+                $stageColor = 'success';
+                } elseif ($event->start_time <= $now && $event->end_time >= $now) {
+                $stage = 'ongoing';
+                $stageLabel = 'Event Ongoing';
+                $stageIcon = 'play-circle';
+                $stageColor = 'primary';
+                } elseif ($event->registration_start_time <= $now && $event->registration_end_time >= $now) {
+                $stage = 'registration';
+                $stageLabel = 'Registration Open';
+                $stageIcon = 'door-open';
+                $stageColor = 'info';
+                } elseif ($event->registration_start_time > $now) {
+                $stage = 'before-registration';
+                $stageLabel = 'Before Registration';
+                $stageIcon = 'clock';
+                $stageColor = 'warning';
+                } elseif ($event->status === 'published') {
+                $stage = 'published';
+                $stageLabel = 'Published';
+                $stageIcon = 'check2-circle';
+                $stageColor = 'success';
+                }
                 @endphp
-                
+
                 <div class="stage-badge stage-{{ $stageColor }}">
                     <i class="bi bi-{{ $stageIcon }} me-2"></i>
                     <span>{{ $stageLabel }}</span>
                 </div>
-                
+
                 @if($stage === 'registration' || $stage === 'ongoing')
                 <div class="stage-warning">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     <span>
                         @if($stage === 'registration')
-                            Limited editing: Registration is open. Some fields are locked.
+                        Limited editing: Registration is open. Some fields are locked.
                         @else
-                            Very limited editing: Event is in progress.
+                        Very limited editing: Event is in progress.
                         @endif
                     </span>
                 </div>
@@ -156,9 +156,9 @@
                                         </option>
                                         @endforeach
                                     </select>
-<!--                                    @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                        <input type="hidden" name="category" value="{{ $event->category }}">
-                                    @endif-->
+                                    <!--                                    @if(in_array($stage, ['registration', 'ongoing', 'past']))
+                                                                            <input type="hidden" name="category" value="{{ $event->category }}">
+                                                                        @endif-->
                                     <div class="invalid-feedback"></div>
                                 </div>
 
@@ -180,7 +180,7 @@
                                         </option>
                                     </select>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
-                                        <input type="hidden" name="is_public" value="{{ $event->is_public }}">
+                                    <input type="hidden" name="is_public" value="{{ $event->is_public }}">
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -246,7 +246,7 @@
                                            required
                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                        <small class="text-muted">🔒 Locked during/after registration</small>
+                                    <small class="text-muted">🔒 Locked during/after registration</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -265,7 +265,7 @@
                                            required
                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                        <small class="text-muted">🔒 Locked during/after registration</small>
+                                    <small class="text-muted">🔒 Locked during/after registration</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -284,7 +284,7 @@
                                            required
                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                        <small class="text-muted">🔒 Cannot change after registration starts</small>
+                                    <small class="text-muted">🔒 Cannot change after registration starts</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -303,9 +303,9 @@
                                            required
                                            {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if($stage === 'registration')
-                                        <small class="text-info">✓ Can extend deadline during registration</small>
+                                    <small class="text-info">✓ Can extend deadline during registration</small>
                                     @elseif(in_array($stage, ['ongoing', 'past']))
-                                        <small class="text-muted">🔒 Locked</small>
+                                    <small class="text-muted">🔒 Locked</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -340,9 +340,9 @@
                                        required
                                        {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                 <div class="invalid-feedback"></div>
-<!--                                @if($stage === 'registration')
-                                    <small class="text-warning">⚠️ Only minor changes allowed during registration</small>
-                                @endif-->
+                                <!--                                @if($stage === 'registration')
+                                                                    <small class="text-warning">⚠️ Only minor changes allowed during registration</small>
+                                                                @endif-->
                             </div>
 
                             <!-- Map URL -->
@@ -387,8 +387,8 @@
                                            id="is_paid_free" 
                                            value="0" 
                                            {{ old('is_paid', $event->is_paid) == 0 ? 'checked' : '' }}
-                                           class="toggle-radio"
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
+                                    class="toggle-radio"
+                                    {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                     <label for="is_paid_free" class="toggle-label">
                                         <div class="toggle-icon">🎉</div>
                                         <div class="toggle-content">
@@ -404,8 +404,8 @@
                                            id="is_paid_paid" 
                                            value="1" 
                                            {{ old('is_paid', $event->is_paid) == 1 ? 'checked' : '' }}
-                                           class="toggle-radio"
-                                           {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
+                                    class="toggle-radio"
+                                    {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                     <label for="is_paid_paid" class="toggle-label">
                                         <div class="toggle-icon">💳</div>
                                         <div class="toggle-content">
@@ -417,11 +417,11 @@
                             </div>
 
                             @if(in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
-                                <input type="hidden" name="is_paid" value="{{ $event->is_paid }}">
-                                <div class="alert alert-info">
-                                    <i class="bi bi-lock me-2"></i>
-                                    Payment settings are locked after registration starts.
-                                </div>
+                            <input type="hidden" name="is_paid" value="{{ $event->is_paid }}">
+                            <div class="alert alert-info">
+                                <i class="bi bi-lock me-2"></i>
+                                Payment settings are locked after registration starts.
+                            </div>
                             @endif
 
                             <!-- Fee Amount -->
@@ -460,10 +460,10 @@
                                            {{ in_array($stage, ['ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     <small class="form-text">
                                         @if($stage === 'registration')
-                                            Current: {{ $event->registrations()->where('status', 'confirmed')->count() }} registered
-                                            (Can only increase)
+                                        Current: {{ $event->registrations()->where('status', 'confirmed')->count() }} registered
+                                        (Can only increase)
                                         @else
-                                            Leave empty for unlimited capacity
+                                        Leave empty for unlimited capacity
                                         @endif
                                     </small>
                                     <div class="invalid-feedback"></div>
@@ -481,14 +481,14 @@
                                                    name="refund_available" 
                                                    value="1"
                                                    {{ old('refund_available', $event->refund_available) ? 'checked' : '' }}
-                                                   {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
+                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'disabled' : '' }}>
                                             <span class="switch-slider"></span>
                                         </label>
                                         <span class="switch-label">Allow cancellation refunds</span>
                                     </div>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']))
-                                        <input type="hidden" name="refund_available" value="{{ $event->refund_available }}">
-                                        <small class="text-muted">🔒 Locked after registration</small>
+                                    <input type="hidden" name="refund_available" value="{{ $event->refund_available }}">
+                                    <small class="text-muted">🔒 Locked after registration</small>
                                     @endif
                                 </div>
                             </div>
@@ -654,7 +654,7 @@
                             <input type="hidden" 
                                    id="existing-poster-path" 
                                    value="{{ $event->poster_path ?? '' }}">
-                            
+
                             <!-- Current Poster -->
                             @if($event->poster_path)
                             <div class="current-poster-display mb-4">
@@ -724,12 +724,12 @@
                             <div class="preview-content">
                                 <div class="preview-poster" id="previewPoster">
                                     @if($event->poster_path)
-                                        <img src="{{ asset('storage/event-posters/' . $event->poster_path) }}" alt="Event Poster">
+                                    <img src="{{ asset('storage/event-posters/' . $event->poster_path) }}" alt="Event Poster">
                                     @else
-                                        <div class="preview-poster-placeholder">
-                                            <i class="bi bi-image"></i>
-                                            <span>No poster yet</span>
-                                        </div>
+                                    <div class="preview-poster-placeholder">
+                                        <i class="bi bi-image"></i>
+                                        <span>No poster yet</span>
+                                    </div>
                                     @endif
                                 </div>
                                 <div class="preview-details">
@@ -771,30 +771,31 @@
                         <!-- Action Buttons -->
                         <div class="action-card">
                             @if($stage === 'draft')
-                                <!-- Draft: Can save or publish -->
-                                <button type="submit" 
-                                        name="status" 
-                                        value="draft" 
-                                        class="btn-action btn-action-secondary w-100 mb-3" 
-                                        id="saveDraftBtn">
-                                    <i class="bi bi-save me-2"></i>
-                                    Save Changes
-                                </button>
-                                <button type="button" 
-                                        class="btn-action btn-action-primary w-100 mb-3" 
-                                        id="publishBtn"
-                                        onclick="publishEvent()">
-                                    <i class="bi bi-send me-2"></i>
-                                    Publish Event
-                                </button>
+                            <!-- Draft: Can save or publish -->
+                            <button type="submit" 
+                                    name="status" 
+                                    value="draft" 
+                                    class="btn-action btn-action-secondary w-100 mb-3" 
+                                    id="saveDraftBtn">
+                                <i class="bi bi-save me-2"></i>
+                                Save Changes
+                            </button>
+                            <button type="submit" 
+                                    name="status" 
+                                    value="published" 
+                                    class="btn-action btn-action-primary w-100 mb-3" 
+                                    id="publishBtn">
+                                <i class="bi bi-send me-2"></i>
+                                Publish Event
+                            </button>
                             @else
-                                <!-- Published/Other: Just update -->
-                                <button type="submit" 
-                                        class="btn-action btn-action-primary w-100 mb-3" 
-                                        id="updateBtn">
-                                    <i class="bi bi-save me-2"></i>
-                                    Update Event
-                                </button>
+                            <!-- Published/Other: Just update -->
+                            <button type="submit" 
+                                    class="btn-action btn-action-primary w-100 mb-3" 
+                                    id="updateBtn">
+                                <i class="bi bi-save me-2"></i>
+                                Update Event
+                            </button>
                             @endif
 
                             <!-- Cancel Event Button -->
@@ -912,36 +913,36 @@
 @push('styles')
 @vite('resources/css/events/event-form-modern.css')
 <style>
-/* Current Poster Display Styles */
-.current-poster-display {
-    margin-bottom: 1.5rem;
-}
+    /* Current Poster Display Styles */
+    .current-poster-display {
+        margin-bottom: 1.5rem;
+    }
 
-.current-poster-card {
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-    max-width: 100%;
-}
+    .current-poster-card {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+        max-width: 100%;
+    }
 
-.current-poster-image {
-    width: 100%;
-    height: auto;
-    display: block;
-}
+    .current-poster-image {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
 
-.current-poster-overlay {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-}
+    .current-poster-overlay {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
 
-.current-poster-overlay .badge {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
+    .current-poster-overlay .badge {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
 </style>
 @endpush
 
@@ -951,44 +952,44 @@
 @vite('resources/js/events/event-form-validation.js')
 <script>
 // Publish Event
-function publishEvent() {
-    if (confirm('Are you sure you want to publish this event? It will be visible to all students.')) {
-        const form = document.getElementById('eventForm');
-        const publishInput = document.createElement('input');
-        publishInput.type = 'hidden';
-        publishInput.name = 'status';
-        publishInput.value = 'published';
-        form.appendChild(publishInput);
-        form.submit();
+    function publishEvent() {
+        if (confirm('Are you sure you want to publish this event? It will be visible to all students.')) {
+            const form = document.getElementById('eventForm');
+            const publishInput = document.createElement('input');
+            publishInput.type = 'hidden';
+            publishInput.name = 'status';
+            publishInput.value = 'published';
+            form.appendChild(publishInput);
+            form.submit();
+        }
     }
-}
 
 // Show Cancel Modal
-function showCancelModal() {
-    const modal = new bootstrap.Modal(document.getElementById('cancelEventModal'));
-    modal.show();
-}
+    function showCancelModal() {
+        const modal = new bootstrap.Modal(document.getElementById('cancelEventModal'));
+        modal.show();
+    }
 
 // Confirm Delete
-function confirmDelete() {
-    const modal = new bootstrap.Modal(document.getElementById('deleteEventModal'));
-    modal.show();
-}
+    function confirmDelete() {
+        const modal = new bootstrap.Modal(document.getElementById('deleteEventModal'));
+        modal.show();
+    }
 
 // Handle Cancel Form Submission
-document.getElementById('cancelEventForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const reason = document.getElementById('cancelled_reason').value;
-    if (reason.length < 10) {
-        alert('Please provide a more detailed reason (at least 10 characters)');
-        return;
-    }
-    
-    if (confirm('Are you absolutely sure you want to cancel this event?')) {
-        this.submit();
-    }
-});
+    document.getElementById('cancelEventForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const reason = document.getElementById('cancelled_reason').value;
+        if (reason.length < 10) {
+            alert('Please provide a more detailed reason (at least 10 characters)');
+            return;
+        }
+
+        if (confirm('Are you absolutely sure you want to cancel this event?')) {
+            this.submit();
+        }
+    });
 
 // Load existing tags
 //document.addEventListener('DOMContentLoaded', function() {
@@ -1007,14 +1008,14 @@ document.getElementById('cancelEventForm').addEventListener('submit', function(e
 //    }
 //});
 
-document.addEventListener('DOMContentLoaded', function () {
-    const existingTags = @json(old('tags', $event->tags ?? []));
-    console.log('existingTags from Blade:', existingTags);
+    document.addEventListener('DOMContentLoaded', function () {
+        const existingTags = @json(old('tags', $event -> tags ?? []));
+                console.log('existingTags from Blade:', existingTags);
 
-    if (Array.isArray(existingTags) && existingTags.length > 0 && typeof window.initEventTags === 'function') {
-        window.initEventTags(existingTags);
-    }
-});
+        if (Array.isArray(existingTags) && existingTags.length > 0 && typeof window.initEventTags === 'function') {
+            window.initEventTags(existingTags);
+        }
+    });
 
 </script>
 @endpush

@@ -51,7 +51,7 @@ class EventObserver
         Cache::forget('events_public');
 
         // Send notification to admin about new event
-        $this->notificationService->notifyAdminsAboutNewEvent($event);
+//        $this->notificationService->notifyAdminsAboutNewEvent($event);
     }
 
     /**

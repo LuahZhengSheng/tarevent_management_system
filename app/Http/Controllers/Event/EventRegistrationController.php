@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Models\Payment;
 use App\Support\PhoneHelper;
+use App\Enums\ProgramType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,8 +21,21 @@ class EventRegistrationController extends Controller {
      */
     public function create(Event $event) {
         // Authorization: Must be student/user
-        if (!auth()->user()->hasRole('user')) {
+        if (!auth()->user()->hasRole('student')) {
             abort(403, 'Only students can register for events.');
+        }
+
+        // 检查是否有未完成的订单
+        $pendingReg = EventRegistration::where('event_id', $event->id)
+                ->where('user_id', auth()->id())
+                ->where('status', 'pending_payment')
+                ->where('expires_at', '>', now())
+                ->first();
+
+        if ($pendingReg) {
+            return redirect()
+                            ->route('registrations.payment', $pendingReg)
+                            ->with('info', 'You have an incomplete registration. Please complete payment within ' . (int) $pendingReg->remaining_minutes . ' minutes.');
         }
 
         // Check if event allows registration
@@ -31,7 +45,7 @@ class EventRegistrationController extends Controller {
                             ->with('error', 'Registration is not currently open for this event.');
         }
 
-        // Check if user can register (handles public/private logic)
+        // Check if user can register
         if (!$event->canUserRegister(auth()->user())) {
             if (!$event->is_public && !$event->isUserClubMember(auth()->user())) {
                 return redirect()
@@ -45,40 +59,28 @@ class EventRegistrationController extends Controller {
         }
 
         // Check if user already registered
-        if (auth()->check()) {
-            $existingRegistration = EventRegistration::where('event_id', $event->id)
-                    ->where('user_id', auth()->id())
-                    ->whereIn('status', ['confirmed', 'pending_payment'])
-                    ->first();
+        $existingRegistration = EventRegistration::where('event_id', $event->id)
+                ->where('user_id', auth()->id())
+                ->whereIn('status', ['confirmed', 'pending_payment'])
+                ->first();
 
-            if ($existingRegistration) {
-                return redirect()
-                                ->route('events.show', $event)
-                                ->with('info', 'You are already registered for this event.');
-            }
+        if ($existingRegistration) {
+            return redirect()
+                            ->route('events.show', $event)
+                            ->with('info', 'You are already registered for this event.');
         }
 
         // Check if event is full
         if ($event->is_full) {
             return redirect()
                             ->route('events.show', $event)
-                            ->with('warning', 'This event is currently full. You may join the waitlist.');
-        }
-
-        // Check for private events (club-only)
-        if (!$event->is_public) {
-            if (!auth()->check()) {
-                return redirect()
-                                ->route('login')
-                                ->with('error', 'You must be logged in to register for this event.');
-            }
-            // TODO: Check if user is member of the club
+                            ->with('warning', 'This event is currently full.');
         }
 
         // Load custom registration fields
         $event->load('customRegistrationFields');
 
-        // Prefill user data if authenticated
+        // Prefill user data
         $userData = [
             'full_name' => auth()->user()->full_name ?? '',
             'email' => auth()->user()->email ?? '',
@@ -87,39 +89,7 @@ class EventRegistrationController extends Controller {
             'program' => auth()->user()->program ?? '',
         ];
 
-        $programOptions = [
-            // Computing / IT
-            'BCS' => 'Bachelor of Computer Science',
-            'BIT' => 'Bachelor of Information Technology',
-            'BSE' => 'Bachelor of Software Engineering',
-            'BDS' => 'Bachelor of Data Science',
-            'BCY' => 'Bachelor of Cyber Security',
-            'BIS' => 'Bachelor of Information Systems',
-            // Engineering
-            'BEEE' => 'Bachelor of Electrical and Electronic Engineering',
-            'BCHE' => 'Bachelor of Chemical Engineering',
-            'BCIV' => 'Bachelor of Civil Engineering',
-            'BME' => 'Bachelor of Mechanical Engineering',
-            // Business / Finance
-            'BBA' => 'Bachelor of Business Administration',
-            'BACC' => 'Bachelor of Accounting',
-            'BFIN' => 'Bachelor of Finance',
-            'BMM' => 'Bachelor of Marketing Management',
-            'BIBM' => 'Bachelor of International Business Management',
-            // Science
-            'BSCM' => 'Bachelor of Science (Mathematics)',
-            'BSCP' => 'Bachelor of Science (Physics)',
-            'BSCC' => 'Bachelor of Science (Chemistry)',
-            'BSCB' => 'Bachelor of Science (Biology)',
-            // Arts / Social Science
-            'BENG' => 'Bachelor of Arts (English Language)',
-            'BCOMM' => 'Bachelor of Communication',
-            'BPSY' => 'Bachelor of Psychology',
-            // Others / Generic
-            'DIP' => 'Diploma Programme',
-            'FOUND' => 'Foundation Programme',
-            'OTH' => 'Other (please specify)',
-        ];
+        $programOptions = ProgramType::options();
 
         return view('events.register', compact('event', 'userData', 'programOptions'));
     }
@@ -129,16 +99,12 @@ class EventRegistrationController extends Controller {
      */
     public function store(Request $request, Event $event) {
         try {
-            // Check if user can register for this event
+            // Validation and authorization checks...
             if (!$event->canUserRegister(auth()->user())) {
-                if (!$event->is_public && !$event->isUserClubMember(auth()->user())) {
-                    return back()->with('error', 'This is a private event. Only club members can register.');
-                }
-
                 return back()->with('error', 'You cannot register for this event.');
             }
 
-            // 统一 trim 文本字段
+            // Trim inputs
             $input = $request->all();
             foreach (['full_name', 'email', 'phone', 'student_id', 'program',
         'emergency_contact_name', 'emergency_contact_phone',
@@ -148,33 +114,28 @@ class EventRegistrationController extends Controller {
                 }
             }
 
-            // Build validation rules dynamically
+            // Build validation rules
             $rules = [
                 'full_name' => 'required|string|max:255',
-//                'email' => 'required|email|max:255',
                 'phone' => 'required|string',
-//                'student_id' => 'required|string|max:50',
                 'program' => 'required|string|max:255',
                 'terms_accepted' => 'required|accepted',
             ];
 
-            // Add emergency contact if required by event
             if ($event->require_emergency_contact) {
                 $rules['emergency_contact_name'] = 'required|string|max:255';
                 $rules['emergency_contact_phone'] = 'required|string';
             }
 
-            // Add dietary info if required
             if ($event->require_dietary_info) {
                 $rules['dietary_requirements'] = 'required|string|max:500';
             }
 
-            // Add special requirements if required
             if ($event->require_special_requirements) {
                 $rules['special_requirements'] = 'required|string|max:500';
             }
 
-            // Validate custom fields dynamically
+            // Validate custom fields
             $customFields = $event->customRegistrationFields;
             foreach ($customFields as $field) {
                 $fieldName = "custom_fields.{$field->name}";
@@ -184,16 +145,10 @@ class EventRegistrationController extends Controller {
             $validator = Validator::make($request->all(), $rules);
 
             if ($validator->fails()) {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                                'success' => false,
-                                'errors' => $validator->errors(),
-                                    ], 422);
-                }
                 return back()->withErrors($validator)->withInput();
             }
 
-            // Additional phone validation using PhoneHelper
+            // Phone validation
             $phoneError = PhoneHelper::getValidationError($request->phone);
             if ($phoneError) {
                 return back()->withErrors(['phone' => $phoneError])->withInput();
@@ -206,52 +161,100 @@ class EventRegistrationController extends Controller {
                 }
             }
 
-            // Rate limiting check
-            $recentRegistrations = EventRegistration::where('user_id', auth()->id())
+            // Rate limiting
+            $ip = $request->ip();
+            $userId = auth()->id();
+
+            $ipCount = EventRegistration::where('ip_address', $ip)
                     ->where('created_at', '>=', now()->subMinutes(5))
                     ->count();
 
-            if ($recentRegistrations >= 3) {
-                Log::warning('Registration rate limit exceeded', [
-                    'user_id' => auth()->id(),
-                    'event_id' => $event->id,
-                    'count' => $recentRegistrations,
-                ]);
-
-                return back()->with('error', 'Too many registration attempts. Please try again later.');
+            if ($ipCount >= 3) {
+                return back()
+                                ->withInput()
+                                ->with('error', 'Too many registrations from your network. Please try again later.');
             }
 
-            // Security: Check if event allows registration
+            // 考虑 pending_payment 也算一次尝试
+            $userEventAttempts = EventRegistration::where('user_id', $userId)
+                    ->where('event_id', $event->id)
+                    ->where(function ($q) {
+                        $q->where('status', '!=', 'cancelled')
+                        ->orWhere('created_at', '>=', now()->subMinutes(5));
+                    })
+                    ->count();
+
+            if ($userEventAttempts >= 3) { // 允许3次尝试
+                return back()
+                                ->withInput()
+                                ->with('error', 'You have made too many registration attempts for this event. Please try again later.');
+            }
+
+            $userEventCount = EventRegistration::where('user_id', $userId)
+                    ->where('event_id', $event->id)
+                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->count();
+
+            if ($userEventCount >= 1) {
+                return back()
+                                ->withInput()
+                                ->with('error', 'You have already tried to register for this event recently. Please wait a while.');
+            }
+
+            // Security checks
             if (!$event->is_registration_open) {
                 return back()->with('error', 'Registration is not currently open.');
             }
 
-            // Check if already registered
-            if (auth()->check()) {
-                $existing = EventRegistration::where('event_id', $event->id)
-                        ->where('user_id', auth()->id())
-                        ->whereIn('status', ['confirmed', 'pending_payment'])
-                        ->first();
+            $existing = EventRegistration::where('event_id', $event->id)
+                    ->where('user_id', $userId)
+                    ->whereIn('status', ['confirmed', 'pending_payment'])
+                    ->first();
 
-                if ($existing) {
-                    return back()->with('error', 'You are already registered for this event.');
-                }
+            if ($existing) {
+                return back()->with('error', 'You are already registered for this event.');
             }
 
             DB::beginTransaction();
 
-            // Determine status based on payment requirement and seat availability
-            $status = 'confirmed';
-            if ($event->is_paid) {
-                $status = 'pending_payment';
-            } elseif ($event->is_full) {
-                $status = 'waitlisted';
+            // 锁定 event 行，防止超卖
+            $event = Event::lockForUpdate()->findOrFail($event->id);
+
+            // 检查是否有未过期的 pending 订单
+            $existingPending = EventRegistration::where('event_id', $event->id)
+                    ->where('user_id', $userId)
+                    ->where('status', 'pending_payment')
+                    ->where('expires_at', '>', now())
+                    ->first();
+
+            if ($existingPending) {
+                // 直接跳转到付款页
+                return redirect()
+                                ->route('registrations.payment', $existingPending)
+                                ->with('info', 'You have an existing registration pending payment. Please complete it first.');
             }
 
-            // Build registration_data JSON
+            // 检查库存（包含 pending_payment 的人数）
+            $occupied = $event->registrations()
+                    ->whereIn('status', ['confirmed', 'pending_payment'])
+                    ->count();
+
+            if ($event->max_participants && $occupied >= $event->max_participants) {
+                return back()->with('error', 'Event is fully booked.');
+            }
+
+            // Determine status based on payment requirement and availability
+            $status = 'confirmed'; // Default for free events
+
+            if ($event->is_paid) {
+                $status = 'pending_payment'; // Paid events need payment
+            } elseif ($event->is_full) {
+                $status = 'waitlisted'; // Free but full events
+            }
+
+            // Build registration data
             $registrationData = [];
 
-            // Add dietary and special requirements if provided
             if ($request->filled('dietary_requirements')) {
                 $registrationData['dietary_requirements'] = strip_tags($request->dietary_requirements);
             }
@@ -259,7 +262,6 @@ class EventRegistrationController extends Controller {
                 $registrationData['special_requirements'] = strip_tags($request->special_requirements);
             }
 
-            // Add custom fields data
             if ($request->has('custom_fields')) {
                 foreach ($request->custom_fields as $key => $value) {
                     if (is_array($value)) {
@@ -271,27 +273,34 @@ class EventRegistrationController extends Controller {
                     }
                 }
             }
-            
+
             $user = auth()->user();
 
-            // Create registration with SQL injection protection (using Eloquent)
             $registrationInput = [
                 'event_id' => $event->id,
-                'user_id' => auth()->id(),
+                'user_id' => $user->id,
                 'status' => $status,
                 'full_name' => strip_tags($request->full_name),
-                'email' => $user->email,  // 从 DB 拿
+                'email' => $user->email,
                 'phone' => PhoneHelper::formatForStorage($request->phone),
-                'student_id' => $user->student_id,  // 从 DB 拿
+                'student_id' => $user->student_id,
                 'program' => strip_tags($request->program),
                 'registration_data' => $registrationData,
+                'emergency_contact_name' => null,
+                'emergency_contact_phone' => null,
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
             ];
 
-            // Add emergency contact only if required
             if ($event->require_emergency_contact) {
                 $registrationInput['emergency_contact_name'] = strip_tags($request->emergency_contact_name);
                 $registrationInput['emergency_contact_phone'] = PhoneHelper::formatForStorage($request->emergency_contact_phone);
             }
+
+            $registrationInput['expires_at'] = now()->addMinutes(30);
+            $registrationInput['payment_gateway'] = null; // 稍后在支付页选择
+            $registrationInput['gateway_session_id'] = null;
+            $registrationInput['expiry_notified'] = false;
 
             $registration = EventRegistration::create($registrationInput);
 
@@ -300,20 +309,23 @@ class EventRegistrationController extends Controller {
             Log::info('Event registration successful', [
                 'registration_id' => $registration->id,
                 'event_id' => $event->id,
-                'user_id' => auth()->id(),
+                'user_id' => $user->id,
                 'status' => $status,
+                'is_paid' => $event->is_paid,
             ]);
 
             // Redirect based on status
             if ($status === 'pending_payment') {
+                // Redirect to payment page for paid events
                 return redirect()
                                 ->route('registrations.payment', $registration)
-                                ->with('success', 'Registration received! Please complete payment to confirm.');
+                                ->with('success', 'Registration received! Please complete payment to confirm your spot.');
             } elseif ($status === 'waitlisted') {
                 return redirect()
                                 ->route('events.show', $event)
                                 ->with('info', 'Event is full. You have been added to the waitlist.');
             } else {
+                // Free event - confirmed immediately
                 return redirect()
                                 ->route('events.my')
                                 ->with('success', 'Registration confirmed! 🎉');
@@ -334,66 +346,33 @@ class EventRegistrationController extends Controller {
         }
     }
 
-    /**
-     * Show payment page
-     */
-    public function payment(EventRegistration $registration) {
-        if ($registration->status !== 'pending_payment') {
-            return redirect()
-                            ->route('events.my')
-                            ->with('info', 'This registration does not require payment.');
-        }
-
-        $event = $registration->event;
-
-        return view('events.payment', compact('event', 'registration'));
-    }
-
-    /**
-     * Process payment
-     */
-    public function pay(EventRegistration $registration, Request $request) {
-        try {
-            DB::beginTransaction();
-
-            $event = $registration->event;
-
-            $payment = Payment::create([
-                        'event_id' => $event->id,
-                        'event_registration_id' => $registration->id,
-                        'amount' => $event->fee_amount,
-                        'method' => 'dummy',
-                        'transaction_id' => Str::uuid()->toString(),
-                        'status' => 'success',
-                        'paid_at' => now(),
-            ]);
-
-            $registration->update([
-                'status' => 'confirmed',
-                'payment_id' => $payment->id,
-            ]);
-
-            DB::commit();
-
-            Log::info('Payment processed', [
-                'payment_id' => $payment->id,
-                'registration_id' => $registration->id,
-            ]);
-
-            return redirect()
-                            ->route('events.my')
-                            ->with('success', 'Payment successful! Your registration is confirmed. 🎉');
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Payment processing failed', [
-                'registration_id' => $registration->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return back()->with('error', 'Payment failed. Please try again.');
-        }
-    }
+//    /**
+//     * Show payment page
+//     */
+//    public function payment(EventRegistration $registration) {
+//        // Authorization check
+//        if ($registration->user_id !== auth()->id()) {
+//            abort(403, 'Unauthorized access to this registration.');
+//        }
+//
+//        // Check if payment is required
+//        if ($registration->status !== 'pending_payment') {
+//            return redirect()
+//                            ->route('events.my')
+//                            ->with('info', 'This registration does not require payment.');
+//        }
+//
+//        $event = $registration->event;
+//
+//        // Verify event still requires payment
+//        if (!$event->is_paid) {
+//            return redirect()
+//                            ->route('events.my')
+//                            ->with('info', 'This event no longer requires payment.');
+//        }
+//
+//        return view('events.payment', compact('event', 'registration'));
+//    }
 
     /**
      * Display user's registered events (My Events page)
@@ -516,54 +495,98 @@ class EventRegistrationController extends Controller {
                             'message' => 'You can only cancel your own registration.',
                                 ], 403);
             }
-
             abort(403, 'You can only cancel your own registration.');
         }
 
-        // Check if event allows cancellation
-        if (!$registration->event->allow_cancellation) {
-            if (request()->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => 'This event does not allow registration cancellation.',
-                                ], 422);
+        // --- 逻辑分流：区分 Pending 和 Confirmed ---
+        $isPending = $registration->status === 'pending_payment';
+        $refundReason = null;
+
+        // 1. 只有 Confirmed 状态才需要检查活动规则
+        if (!$isPending) {
+            // Check if event allows cancellation
+            if (!$registration->event->allow_cancellation) {
+                $msg = 'This event does not allow registration cancellation.';
+                return request()->expectsJson() ? response()->json(['success' => false, 'message' => $msg], 422) : back()->with('error', $msg);
             }
 
-            return back()->with('error', 'This event does not allow registration cancellation.');
-        }
-
-        // Check if cancellation is allowed (time-based)
-        if (!$registration->can_be_cancelled) {
-            $reason = $this->getCancellationBlockReason($registration);
-
-            if (request()->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => $reason,
-                                ], 422);
+            // Check if cancellation is allowed (time-based)
+            if (!$registration->can_be_cancelled) {
+                $reason = $this->getCancellationBlockReason($registration);
+                return request()->expectsJson() ? response()->json(['success' => false, 'message' => $reason], 422) : back()->with('error', $reason);
             }
 
-            return back()->with('error', $reason);
+            // Frequency Limit: Once per day
+            $userId = auth()->id();
+            $eventId = $registration->event_id;
+            $cancelCountToday = EventRegistration::where('user_id', $userId)
+                    ->where('event_id', $eventId)
+                    ->where('status', 'cancelled')
+                    ->whereDate('cancelled_at', now()->toDateString())
+                    ->count();
+
+            if ($cancelCountToday >= 1) {
+                $message = 'You have already cancelled your registration for this event today. Please try again tomorrow.';
+                return request()->expectsJson() ? response()->json(['success' => false, 'message' => $message], 422) : back()->with('error', $message);
+            }
+
+            // 验证退款理由
+            if ($registration->event->is_paid &&
+                    $registration->event->refund_available) {
+
+                // 确保用户填了理由 (如果是 Form Submit)
+                if (request()->filled('refund_reason')) {
+                    $refundReason = strip_tags(request('refund_reason'));
+                    if (strlen($refundReason) < 10) {
+                        $msg = 'Refund reason must be at least 10 characters.';
+                        return request()->expectsJson() ? response()->json(['success' => false, 'message' => $msg], 422) : back()->with('error', $msg);
+                    }
+                } else {
+                    if (request()->isMethod('post') || request()->isMethod('delete')) {
+                        $msg = 'Please provide a reason for the refund.';
+                        // return request()->expectsJson() ? ... : ...;
+                        // 注意：如果你的前端 form 还没传过来，这里可能会误拦。
+                        // 建议：如果没填，给个默认理由 'User Cancelled'
+                        $refundReason = 'User cancelled registration (No reason provided)';
+                    }
+                }
+            }
         }
 
         try {
             DB::beginTransaction();
 
-            // Cancel the registration (soft cancel - update status)
-            $registration->cancel('Cancelled by user');
+            // Cancel the registration
+            $cancelReason = $isPending ? 'Order cancelled by user' : 'Cancelled by user';
+            $registration->cancel($cancelReason);
 
-            // If paid event and refund available, initiate refund
-            if ($registration->event->is_paid &&
+            // 如果有退款逻辑，更新 Payment 表
+            if (!$isPending &&
+                    $registration->event->is_paid &&
                     $registration->event->refund_available &&
                     $registration->payment) {
 
+                // 1. 更新 Payment 表 (创建退款申请)
+                // 确保你的 Payment Model 有 requestRefund 方法
+                // 或者直接 update
+                if (method_exists($registration->payment, 'requestRefund')) {
+                    $registration->payment->requestRefund($refundReason ?? 'User Cancelled', auth()->id());
+                } else {
+                    // Fallback update
+                    $registration->payment->update([
+                        'refund_status' => 'pending',
+                        'refund_reason' => $refundReason ?? 'User Cancelled',
+                        'refund_requested_at' => now(),
+                        'refund_requested_by' => auth()->id(),
+                    ]);
+                }
+
+                // 2. 更新 Registration 表
                 $registration->update([
                     'refund_status' => 'pending',
                     'refund_requested_at' => now(),
+                    'refund_auto_reject_at' => now()->addDays(7),
                 ]);
-
-                // TODO: Integrate with payment gateway for refund
-                // For now, just mark as pending
             }
 
             DB::commit();
@@ -571,40 +594,27 @@ class EventRegistrationController extends Controller {
             Log::info('Registration cancelled by user', [
                 'registration_id' => $registration->id,
                 'user_id' => auth()->id(),
-                'event_id' => $registration->event_id,
+                'status_before' => $isPending ? 'pending' : 'confirmed',
+                'refund_status' => $registration->refund_status
             ]);
+
+            $successMsg = $isPending ? 'Order cancelled successfully.' : 'Registration cancelled successfully.' . ($registration->refund_status === 'pending' ? ' Your refund request has been submitted.' : '');
 
             if (request()->expectsJson()) {
                 return response()->json([
                             'success' => true,
-                            'message' => 'Registration cancelled successfully.',
+                            'message' => $successMsg,
                             'redirect' => route('events.show', $registration->event),
                 ]);
             }
 
             return redirect()
                             ->route('events.show', $registration->event)
-                            ->with('success', 'Registration cancelled successfully. ' .
-                                    ($registration->refund_status === 'pending' ?
-                                    'Your refund request has been submitted.' : ''));
+                            ->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            Log::error('Registration cancellation failed', [
-                'registration_id' => $registration->id,
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            if (request()->expectsJson()) {
-                return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to cancel registration. Please try again.',
-                                ], 500);
-            }
-
-            return back()->with('error', 'Failed to cancel registration. Please try again.');
+            Log::error('Registration cancellation failed', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to cancel registration: ' . $e->getMessage());
         }
     }
 

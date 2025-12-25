@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ClubApiController;
 use App\Http\Controllers\Api\ClubUserController;
+use App\Http\Controllers\Api\UserEventController;
 use App\Http\Controllers\Api\ClubPostFeedController;
 use App\Http\Controllers\Api\ForumUserStatsController;
 use App\Http\Controllers\Api\AuthTokenController;
@@ -20,14 +21,20 @@ use App\Http\Controllers\Api\AuthTokenController;
 // For production, consider using 'auth:sanctum' with proper token authentication
 Route::middleware(['web', 'auth'])->group(function () {
     Route::prefix('clubs')->group(function () {
+        // Get all available clubs with join status
+        Route::get('/available', [ClubApiController::class, 'getAvailableClubs']);
+
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);
 
-        // Update club
-        Route::put('/{club}', [ClubApiController::class, 'update']);
-
-        // Join request routes
+        // Club-specific routes
         Route::prefix('{club}')->group(function () {
+            // Get single club with membership status (must be before other routes)
+            Route::get('/', [ClubApiController::class, 'show']);
+
+            // Update club
+            Route::put('/', [ClubApiController::class, 'update']);
+
             // Request to join a club
             Route::post('/join', [ClubApiController::class, 'requestJoin']);
 
@@ -35,6 +42,19 @@ Route::middleware(['web', 'auth'])->group(function () {
             Route::prefix('join/{user}')->group(function () {
                 Route::post('/approve', [ClubApiController::class, 'approveJoin']);
                 Route::post('/reject', [ClubApiController::class, 'rejectJoin']);
+            });
+
+            // Announcement routes
+            Route::prefix('announcements')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getAnnouncements']);
+                Route::post('/', [ClubApiController::class, 'createAnnouncement']);
+                Route::prefix('{announcement}')->group(function () {
+                    Route::get('/', [ClubApiController::class, 'getAnnouncement']);
+                    Route::put('/', [ClubApiController::class, 'updateAnnouncement']);
+                    Route::delete('/', [ClubApiController::class, 'deleteAnnouncement']);
+                    Route::post('/publish', [ClubApiController::class, 'publishAnnouncement']);
+                    Route::post('/unpublish', [ClubApiController::class, 'unpublishAnnouncement']);
+                });
             });
         });
     });
@@ -106,4 +126,16 @@ Route::prefix('v1')->group(function () {
         Route::get('/clubs/{club}/posts', [ClubPostFeedController::class, 'index'])
                 ->name('api.v1.clubs.posts');
     });
+});
+
+// ==============================================================
+// User Events API
+// ==============================================================
+
+//Route::middleware(['web'])->group(function () {
+//    Route::get('/user/joined-events', [UserEventController::class, 'index']);
+//});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/user/joined-events', [UserEventController::class, 'index']);
 });
