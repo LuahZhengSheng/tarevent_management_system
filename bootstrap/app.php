@@ -3,6 +3,9 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use App\Http\Middleware\CheckUserRole;
 use App\Http\Middleware\CheckClubRole;
 use App\Http\Middleware\CheckAdminRole;
@@ -25,7 +28,36 @@ return Application::configure(basePath: dirname(__DIR__))
                         'check.event.owner' => \App\Http\Middleware\CheckEventOwner::class,
                         'check.active.user' => CheckActiveUser::class,
                     ]);
+
+                    // 在这里添加排除 CSRF 的路由
+                    $middleware->validateCsrfTokens(except: [
+                        'webhook/stripe', // 这里填你的 URI，不需要写完整域名
+                        'webhook/paypal', // 如果有 Paypal webhook 也加在这里
+                    ]);
                 })
                 ->withExceptions(function (Exceptions $exceptions): void {
-                    //
+                    // ===============================================
+                    // 全局异常处理：自定义认证失败
+                    // ===============================================
+                    // 1. 处理 "未认证" (401)
+                    $exceptions->render(function (AuthenticationException $e, Request $request) {
+                        if ($request->is('api/*') || $request->expectsJson()) {
+                            return response()->json([
+                                        'status' => 'F',
+                                        'message' => 'Unauthenticated', // 自定义消息
+                                        'timeStamp' => now()->toDateTimeString(),
+                                            ], 401);
+                        }
+                    });
+
+                    // 2. 处理 "路由找不到" (404)
+                    $exceptions->render(function (NotFoundHttpException $e, Request $request) {
+                        if ($request->is('api/*') || $request->expectsJson()) {
+                            return response()->json([
+                                        'status' => 'E',
+                                        'message' => 'API Route Not Found',
+                                        'timeStamp' => now()->toDateTimeString(),
+                                            ], 404);
+                        }
+                    });
                 })->create();

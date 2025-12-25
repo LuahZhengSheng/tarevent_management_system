@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ClubApiController;
 use App\Http\Controllers\Api\ClubUserController;
+use App\Http\Controllers\Api\UserEventController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,4 +80,16 @@ Route::middleware(['web', 'auth'])->prefix('v1')->group(function () {
 Route::prefix('v1/internal')->group(function () {
     Route::post('/club-users', [ClubUserController::class, 'store'])
         ->name('api.v1.internal.club-users.store');
+});
+
+// ==============================================================
+// User Events API
+// ==============================================================
+
+//Route::middleware(['web'])->group(function () {
+//    Route::get('/user/joined-events', [UserEventController::class, 'index']);
+//});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/user/joined-events', [UserEventController::class, 'index']);
 });

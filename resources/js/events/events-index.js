@@ -186,7 +186,7 @@
 
         const privateBadge = !event.is_public
                 ? `<span class="tag tag-private">
-               <i class="bi bi-lock-fill me-1"></i>Private
+               <i class="bi bi-lock-fill me-1"></i>Club Only
            </span>`
                 : '';
 

@@ -52,7 +52,7 @@
             display: inline-block;
             padding: 12px 30px;
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
+            color: white !important;
             text-decoration: none;
             border-radius: 8px;
             font-weight: 600;

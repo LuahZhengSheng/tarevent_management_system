@@ -59,7 +59,7 @@
             <div class="fee-display">
                 <div class="label">Event Fee</div>
                 <div class="amount">{{ $event->formatted_fee }}</div>
-                <small class="text-muted mt-2 d-block">
+                <small class="text-muted mt-2 d-block info">
                     @if($event->refund_available)
                     <i class="bi bi-check-circle text-success"></i> Refund available if cancelled before event
                     @else

@@ -157,7 +157,7 @@
                         <h4>Registration Open</h4>
                         <p><strong>Registration closes:</strong> {{ $timeInfo['registration_ends_in'] }}</p>
                         <p class="mb-0"><strong>Event starts:</strong> {{ $timeInfo['event_starts_in'] }}</p>
-                        <p class="mb-0"><strong>Current registrations:</strong> {{ $event->registrations()->where('status', 'confirmed')->count() }}
+                        <p class="mb-0"><strong>Current registrations:</strong> {{ $event->registrations()->where('status', ['confirmed', 'pending_payment'])->count() }}
                             @if($event->max_participants)
                             / {{ $event->max_participants }}
                             @endif
@@ -396,7 +396,11 @@
                             <div class="detail-value">
                                 <strong>{{ $event->remaining_seats }}</strong> seats remaining out of {{ $event->max_participants }}
                                 <div class="capacity-bar">
-                                    <div class="capacity-fill" style="width: {{ ($event->registrations->where('status', 'confirmed')->count() / $event->max_participants) * 100 }}%"></div>
+                                    @php
+                                    $occupied = $event->max_participants - $event->remaining_seats;
+                                    $percentage = ($occupied / $event->max_participants) * 100;
+                                    @endphp
+                                    <div class="capacity-fill" style="width: {{ $percentage }}%"></div>
                                 </div>
                             </div>
                         </div>
@@ -639,7 +643,7 @@
                             <div class="stat-row">
                                 <span class="stat-label">Total Registered</span>
                                 <span class="stat-value">
-                                    {{ $event->registrations->where('status', 'confirmed')->count() }}
+                                    {{ $event->registrations->where('status', ['confirmed', 'pending_payment'])->count() }}
                                 </span>
                             </div>
                             @if($event->is_paid)
@@ -663,279 +667,221 @@
                 </div>
                 @else
                 {{-- Registration Card for Regular Users --}}
-                <div class="sidebar-card sticky-sidebar">
-                    <div class="card-header-custom">
-                        <h3>Event Registration</h3>
+                <div class="card-body-custom">
+
+                    {{-- 1. 全局提示：活动进行中 (Global Alert for Ongoing) --}}
+                    @if($stage === 'ongoing')
+                    <div class="alert alert-primary mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-play-circle-fill fs-4 me-2"></i>
+                            <div>
+                                <strong>Event In Progress</strong>
+                                <small class="d-block">This event is currently ongoing</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body-custom">
-                        @if($isRegistered)
-                        <!-- Already Registered -->
-                        <div class="registration-status status-registered">
-                            <div class="status-icon">
-                                <i class="bi bi-check-circle-fill"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>You're Registered</h4>
-                                <p>Registration Status: <strong>{{ ucfirst($userRegistration->status) }}</strong></p>
+                    @endif
 
-                                {{-- Show registration date --}}
-                                <small class="text-muted d-block mt-2">
-                                    <i class="bi bi-calendar-check me-1"></i>
-                                    Registered on {{ $userRegistration->created_at->format('d M Y, h:i A') }}
-                                </small>
-                            </div>
+                    {{-- 2. 已报名用户界面 (Registered User View) --}}
+                    @if($isRegistered)
+
+                    <!-- Registration Status Badge -->
+                    <div class="registration-status status-registered">
+                        <div class="status-icon">
+                            <i class="bi bi-check-circle-fill"></i>
                         </div>
-
-                        {{-- Payment reminder if pending --}}
-                        @if($userRegistration->status === 'pending_payment')
-                        <div class="alert alert-warning mt-3 mb-0">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            <small>Payment pending. Please complete payment to confirm your registration.</small>
-                        </div>
-                        <a href="{{ route('registrations.payment', $userRegistration) }}" class="btn btn-warning w-100 mt-3">
-                            <i class="bi bi-credit-card me-2"></i>
-                            Complete Payment
-                        </a>
-                        @endif
-
-                        {{-- Cancel Registration Section --}}
-                        @if($userRegistration->status !== 'cancelled')
-                        @if($userRegistration->can_be_cancelled)
-                        {{-- Can Cancel - Show info and button --}}
-                        <div class="cancellation-info">
-                            <div class="info-row">
-                                <i class="bi bi-info-circle"></i>
-                                <span>You can cancel until {{ $userRegistration->cancellation_deadline->format('d M Y, h:i A') }}</span>
-                            </div>
-                            @if($event->is_paid && !$event->refund_available)
-                            <div class="info-row text-warning">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                <span>Non-refundable event</span>
-                            </div>
-                            @endif
-                        </div>
-
-                        <button type="button" 
-                                class="btn btn-outline-danger w-100 mt-3" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#cancelRegistrationModal">
-                            <i class="bi bi-x-circle me-2"></i>
-                            Cancel Registration
-                        </button>
-
-                        @elseif(!$event->allow_cancellation)
-                        {{-- Event doesn't allow cancellation --}}
-                        <div class="alert alert-info mt-3 mb-0">
-                            <i class="bi bi-info-circle me-2"></i>
-                            <small>This event does not allow registration cancellation.</small>
-                        </div>
-
-                        @else
-                        {{-- Cannot cancel - Show reason --}}
-                        <div class="alert alert-secondary mt-3 mb-0">
-                            <i class="bi bi-lock me-2"></i>
-                            <small>
-                                @if(now() > $event->registration_end_time)
-                                Cancellation period has ended (deadline was {{ $event->registration_end_time->format('d M Y, h:i A') }}).
-                                @elseif(now() >= $event->start_time)
-                                Cannot cancel after event has started.
-                                @elseif(now() < $event->registration_start_time)
-                                Cancellation not available yet.
-                                @else
-                                Cancellation not available at this time.
-                                @endif
+                        <div class="status-text">
+                            <h4>You're Registered</h4>
+                            <p>Registration Status: <strong>{{ ucfirst($userRegistration->status) }}</strong></p>
+                            <small class="text-muted d-block mt-2 status-info">
+                                <i class="bi bi-calendar-check me-1"></i>
+                                Registered on {{ $userRegistration->created_at->format('d M Y, h:i A') }}
                             </small>
                         </div>
-                        @endif
-                        @else
-                        {{-- Already Cancelled --}}
-                        <div class="alert alert-secondary mt-3 mb-0">
-                            <div class="d-flex align-items-start">
-                                <i class="bi bi-x-circle me-2 mt-1"></i>
-                                <div>
-                                    <small><strong>Registration Cancelled</strong></small>
-                                    <br>
-                                    <small class="text-muted">Cancelled on {{ $userRegistration->cancelled_at->format('d M Y, h:i A') }}</small>
-                                    @if($userRegistration->cancellation_reason)
-                                    <br><small class="text-muted">Reason: {{ $userRegistration->cancellation_reason }}</small>
-                                    @endif
-                                    @if($userRegistration->refund_status === 'pending')
-                                    <br><small class="text-info"><i class="bi bi-clock me-1"></i>Refund processing...</small>
-                                    @elseif($userRegistration->refund_status === 'processed')
-                                    <br><small class="text-success"><i class="bi bi-check-circle me-1"></i>Refund processed</small>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        @endif
+                    </div>
 
-                        @elseif($stage === 'registration_open')
-                        {{-- Check if user can register based on public/private status --}}
-                        @if($canRegister && !$event->is_full)
-                        <!-- Registration Available -->
-                        <div class="price-display">
-                            @if($event->is_paid)
-                            <div class="price-label">Registration Fee</div>
-                            <div class="price-amount">RM {{ number_format($event->fee_amount, 2) }}</div>
-                            @if($event->refund_available)
-                            <div class="price-note">
-                                <i class="bi bi-info-circle me-1"></i>
-                                Refundable before event date
-                            </div>
-                            @endif
-                            @else
-                            <div class="price-amount free">Free Event</div>
-                            <div class="price-note">
-                                <i class="bi bi-gift me-1"></i>
-                                No registration fee required
-                            </div>
-                            @endif
-                        </div>
+                    {{-- View Registration History Button --}}
+                    {{-- <a href="{{ route('registrations.history', ['event' => $event->id]) }}" --}}
+                    class="btn btn-outline-primary w-100 mt-3">
+                    <i class="bi bi-clock-history me-2"></i>
+                    View Registration History
+                    </a>
 
-                        <a href="{{ route('events.register.create', $event) }}" class="btn btn-primary btn-lg w-100">
-                            <i class="bi bi-calendar-check me-2"></i>
-                            Register Now
-                        </a>
+                    {{-- 根据状态互斥显示 --}}
 
-                        <div class="registration-info">
-                            <div class="info-row">
-                                <i class="bi bi-clock"></i>
-                                <span>Registration closes {{ $timeInfo['registration_ends_in'] }}</span>
-                            </div>
-                            @if($event->remaining_seats && $event->remaining_seats <= 10)
-                            <div class="info-row urgent">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                <span>Only {{ $event->remaining_seats }} seats left!</span>
-                            </div>
-                            @endif
-                        </div>
+                    {{-- Case A: Pending Payment (未付款) --}}
+                    @if($userRegistration->status === 'pending_payment')
+                    @php
+                    $minutesLeft = $userRegistration->remaining_minutes ?? \Carbon\Carbon::now()->diffInMinutes($userRegistration->expires_at, false);
+                    $isExpired = $minutesLeft < 0;
+                    @endphp
 
-                        @elseif($registrationBlockReason === 'not_club_member')
-                        <!-- Private Event - Not Club Member -->
-                        <div class="registration-status status-private">
-                            <div class="status-icon">
-                                <i class="bi bi-lock-fill"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Club Members Only</h4>
-                                <p>This is a private event restricted to {{ $event->organizer->name ?? 'club' }} members.</p>
-                            </div>
-                        </div>
+                    @if(!$isExpired)
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <small>Payment pending. You have <strong>{{ (int)$minutesLeft }} minutes</strong> left to complete payment.</small>
 
-                        <a href="{{ route('home') }}" class="btn btn-outline-primary w-100 mt-3">
-                            <i class="bi bi-person-plus me-2"></i>
-                            Join This Club
-                        </a>
-
-                        <div class="registration-info">
-                            <div class="info-row">
-                                <i class="bi bi-info-circle"></i>
-                                <span>Become a club member to register for this event</span>
-                            </div>
-                            @if($event->is_paid)
-                            <div class="info-row">
-                                <i class="bi bi-cash-coin"></i>
-                                <span>Fee: RM {{ number_format($event->fee_amount, 2) }}</span>
-                            </div>
-                            @endif
-                        </div>
-
-                        @elseif($event->is_full)
-                        <!-- Event Full -->
-                        <div class="registration-status status-full">
-                            <div class="status-icon">
-                                <i class="bi bi-x-circle"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Event Full</h4>
-                                <p>This event has reached maximum capacity</p>
-                            </div>
-                        </div>
-                        @endif
-
-                        @elseif($stage === 'pre_registration')
-                        <!-- Registration Not Yet Open -->
-                        <div class="registration-status status-closed">
-                            <div class="status-icon">
-                                <i class="bi bi-clock"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Registration Opens Soon</h4>
-                                <p>Opens {{ $timeInfo['registration_starts_in'] }}</p>
-                            </div>
-                        </div>
-
-                        {{-- Show private event notice if applicable --}}
-                        @if(!$event->is_public)
-                        <div class="registration-info mt-3">
-                            <div class="info-row">
-                                <i class="bi bi-lock-fill"></i>
-                                <span>Private Event - Club Members Only</span>
-                            </div>
-                        </div>
-                        @endif
-
-                        @elseif($event->is_full)
-                        <!-- Event Full -->
-                        <div class="registration-status status-full">
-                            <div class="status-icon">
-                                <i class="bi bi-x-circle"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Event Full</h4>
-                                <p>This event has reached maximum capacity</p>
-                            </div>
-                        </div>
-
-                        @elseif($stage === 'ongoing')
-                        <!-- Event Ongoing -->
-                        <div class="registration-status status-closed">
-                            <div class="status-icon">
-                                <i class="bi bi-play-circle"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Event In Progress</h4>
-                                <p>This event is currently ongoing</p>
-                            </div>
-                        </div>
-
-                        @elseif($stage === 'past')
-                        <!-- Event Ended -->
-                        <div class="registration-status status-closed">
-                            <div class="status-icon">
-                                <i class="bi bi-calendar-check"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Event Ended</h4>
-                                <p>This event has concluded</p>
-                            </div>
-                        </div>
-
-                        @else
-                        <!-- Registration Closed -->
-                        <div class="registration-status status-closed">
-                            <div class="status-icon">
-                                <i class="bi bi-lock"></i>
-                            </div>
-                            <div class="status-text">
-                                <h4>Registration Closed</h4>
-                                <p>Registration period has ended</p>
-                            </div>
-                        </div>
-
-                        {{-- Show private event notice if applicable --}}
-                        @if(!$event->is_public)
-                        <div class="registration-info mt-3">
-                            <div class="info-row">
-                                <i class="bi bi-lock-fill"></i>
-                                <span>Private Event - Club Members Only</span>
-                            </div>
-                        </div>
-                        @endif
-
+                        @if(now() > $event->registration_end_time->subHours(1))
+                        <br><small class="text-danger mt-1 d-block">
+                            <i class="bi bi-clock-history me-1"></i>
+                            Registration closes soon.
+                        </small>
                         @endif
                     </div>
+
+                    <a href="{{ route('registrations.payment', $userRegistration) }}" class="btn btn-warning w-100 mt-3">
+                        <i class="bi bi-credit-card me-2"></i>
+                        Continue Payment
+                    </a>
+
+                    {{-- 只有 Pending 状态才显示 "Cancel Order" --}}
+                    <button type="button"
+                            class="btn btn-outline-danger w-100 mt-2"
+                            data-bs-toggle="modal"
+                            data-bs-target="#cancelOrderModal">
+                        <i class="bi bi-x-circle me-2"></i>
+                        Cancel Order
+                    </button>
+                    @else
+                    <div class="alert alert-danger mt-3 mb-0">
+                        <i class="bi bi-x-circle me-2"></i>
+                        <small>Payment time expired. Please register again if spots are available.</small>
+                    </div>
+                    @endif
+
+                    {{-- Case B: Confirmed (已确认报名) --}}
+                    @elseif($userRegistration->status === 'confirmed')
+
+                    @if($userRegistration->can_be_cancelled)
+                    <div class="cancellation-info mt-3">
+                        <div class="info-row">
+                            <i class="bi bi-info-circle"></i>
+                            <span>You can cancel until {{ $userRegistration->cancellation_deadline->format('d M Y, h:i A') }}</span>
+                        </div>
+                        @if($event->is_paid && !$event->refund_available)
+                        <div class="info-row text-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span>Non-refundable event</span>
+                        </div>
+                        @endif
+                    </div>
+
+                    <button type="button" 
+                            class="btn btn-outline-danger w-100 mt-3" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#cancelRegistrationModal">
+                        <i class="bi bi-x-circle me-2"></i>
+                        Cancel Registration
+                    </button>
+                    @elseif(!$event->allow_cancellation)
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>This event does not allow registration cancellation.</small>
+                    </div>
+                    @else
+                    <div class="alert alert-secondary mt-3 mb-0">
+                        <i class="bi bi-lock me-2"></i>
+                        <small>Cancellation is not available at this time.</small>
+                    </div>
+                    @endif
+
+                    {{-- Case C: Already Cancelled (已取消) --}}
+                    @elseif($userRegistration->status === 'cancelled')
+                    <div class="alert alert-secondary mt-3 mb-0">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-x-circle me-2 mt-1"></i>
+                            <div>
+                                <small><strong>Registration Cancelled</strong></small>
+                                <br>
+                                <small class="text-muted">Cancelled on {{ $userRegistration->cancelled_at->format('d M Y, h:i A') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+                    {{-- 【核心修改区域结束】 --}}
+
+                    {{-- 3. 未报名用户界面 (Non-Registered User View) --}}
+                    @else 
+                    @if($stage === 'registration_open')
+                    {{-- Open for Registration --}}
+                    @if($canRegister && !$event->is_full)
+                    <div class="price-display">
+                        @if($event->is_paid)
+                        <div class="price-label">Registration Fee</div>
+                        <div class="price-amount">RM {{ number_format($event->fee_amount, 2) }}</div>
+                        @if($event->refund_available)
+                        <div class="price-note"><i class="bi bi-info-circle me-1"></i> Refundable before event date</div>
+                        @endif
+                        @else
+                        <div class="price-amount free">Free Event</div>
+                        @endif
+                    </div>
+
+                    <a href="{{ route('events.register.create', $event) }}" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-calendar-check me-2"></i> Register Now
+                    </a>
+
+                    <div class="registration-info">
+                        <div class="info-row"><i class="bi bi-clock"></i><span>Closes {{ $timeInfo['registration_ends_in'] }}</span></div>
+                        @if($event->remaining_seats && $event->remaining_seats <= 10)
+                        <div class="info-row urgent"><i class="bi bi-exclamation-triangle"></i><span>Only {{ $event->remaining_seats }} seats left!</span></div>
+                        @endif
+                    </div>
+
+                    @elseif($registrationBlockReason === 'not_club_member')
+                    <div class="registration-status status-private">
+                        <div class="status-icon"><i class="bi bi-lock-fill"></i></div>
+                        <div class="status-text"><h4>Club Members Only</h4><p>Restricted to members.</p></div>
+                    </div>
+                    <button 
+                        type="button" 
+                        class="btn btn-outline-primary w-100 mt-3"
+                        onclick="window.openJoinClubModal({{ $event->organizer_id }})">
+                        <i class="bi bi-person-plus me-1"></i> Join This Club
+                    </button>
+
+                    @elseif($event->is_full)
+                    <div class="registration-status status-full">
+                        <div class="status-icon"><i class="bi bi-x-circle"></i></div>
+                        <div class="status-text"><h4>Event Full</h4><p>Max capacity reached</p></div>
+                    </div>
+                    @endif
+
+                    @elseif($stage === 'pre_registration')
+                    <div class="registration-status status-closed">
+                        <div class="status-icon"><i class="bi bi-clock"></i></div>
+                        <div class="status-text"><h4>Opens Soon</h4><p>Opens {{ $timeInfo['registration_starts_in'] }}</p></div>
+                    </div>
+
+                    @elseif($stage === 'ongoing')
+                    <div class="registration-status status-closed">
+                        <div class="status-icon"><i class="bi bi-play-circle"></i></div>
+                        <div class="status-text"><h4>Event In Progress</h4><p>Registration is closed.</p></div>
+                    </div>
+
+                    @elseif($stage === 'past')
+                    <div class="registration-status status-closed">
+                        <div class="status-icon"><i class="bi bi-calendar-check"></i></div>
+                        <div class="status-text"><h4>Event Ended</h4><p>This event has concluded</p></div>
+                    </div>
+
+                    @else
+                    <div class="registration-status status-closed">
+                        <div class="status-icon"><i class="bi bi-lock"></i></div>
+                        <div class="status-text"><h4>Registration Closed</h4><p>Period has ended</p></div>
+                    </div>
+                    @endif
+
+                    @if(!$event->is_public)
+                    <div class="registration-info mt-3">
+                        <div class="info-row"><i class="bi bi-lock-fill"></i><span>Private Event - Club Members Only</span></div>
+                    </div>
+                    @endif
+
+                    @endif {{-- End of isRegistered check --}}
+
                 </div>
+
                 @endif
                 @else
                 <!-- Guest User - Login Required -->
@@ -1122,81 +1068,176 @@
 @else
 <!-- Cancel Registration Modal -->
 @if($isRegistered && $userRegistration && $userRegistration->can_be_cancelled)
-<div class="modal fade" id="cancelRegistrationModal" tabindex="-1" aria-labelledby="cancelRegistrationModalLabel" aria-hidden="true">
+<div class="modal fade" id="cancelRegistrationModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0">
-                <h5 class="modal-title" id="cancelRegistrationModalLabel">
+                <h5 class="modal-title">
                     <i class="bi bi-exclamation-triangle me-2 text-warning"></i>
                     Cancel Registration
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('registrations.cancel', $userRegistration) }}" method="POST" id="cancelRegistrationForm">
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Are you sure you want to cancel your registration?</strong>
+                </div>
+
+                <div class="cancellation-details">
+                    <h6 class="mb-3">Event Details:</h6>
+                    <div class="detail-row">
+                        <span class="detail-label">Event:</span>
+                        <span class="detail-value">{{ $event->title }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Date:</span>
+                        <span class="detail-value">{{ $event->start_time->format('d M Y, h:i A') }}</span>
+                    </div>
+                    @if($event->is_paid)
+                    <div class="detail-row">
+                        <span class="detail-label">Fee Paid:</span>
+                        <span class="detail-value">
+                            <strong class="text-primary">RM {{ number_format($event->fee_amount, 2) }}</strong>
+                        </span>
+                    </div>
+                    @endif
+                </div>
+
+                @if($event->is_paid)
+                <div class="alert {{ $event->refund_available ? 'alert-info' : 'alert-danger' }} mt-3 mb-0">
+                    <i class="bi bi-{{ $event->refund_available ? 'info-circle' : 'exclamation-octagon' }} me-2"></i>
+                    @if($event->refund_available)
+                    <strong>Refund Available:</strong> You will be asked to provide a reason for refund in the next step.
+                    @else
+                    <strong>No Refund:</strong> This event is non-refundable.
+                    @endif
+                </div>
+                @endif
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Registration</button>
+                <button type="button" class="btn btn-danger" id="proceedCancelBtn">
+                    <i class="bi bi-arrow-right me-2"></i>
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Refund Reason Modal --}}
+<div class="modal fade" id="refundReasonModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-chat-square-text me-2 text-primary"></i>
+                    Refund Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('registrations.cancel', $userRegistration) }}" method="POST" id="refundReasonForm">
+                @csrf
+                @method('DELETE')
+
+                <div class="modal-body">
+                    <p class="mb-3">Please provide a reason for your refund request:</p>
+
+                    <div class="mb-3">
+                        <label for="refundReason" class="form-label">
+                            Refund Reason <span class="text-danger">*</span>
+                        </label>
+                        <textarea 
+                            class="form-control" 
+                            id="refundReason" 
+                            name="refund_reason"
+                            rows="4" 
+                            required
+                            minlength="10"
+                            maxlength="500"
+                            placeholder="Please explain why you need to cancel and request a refund..."></textarea>
+                        <div class="form-text">
+                            Minimum 10 characters, maximum 500 characters.
+                        </div>
+                        <div class="invalid-feedback">
+                            Please provide a reason (at least 10 characters).
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>
+                            <strong>What happens next:</strong><br>
+                            • Your registration will be cancelled<br>
+                            • Refund request will be submitted to organizer<br>
+                            • You'll be notified once the refund is processed<br>
+                            • Refund may take 5-7 business days
+                        </small>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-arrow-left me-2"></i>
+                        Back
+                    </button>
+                    <button type="submit" class="btn btn-danger" id="confirmRefundCancelBtn">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Submit & Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Cancel Order Modal --}}
+@if($isRegistered && $userRegistration && $userRegistration->status === 'pending_payment' && !$userRegistration->is_expired)
+<div class="modal fade" id="cancelOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2 text-warning"></i>
+                    Cancel Pending Order
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('registrations.cancel', $userRegistration) }}" method="POST" id="cancelOrderForm">
                 @csrf
                 @method('DELETE')
 
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Are you sure you want to cancel your registration?</strong>
+                        <strong>Are you sure you want to cancel this pending order?</strong>
                     </div>
 
-                    <div class="cancellation-details">
-                        <h6 class="mb-3">Event Details:</h6>
-                        <div class="detail-row">
-                            <span class="detail-label">Event:</span>
-                            <span class="detail-value">{{ $event->title }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Date:</span>
-                            <span class="detail-value">{{ $event->start_time->format('d M Y, h:i A') }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Venue:</span>
-                            <span class="detail-value">{{ $event->venue }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Registration Status:</span>
-                            <span class="detail-value">
-                                <span class="badge bg-success">{{ ucfirst($userRegistration->status) }}</span>
-                            </span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Registered On:</span>
-                            <span class="detail-value">{{ $userRegistration->created_at->format('d M Y, h:i A') }}</span>
-                        </div>
+                    <p>You are about to cancel your pending registration for:</p>
 
-                        @if($event->is_paid)
-                        <div class="detail-row">
-                            <span class="detail-label">Fee Paid:</span>
-                            <span class="detail-value">
-                                <strong class="text-primary">RM {{ number_format($event->fee_amount, 2) }}</strong>
-                            </span>
-                        </div>
-                        @endif
-                    </div>
-
-                    @if($event->is_paid)
-                    <div class="alert {{ $event->refund_available ? 'alert-info' : 'alert-danger' }} mt-3 mb-0">
-                        <i class="bi bi-{{ $event->refund_available ? 'info-circle' : 'exclamation-octagon' }} me-2"></i>
-                        @if($event->refund_available)
-                        <strong>Refund Policy:</strong> Your registration fee of RM {{ number_format($event->fee_amount, 2) }} will be refunded. Please allow 5-7 business days for processing.
-                        @else
-                        <strong>No Refund:</strong> This event is non-refundable. You will <strong>NOT</strong> receive a refund of your RM {{ number_format($event->fee_amount, 2) }} registration fee.
-                        @endif
-                    </div>
-                    @endif
-
-                    <div class="mt-3">
-                        <p class="text-muted small mb-2">
-                            <i class="bi bi-clock me-1"></i>
-                            <strong>Cancellation deadline:</strong> {{ $userRegistration->cancellation_deadline->format('d M Y, h:i A') }}
+                    <div class="event-info-box">
+                        <h6><strong>{{ $event->title }}</strong></h6>
+                        <p class="mb-1">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ $event->start_time->format('d M Y, h:i A') }}
                         </p>
-                        <p class="text-muted small mb-0">
-                            <i class="bi bi-info-circle me-1"></i>
-                            This action cannot be undone. You will need to register again if you change your mind.
+                        <p class="mb-0">
+                            <i class="bi bi-geo-alt me-1"></i>
+                            {{ $event->venue }}
                         </p>
+                    </div>
+
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>
+                            <strong>What happens next:</strong><br>
+                            • Your registration will be cancelled immediately<br>
+                            • No payment has been charged<br>
+                            • You can register again if spots are available<br>
+                            • Your spot will be released for other students
+                        </small>
                     </div>
                 </div>
 
@@ -1205,9 +1246,9 @@
                         <i class="bi bi-arrow-left me-2"></i>
                         Keep Registration
                     </button>
-                    <button type="submit" class="btn btn-danger" id="confirmCancelBtn">
+                    <button type="submit" class="btn btn-danger" id="confirmCancelOrderBtn">
                         <i class="bi bi-x-circle me-2"></i>
-                        Yes, Cancel Registration
+                        Yes, Cancel Order
                     </button>
                 </div>
             </form>
@@ -1225,71 +1266,131 @@
 @push('scripts')
 <script>
     $(function () {
-        // ==========================================
-        // Share Functions
-        // ==========================================
-        window.shareEvent = function (platform) {
-            const url = encodeURIComponent(window.location.href);
-            const title = encodeURIComponent(@json($event->title));
-            let shareUrl;
-            
-            if (platform === 'facebook') {
-                shareUrl = 'https://www.facebook.com/sharer/sharer.php?u=' + url;
-            } else if (platform === 'twitter') {
-                shareUrl = 'https://twitter.com/intent/tweet?url=' + url + '&text=' + title;
-            } else if (platform === 'whatsapp') {
-                shareUrl = 'https://wa.me/?text=' + title + '%20' + url;
-            }
+    // ==========================================
+    // Share Functions
+    // ==========================================
+    window.shareEvent = function (platform) {
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent(@json($event -> title));
+    let shareUrl;
+    if (platform === 'facebook') {
+    shareUrl = 'https://www.facebook.com/sharer/sharer.php?u=' + url;
+    } else if (platform === 'twitter') {
+    shareUrl = 'https://twitter.com/intent/tweet?url=' + url + '&text=' + title;
+    } else if (platform === 'whatsapp') {
+    shareUrl = 'https://wa.me/?text=' + title + '%20' + url;
+    }
 
-            if (shareUrl) {
-                window.open(shareUrl, '_blank', 'width=600,height=400');
-            }
-        };
-
-        window.copyEventLink = function () {
-            const url = window.location.href;
-            
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(url).then(showCopyToast);
-            } else {
-                const $temp = $('<input>');
-                $('body').append($temp);
-                $temp.val(url).select();
-                document.execCommand('copy');
-                $temp.remove();
-                showCopyToast();
-            }
-        };
-
-        function showCopyToast() {
-            const $toast = $(`
+    if (shareUrl) {
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+    }
+    };
+    window.copyEventLink = function () {
+    const url = window.location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(showCopyToast);
+    } else {
+    const $temp = $('<input>');
+    $('body').append($temp);
+    $temp.val(url).select();
+    document.execCommand('copy');
+    $temp.remove();
+    showCopyToast();
+    }
+    };
+    function showCopyToast() {
+    const $toast = $(`
                 <div class="copy-toast">
                     <i class="bi bi-check-circle me-2"></i>Link copied to clipboard!
                 </div>
             `);
-            $('body').append($toast);
-            setTimeout(() => $toast.addClass('show'), 100);
-            setTimeout(() => {
-                $toast.removeClass('show');
-                setTimeout(() => $toast.remove(), 300);
-            }, 3000);
-        }
+    $('body').append($toast);
+    setTimeout(() => $toast.addClass('show'), 100);
+    setTimeout(() => {
+    $toast.removeClass('show');
+    setTimeout(() => $toast.remove(), 300);
+    }, 3000);
+    }
 
-        // ==========================================
-        // Cancel Registration Form Handler
-        // ==========================================
-        const cancelForm = document.getElementById('cancelRegistrationForm');
-        const confirmBtn = document.getElementById('confirmCancelBtn');
-        
-        if (cancelForm && confirmBtn) {
-            cancelForm.addEventListener('submit', function(e) {
-                // Disable button to prevent double submission
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cancelling...';
-            });
-        }
+    // ==========================================
+    // Cancel Registration Form Handler
+    // ==========================================
+    const cancelForm = document.getElementById('cancelRegistrationForm');
+    const confirmBtn = document.getElementById('confirmCancelBtn');
+    if (cancelForm && confirmBtn) {
+    cancelForm.addEventListener('submit', function (e) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2"></span>Cancelling...';
+    });
+    }
+
+    // ==========================================
+    // Cancel Order Form Handler
+    // ==========================================
+    const cancelOrderForm = document.getElementById('cancelOrderForm');
+    const confirmCancelOrderBtn = document.getElementById('confirmCancelOrderBtn');
+    if (cancelOrderForm && confirmCancelOrderBtn) {
+    cancelOrderForm.addEventListener('submit', function (e) {
+    confirmCancelOrderBtn.disabled = true;
+    confirmCancelOrderBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2"></span>Cancelling...';
+    });
+    }
+
+    // Cancel Registration Flow with Refund Reason
+    const isRefundAvailable = @json($event -> is_paid && $event -> refund_available);
+    const isPaid = @json($event -> is_paid);
+    // 先定义 route 变量，如果有 userRegistration 才赋值
+    let cancelRoute = '';
+    @if ($userRegistration)
+            cancelRoute = '{{ route("registrations.cancel", $userRegistration) }}';
+    @endif
+
+            $('#proceedCancelBtn').on('click', function() {
+    $('#cancelRegistrationModal').modal('hide');
+    // 安全检查：如果没有 route (比如 organizer 视角)，直接停止
+    if (!cancelRoute) return;
+    // 如果是付费且可退款，显示退款原因表单
+    if (isPaid && isRefundAvailable) {
+    $('#refundReasonModal').modal('show');
+    } else {
+    // 否则直接提交取消（免费活动或不可退款）
+    const form = $('<form>', {
+    'method': 'POST',
+            'action': cancelRoute
+    });
+    form.append('@csrf');
+    form.append($('<input>', {
+    'type': 'hidden',
+            'name': '_method',
+            'value': 'DELETE'
+    }));
+    $('body').append(form);
+    form.submit();
+    }
+    });
+    
+    // Refund Reason Form Validation
+    $('#refundReasonForm').on('submit', function(e) {
+    const reason = $('#refundReason').val().trim();
+    const btn = $('#confirmRefundCancelBtn');
+    if (reason.length < 10) {
+    e.preventDefault();
+    $('#refundReason').addClass('is-invalid');
+    return false;
+    }
+
+    btn.prop('disabled', true).html(
+            '<span class="spinner-border spinner-border-sm me-2"></span>Processing...'
+            );
+    });
+    $('#refundReason').on('input', function() {
+    $(this).removeClass('is-invalid');
+    });
     });
 </script>
 @endpush
 
+@include('clubs.join_modal')
 @endsection

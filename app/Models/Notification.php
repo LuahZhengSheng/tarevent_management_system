@@ -5,8 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Notification extends Model
-{
+class Notification extends Model {
+
     use HasFactory;
 
     protected $fillable = [
@@ -20,7 +20,6 @@ class Notification extends Model
         'read_at',
         'sent_at',
     ];
-
     protected $casts = [
         'data' => 'array',
         'read_at' => 'datetime',
@@ -30,61 +29,50 @@ class Notification extends Model
     ];
 
     // Relationships
-    public function user()
-    {
+    public function user() {
         return $this->belongsTo(User::class);
     }
 
     // Scopes
-    public function scopeUnread($query)
-    {
+    public function scopeUnread($query) {
         return $query->whereNull('read_at');
     }
 
-    public function scopeRead($query)
-    {
+    public function scopeRead($query) {
         return $query->whereNotNull('read_at');
     }
 
-    public function scopeRecent($query)
-    {
+    public function scopeRecent($query) {
         return $query->orderBy('created_at', 'desc');
     }
 
-    public function scopeForUser($query, $userId)
-    {
+    public function scopeForUser($query, $userId) {
         return $query->where('user_id', $userId);
     }
 
-    public function scopeByType($query, $type)
-    {
+    public function scopeByType($query, $type) {
         return $query->where('type', $type);
     }
 
-    public function scopePriority($query, $priority)
-    {
+    public function scopePriority($query, $priority) {
         return $query->where('priority', $priority);
     }
 
     // Accessors
-    public function getIsReadAttribute()
-    {
+    public function getIsReadAttribute() {
         return $this->read_at !== null;
     }
 
-    public function getIsUnreadAttribute()
-    {
+    public function getIsUnreadAttribute() {
         return $this->read_at === null;
     }
 
-    public function getTimeAgoAttribute()
-    {
+    public function getTimeAgoAttribute() {
         return $this->created_at->diffForHumans();
     }
 
-    public function getIconAttribute()
-    {
-        return match($this->type) {
+    public function getIconAttribute() {
+        return match ($this->type) {
             'event_created' => 'bi-calendar-plus',
             'event_updated' => 'bi-pencil-square',
             'event_cancelled' => 'bi-x-circle',
@@ -100,9 +88,8 @@ class Notification extends Model
         };
     }
 
-    public function getColorClassAttribute()
-    {
-        return match($this->priority) {
+    public function getColorClassAttribute() {
+        return match ($this->priority) {
             'urgent' => 'text-danger',
             'high' => 'text-warning',
             'normal' => 'text-info',
@@ -112,37 +99,53 @@ class Notification extends Model
     }
 
     // Methods
-    public function markAsRead()
-    {
+    public function markAsRead() {
         if ($this->read_at === null) {
             $this->update(['read_at' => now()]);
         }
     }
 
-    public function markAsUnread()
-    {
+    public function markAsUnread() {
         $this->update(['read_at' => null]);
     }
 
     // Static methods for batch operations
-    public static function markAllAsRead($userId)
-    {
+    public static function markAllAsRead($userId) {
         return self::where('user_id', $userId)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+                        ->whereNull('read_at')
+                        ->update(['read_at' => now()]);
     }
 
-    public static function deleteAllRead($userId)
-    {
+    public static function deleteAllRead($userId) {
         return self::where('user_id', $userId)
-            ->whereNotNull('read_at')
-            ->delete();
+                        ->whereNotNull('read_at')
+                        ->delete();
     }
 
-    public static function deleteOlderThan($userId, $days = 30)
-    {
+    public static function deleteOlderThan($userId, $days = 30) {
         return self::where('user_id', $userId)
-            ->where('created_at', '<', now()->subDays($days))
-            ->delete();
+                        ->where('created_at', '<', now()->subDays($days))
+                        ->delete();
+    }
+
+    public static function sendToUser(
+            int $userId,
+            string $type,
+            string $title,
+            string $message,
+            array $data = [],
+            string $channel = 'database', // database / mail / both
+            string $priority = 'normal'
+    ) {
+        return self::create([
+                    'user_id' => $userId,
+                    'type' => $type,
+                    'title' => $title,
+                    'message' => $message,
+                    'data' => $data, // 会被 casts 自动转成 json
+                    'channel' => $channel,
+                    'priority' => $priority,
+                    'sent_at' => now(),
+        ]);
     }
 }

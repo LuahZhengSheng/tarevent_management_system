@@ -503,6 +503,10 @@
     color: white;
 }
 
+.status-registered .status-info {
+    color: var(--text-tertiary) !important;
+}
+
 .status-full,
 .status-closed {
     background: var(--error-light);
@@ -1221,6 +1225,13 @@
     padding: 0.35rem 0.75rem;
     font-weight: 600;
     font-size: 0.8rem;
+}
+
+.event-info-box {
+    background-color: #f9fafb;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
 }
 
 /* Responsive */
