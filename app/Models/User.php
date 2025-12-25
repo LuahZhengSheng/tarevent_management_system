@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\HasApiTokens; 
+use Laravel\Sanctum\HasApiTokens;
 
 // Import all traits
 use App\Models\Traits\HasRoles;
@@ -22,7 +22,6 @@ use App\Models\Traits\HasNotifications;
 use App\Models\Traits\HasEventSubscriptions;
 use App\Models\Traits\HasEventPermissions;
 use App\Models\Traits\HasForumActivity;
-use Laravel\Sanctum\HasApiTokens;
 use App\Models\PostSave;
 use App\Models\PostComment;
 use App\Models\PostLike;
