@@ -6,9 +6,8 @@ namespace App\Http\Requests\Api;
 
 use App\Support\PhoneHelper;
 use App\Support\StudentIdHelper;
-use Illuminate\Foundation\Http\FormRequest;
 
-class CreateClubUserRequest extends FormRequest
+class CreateClubUserRequest extends BaseApiRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,7 +22,8 @@ class CreateClubUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        // Merge parent rules (timestamp/requestID) with child rules
+        return array_merge(parent::rules(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
@@ -33,8 +33,7 @@ class CreateClubUserRequest extends FormRequest
             'program' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:active,inactive,suspended'],
             'club_id' => ['nullable', 'integer', 'exists:clubs,id'],
-            'timestamp' => ['required', 'integer'], // Unix timestamp in seconds
-        ];
+        ]);
     }
 
     /**
@@ -47,8 +46,6 @@ class CreateClubUserRequest extends FormRequest
             'student_id.unique' => 'The student ID is already registered.',
             'phone.required' => 'Phone number is required.',
             'club_id.exists' => 'The specified club does not exist.',
-            'timestamp.required' => 'The timestamp field is required.',
-            'timestamp.integer' => 'The timestamp must be a valid Unix timestamp.',
         ];
     }
 
