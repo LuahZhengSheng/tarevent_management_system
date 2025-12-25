@@ -22,6 +22,17 @@
     transition: all 0.3s ease;
 }
 
+.media-gallery-facebook .fb-media-item{
+  border: 0;
+  padding: 0;
+  background: transparent;
+  outline: none;
+}
+.media-gallery-facebook .fb-media-item:focus{
+  outline: none;
+  box-shadow: none;
+}
+
 .fb-media-item:hover {
     opacity: 0.95;
 }

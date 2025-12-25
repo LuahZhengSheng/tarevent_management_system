@@ -16,9 +16,11 @@ use App\Decorators\ValidationPostDecorator;
 use App\Decorators\MediaPostDecorator;
 use App\Decorators\TagsPostDecorator;
 use App\Support\PostMediaHelper;
+use App\Exceptions\VirusScanFailedException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller {
 
@@ -250,32 +252,34 @@ class PostController extends Controller {
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'user_id' => auth()->id(),
+                'exception_class' => get_class($e),
             ]);
 
+            $userMessage = $e instanceof VirusScanFailedException ? $e->userMessage : 'Failed to create post. Please try again.';
+
+            // 这里 fail closed：不把内部原因回传给用户（更安全）
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => false,
-                            'message' => 'Failed to create post. Please try again.',
-                            'error' => config('app.debug') ? $e->getMessage() : null,
-                                ], 500);
+                            'message' => $userMessage,
+                            'error' => null,
+                                ], 422);
             }
 
             return back()
                             ->withInput()
-                            ->withErrors(['error' => 'Failed to create post: ' . $e->getMessage()]);
+                            ->withErrors(['error' => $userMessage]);
         }
     }
 
     /**
      * Display the specified post
      */
-    public function show(Post $post) {
-        // Authorization check
+    public function show(Request $request, Post $post) {
         if (!$post->canBeViewedBy(auth()->user())) {
             abort(403, 'You do not have permission to view this post.');
         }
 
-        // Eager load relationships
         $post->load([
             'user',
             'category',
@@ -283,29 +287,17 @@ class PostController extends Controller {
             'clubs',
             'comments' => function ($q) {
                 $q->whereNull('parent_id')
-                        ->with([
-                            'user',
-                            'replyTo',
-                            'replies.user',
-                            'replies.replyTo',
-                        ])
+                        ->with(['user', 'replyTo', 'replies.user', 'replies.replyTo'])
                         ->latest()
                         ->limit(20);
             },
         ]);
 
         $post->loadCount(['comments', 'likes']);
-
-        // Increment views count
         $post->incrementViews();
 
-        // Check if current user has liked the post
-        $hasLiked = false;
-        if (auth()->check()) {
-            $hasLiked = $post->isLikedBy(auth()->user());
-        }
+        $hasLiked = auth()->check() ? $post->isLikedBy(auth()->user()) : false;
 
-        // Get related posts (same category, exclude current)
         $relatedPosts = Post::published()
                 ->public()
                 ->where('category_id', $post->category_id)
@@ -315,6 +307,14 @@ class PostController extends Controller {
                 ->inRandomOrder()
                 ->limit(3)
                 ->get();
+
+        // 只有显式 ?format=json 才回 JSON（避免误触发）
+        if ($request->query('format') === 'json') {
+            return response()->json([
+                        'success' => true,
+                        'post' => $post,
+            ]);
+        }
 
         return view('forums.show', compact('post', 'hasLiked', 'relatedPosts'));
     }
@@ -359,35 +359,110 @@ class PostController extends Controller {
 
             // ===== Media 处理：保留你现有逻辑 =====
             if ($request->boolean('replace_media', false)) {
-                // 删除旧 media
                 if ($post->hasMedia()) {
                     PostMediaHelper::deletePostMedia($post->media_paths);
                 }
-                // 使用 decorator 生成的新 media_paths
-                // $processedData['media_paths'] 已经设置好
+                // replace_media=true: 旧的删掉，新的 media_paths 用 decorator 产物
             } elseif (isset($processedData['media_paths'])) {
                 // 合并旧 media 和新增 media
                 $existingMedia = $post->media_paths ?? [];
                 $processedData['media_paths'] = array_merge($existingMedia, $processedData['media_paths']);
 
-                if (count($processedData['media_paths']) > MediaHelper::POST_MAX_MEDIA_COUNT) {
+                if (count($processedData['media_paths']) > PostMediaHelper::POST_MAX_MEDIA_COUNT) {
                     $processedData['media_paths'] = array_slice(
                             $processedData['media_paths'],
                             0,
-                            MediaHelper::POST_MAX_MEDIA_COUNT
+                            PostMediaHelper::POST_MAX_MEDIA_COUNT
                     );
                 }
             }
 
             // ===== published_at 处理：和 store 一致 =====
-            if ($processedData['status'] === 'published' && !$post->published_at) {
+            if (($processedData['status'] ?? $post->status) === 'published' && !$post->published_at) {
                 $processedData['published_at'] = now();
-            } elseif ($processedData['status'] === 'draft') {
+            } elseif (($processedData['status'] ?? $post->status) === 'draft') {
                 $processedData['published_at'] = null;
             }
 
-            // 不再使用 club_id 列
             unset($processedData['club_id']);
+
+            // ===== visibility 变更：迁移已有 media 到对应 disk =====
+            $oldVisibility = $post->visibility;
+            $newVisibility = $processedData['visibility'] ?? $post->visibility;
+
+            if ($oldVisibility !== $newVisibility && $post->hasMedia()) {
+                $targetDisk = $newVisibility === 'club_only' ? 'local' : 'public';
+
+                $migratedMedia = [];
+                foreach (($post->media_paths ?? []) as $media) {
+                    // 只处理你当前格式：array 结构（disk/path/type/...)
+                    if (!is_array($media)) {
+                        // 避免猜“老数据字符串路径”怎么处理：直接原样保留
+                        $migratedMedia[] = $media;
+                        continue;
+                    }
+
+                    $srcDisk = $media['disk'] ?? 'public';
+                    $path = $media['path'] ?? null;
+
+                    if (!$path) {
+                        $migratedMedia[] = $media;
+                        continue;
+                    }
+
+                    // already correct disk
+                    if ($srcDisk === $targetDisk) {
+                        $media['disk'] = $targetDisk;
+                        $migratedMedia[] = $media;
+                        continue;
+                    }
+
+                    if (!Storage::disk($srcDisk)->exists($path)) {
+                        throw new \Exception("Media file missing: disk={$srcDisk}, path={$path}");
+                    }
+
+                    $stream = Storage::disk($srcDisk)->readStream($path);
+                    if ($stream === false || $stream === null) {
+                        throw new \Exception("Failed to read media stream: disk={$srcDisk}, path={$path}");
+                    }
+
+                    $written = Storage::disk($targetDisk)->writeStream($path, $stream);
+
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+
+                    if (!$written) {
+                        throw new \Exception("Failed to write media stream: disk={$targetDisk}, path={$path}");
+                    }
+
+                    // copy success -> delete old
+                    Storage::disk($srcDisk)->delete($path);
+
+                    $media['disk'] = $targetDisk;
+                    $migratedMedia[] = $media;
+                }
+
+                // 如果本次 update 没有提交新 media，则把迁移后的 media_paths 写回
+                // 如果本次有新 media_paths（合并/替换），则把其中“旧路径”对应的 disk 更新为 targetDisk
+                if (!isset($processedData['media_paths'])) {
+                    $processedData['media_paths'] = $migratedMedia;
+                } else {
+                    $byPath = [];
+                    foreach ($migratedMedia as $m) {
+                        if (is_array($m) && !empty($m['path'])) {
+                            $byPath[$m['path']] = $m;
+                        }
+                    }
+
+                    $processedData['media_paths'] = array_map(function ($m) use ($byPath) {
+                        if (!is_array($m) || empty($m['path'])) {
+                            return $m;
+                        }
+                        return $byPath[$m['path']] ?? $m;
+                    }, $processedData['media_paths']);
+                }
+            }
 
             // 更新 post 本身
             $post->update($processedData);
@@ -396,12 +471,11 @@ class PostController extends Controller {
             if (!empty($tagIds)) {
                 $post->syncTagsWithCount($tagIds, auth()->id());
             } elseif (isset($tagIds)) {
-                // 空数组 => 清空 tags
                 $post->tags()->detach();
             }
 
             // ===== 更新 club_posts 中间表 =====
-            if ($processedData['visibility'] === 'club_only' && $request->filled('club_ids')) {
+            if (($processedData['visibility'] ?? $post->visibility) === 'club_only' && $request->filled('club_ids')) {
                 $clubIds = $request->input('club_ids');
 
                 $pivotData = collect($clubIds)
@@ -413,7 +487,6 @@ class PostController extends Controller {
 
                 $post->clubs()->sync($pivotData);
             } else {
-                // 改回 public 等非 club_only，可视为不再属于任何 club
                 $post->clubs()->detach();
             }
 
@@ -452,20 +525,25 @@ class PostController extends Controller {
 
             Log::error('Post update failed', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'post_id' => $post->id,
+                'user_id' => auth()->id(),
+                'exception_class' => get_class($e),
             ]);
+
+            $userMessage = $e instanceof VirusScanFailedException ? $e->userMessage : 'Failed to update post. Please try again.';
 
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => false,
-                            'message' => 'Failed to update post.',
-                            'error' => config('app.debug') ? $e->getMessage() : null,
-                                ], 500);
+                            'message' => $userMessage,
+                            'error' => null,
+                                ], 422);
             }
 
             return back()
                             ->withInput()
-                            ->withErrors(['error' => 'Failed to update post: ' . $e->getMessage()]);
+                            ->withErrors(['error' => $userMessage]);
         }
     }
 

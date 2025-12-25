@@ -200,12 +200,18 @@ class MyPostController extends Controller {
             'post' => $post,
             'excerpt' => \Illuminate\Support\Str::limit(strip_tags($post->content), 150),
             // 这里直接用访问器属性 media（来自 getMediaAttribute）
-            'media' => $post->media->map(function ($media) {
+            'media' => $post->media->map(function ($m) {
+                $type = is_object($m) ? ($m->type ?? 'image') : ($m['type'] ?? 'image');
+                $url = is_object($m) ? ($m->url ?? '') : ($m['url'] ?? '');
+
                 return [
-            'type' => $media->type ?? 'image',
-            'url' => $media->url ?? '',
+            'mediatype' => $type,
+            'mediaurl' => $url,
+            'thumbnailurl' => $url, // 先用同一个，至少图片/视频封面能显示
                 ];
-            })->toArray(),
+            })->filter(function ($m) {
+                return !empty($m['mediaurl']);
+            })->values()->toArray(),
             // 这些关系在 Post 模型里是真实关系：comments / likes / saves
             'comments_count' => $post->comments()->count(),
             'likes_count' => $post->likes()->count(),

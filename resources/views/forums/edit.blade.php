@@ -8,7 +8,7 @@
 @endpush
 
 {{-- Join Club Modal --}}
-@include('clubs.join_modal')
+@include('clubs.select_club_modal')
 
 @section('content')
 <div class="forum-create-wrapper">
@@ -175,21 +175,26 @@
                         <div class="media-grid" id="existingMediaGrid">
                             @foreach($post->media_paths as $index => $media)
                             @php
-                            $path = is_array($media) ? ($media['path'] ?? '') : $media;
-                            $type = is_array($media) ? ($media['type'] ?? '') : '';
-                            $mime = is_array($media) ? ($media['mime_type'] ?? '') : '';
+                            $mediaPath = is_array($media) ? ($media['path'] ?? '') : $media;
+                            $mediaType = is_array($media) ? ($media['type'] ?? 'image') : 'image';
+                            $mimeType  = is_array($media) ? ($media['mime_type'] ?? 'image/jpeg') : 'image/jpeg';
+                            $mediaDisk = is_array($media) ? ($media['disk'] ?? 'public') : 'public';
 
-                            $isVideo = ($type === 'video') || str_starts_with($mime, 'video/');
+                            if (empty($mediaPath)) continue;
+
+                            $mediaUrl = $mediaDisk === 'public'
+                            ? Storage::disk('public')->url($mediaPath)
+                            : route('forums.posts.media.show', ['post' => $post->slug, 'index' => $index]);
+
+                            $isVideo = $mediaType === 'video' || str_starts_with($mimeType, 'video/');
                             @endphp
-
-                            @continue(empty($path))
 
                             <div class="media-item" data-existing-index="{{ $index }}">
                                 @if($isVideo)
-                                <video src="{{ Storage::url($path) }}" controls></video>
+                                <video src="{{ $mediaUrl }}" controls></video>
                                 <span class="media-badge">VIDEO</span>
                                 @else
-                                <img src="{{ Storage::url($path) }}" alt="Media" loading="lazy">
+                                <img src="{{ $mediaUrl }}" alt="Media" loading="lazy">
                                 <span class="media-badge">IMAGE</span>
                                 @endif
 
@@ -502,38 +507,20 @@
 
 @push('scripts')
 <script>
-    const config = {
-        availableTags: @json($activeTags ?? []),
-        maxTags: 10,
-        maxMediaFiles: 10,
-        maxImageSize: 10 * 1024 * 1024,
-        maxVideoSize: 100 * 1024 * 1024,
-
-        existingMediaPaths: @json($post->media_paths ?? []),
-
-        currentUserId: {{ auth()->id() }},
-        clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}',
-        joinClubModalId: 'joinClubModal',
-
-        oldClubIds: @json(old('club_ids', $post->clubs->pluck('id')->all())),
-    };
-
-    window.forumConfig = config;
-
-    window.existingMediaToRemove = [];
-    window.removeExistingMedia = function (index) {
-        const grid = document.getElementById('existingMediaGrid');
-        if (!grid) return;
-
-        const item = grid.querySelector(`[data-existing-index="${index}"]`);
-        if (item) {
-            item.remove();
-            window.existingMediaToRemove.push(index);
-            if (grid.children.length === 0) {
-                grid.style.display = 'none';
-            }
-        }
-    };
+  const config = {
+    availableTags: @json($activeTags ?? []),
+    maxTags: 10,
+    maxMediaFiles: 10,
+    maxImageSize: 10 * 1024 * 1024,
+    maxVideoSize: 100 * 1024 * 1024,
+    existingMediaPaths: @json($post->media_paths ?? []),
+    currentUserId: {{ auth()->id() }},
+    clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}',
+    joinClubModalId: 'joinClubModal',
+    oldClubIds: @json(old('club_ids', $post->clubs->pluck('id')->all())),
+  };
+  window.forumConfig = config;
 </script>
+
 @vite(['resources/js/forum-create.js', 'resources/js/media-lightbox.js'])
 @endpush

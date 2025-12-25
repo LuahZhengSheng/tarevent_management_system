@@ -22,7 +22,6 @@ use App\Models\Traits\HasNotifications;
 use App\Models\Traits\HasEventSubscriptions;
 use App\Models\Traits\HasEventPermissions;
 use App\Models\Traits\HasForumActivity;
-use Laravel\Sanctum\HasApiTokens;
 use App\Models\PostSave;
 use App\Models\PostComment;
 use App\Models\PostLike;
