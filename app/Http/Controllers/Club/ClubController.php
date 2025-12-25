@@ -85,6 +85,29 @@ class ClubController extends Controller
     }
 
     /**
+     * Check if user email already exists.
+     * Used for real-time validation in admin create club form.
+     * This method checks directly against the User model without modifying UserService.
+     */
+    public function checkUserEmail(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $email = $request->input('email');
+        
+        // Check if email exists in users table
+        // We use User model directly to check without modifying UserService
+        $exists = User::where('email', $email)->exists();
+
+        return response()->json([
+            'exists' => $exists,
+            'message' => $exists ? 'This email is already registered to a user' : 'Email is available',
+        ]);
+    }
+
+    /**
      * Store a newly created club (Admin only).
      */
     public function adminStore(Request $request): RedirectResponse
@@ -244,20 +267,6 @@ class ClubController extends Controller
             ->get();
 
         return view('clubs.dashboard', compact('club', 'stats', 'recentLogs'));
-    }
-
-    /**
-     * Show current club for club account.
-     */
-    public function show(): View
-    {
-        $club = $this->clubFacade->getClubForAccount(auth()->user());
-
-        if (!$club) {
-            abort(404, 'Club not found for this account.');
-        }
-
-        return view('clubs.show', compact('club'));
     }
 
     /**
@@ -741,5 +750,64 @@ class ClubController extends Controller
         }
 
         return view('clubs.forum.index', compact('club'));
+    }
+
+    // ==========================================
+    // STUDENT-SIDE OPERATIONS (Public Browsing)
+    // ==========================================
+
+    /**
+     * Display a listing of all available clubs (Student-side).
+     * Similar to Events index page.
+     */
+    public function index(Request $request): View
+    {
+        // Get categories for filter
+        $categories = ['academic', 'sports', 'cultural', 'social', 'volunteer', 'professional', 'other'];
+        
+        // Get search and filter parameters
+        $search = $request->input('search', '');
+        $category = $request->input('category', '');
+        
+        // This will be populated by JavaScript via API
+        // We just prepare the view with filters
+        return view('clubs.index', compact('categories', 'search', 'category'));
+    }
+
+    /**
+     * Display a single club's details (Student-side).
+     */
+    public function show(Club $club): View
+    {
+        // Check if club is active (public should only see active clubs)
+        if ($club->status !== 'active') {
+            abort(404, 'Club not found.');
+        }
+
+        // Get membership status if user is authenticated
+        $isMember = false;
+        $memberRole = null;
+        if (auth()->check()) {
+            $isMember = $this->clubFacade->hasMember($club, auth()->user());
+            if ($isMember) {
+                $memberRole = $this->clubFacade->getMemberRole($club, auth()->user());
+            }
+        }
+
+        // Get statistics
+        $stats = [
+            'members_count' => $this->clubFacade->countMembers($club),
+            'announcements_count' => $club->announcements()->published()->count(),
+            'events_count' => 0, // Reserved for Event Module
+        ];
+
+        // Get recent announcements (last 5)
+        $recentAnnouncements = $club->announcements()
+            ->published()
+            ->orderBy('published_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        return view('clubs.show', compact('club', 'isMember', 'memberRole', 'stats', 'recentAnnouncements'));
     }
 }

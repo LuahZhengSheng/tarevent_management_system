@@ -93,6 +93,11 @@ if (app()->environment('local')) {
 
         return view('test.club_forum_picker', compact('clubs'));
     })->name('test.club-forum');
+
+    // Test Club Join API
+    Route::middleware('auth')->get('/test/clubs/join-api', function () {
+        return view('clubs.test_join_api');
+    })->name('test.clubs.join-api');
 }
 
 if (app()->environment('local')) {
@@ -230,9 +235,10 @@ Route::redirect('/', '/events')->name('home');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
 //Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
-//// Public Club Browsing
-//Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
-//Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
+
+// Public Club Browsing (Student Side)
+Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
+Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
 //// Public Forum Browsing
 //Route::get('/forum', [ForumController::class, 'index'])->name('forum.index');
 //Route::get('/forum/{post}', [ForumController::class, 'show'])->name('forum.show');
@@ -585,6 +591,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::post('/clubs', [ClubController::class, 'store'])
             ->name('clubs.store');
+
+    // Check if user email exists (for real-time validation)
+    Route::get('/admin/clubs/check-email', [ClubController::class, 'checkUserEmail'])
+            ->name('admin.clubs.check-email');
 });
 
 Route::middleware(['auth', 'club'])->group(function () {

@@ -173,10 +173,11 @@
                                            class="form-control form-control-modern" 
                                            id="accountPassword" 
                                            name="account_password" 
-                                           placeholder="Enter password (min 8 characters)"
+                                           placeholder="Enter password"
                                            minlength="8"
                                            required>
-                                    <div class="form-text">Minimum 8 characters</div>
+                                    <div class="form-text">Must be at least 8 characters with uppercase, lowercase, numbers, and special characters</div>
+                                    <div class="invalid-feedback" id="accountPasswordError"></div>
                                 </div>
 
                                 <div class="col-md-6 mb-4">
@@ -384,7 +385,7 @@
 
     // Clear all field errors
     function clearAllFieldErrors() {
-        ['clubName', 'clubEmail', 'clubPhone', 'accountName', 'clubId'].forEach(id => {
+        ['clubName', 'clubEmail', 'clubPhone', 'accountName', 'clubId', 'accountPassword', 'accountPasswordConfirmation'].forEach(id => {
             clearFieldError(id);
         });
     }
@@ -411,6 +412,57 @@
         }
     });
 
+    // Password validation (must have uppercase, lowercase, numbers, and special characters)
+    function validatePassword(password) {
+        const errors = [];
+        
+        if (password.length < 8) {
+            errors.push('Password must be at least 8 characters');
+        }
+        if (!/[a-z]/.test(password)) {
+            errors.push('Password must contain at least one lowercase letter');
+        }
+        if (!/[A-Z]/.test(password)) {
+            errors.push('Password must contain at least one uppercase letter');
+        }
+        if (!/[0-9]/.test(password)) {
+            errors.push('Password must contain at least one number');
+        }
+        if (!/[^a-zA-Z0-9]/.test(password)) {
+            errors.push('Password must contain at least one special character');
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    // Real-time password validation
+    document.getElementById('accountPassword').addEventListener('input', function() {
+        const password = this.value;
+        const validation = validatePassword(password);
+        const errorDiv = document.getElementById('accountPasswordError');
+        
+        if (password.length > 0) {
+            if (validation.isValid) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+                clearFieldError('accountPassword');
+            } else {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+                if (errorDiv && validation.errors.length > 0) {
+                    errorDiv.textContent = validation.errors[0];
+                    errorDiv.style.display = 'block';
+                }
+            }
+        } else {
+            this.classList.remove('is-invalid', 'is-valid');
+            clearFieldError('accountPassword');
+        }
+    });
+
     // Password confirmation validation
     document.getElementById('accountPasswordConfirmation').addEventListener('input', function() {
         const password = document.getElementById('accountPassword').value;
@@ -421,7 +473,7 @@
         } else {
             this.setCustomValidity('');
             clearFieldError('accountPasswordConfirmation');
-            if (confirmation && password === confirmation) {
+            if (confirmation && password === confirmation && password.length > 0) {
                 showFieldSuccess('accountPasswordConfirmation');
             }
         }
@@ -474,16 +526,80 @@
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (value && !emailPattern.test(value)) {
             showFieldError(fieldId, 'Please enter a valid email address');
+            return false;
         } else {
             clearFieldError(fieldId);
             if (value && emailPattern.test(value)) {
                 showFieldSuccess(fieldId);
             }
+            return true;
+        }
+    }
+
+    // Check if user email already exists
+    let emailCheckTimeout = null;
+    async function checkUserEmailExists(email) {
+        if (!email || !email.includes('@')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/clubs/check-email?email=${encodeURIComponent(email)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+            });
+
+            const data = await response.json();
+
+            if (data.exists) {
+                showFieldError('clubEmail', 'This email is already registered to a user. Please use a different email.');
+            } else {
+                // Only show success if email format is valid
+                if (validateEmail('clubEmail')) {
+                    clearFieldError('clubEmail');
+                }
+            }
+        } catch (error) {
+            console.error('Error checking email:', error);
+            // Don't show error to user if check fails - let backend handle it
         }
     }
 
     document.getElementById('clubEmail').addEventListener('blur', function() {
-        validateEmail('clubEmail');
+        const email = this.value.trim();
+        if (validateEmail('clubEmail') && email) {
+            checkUserEmailExists(email);
+        }
+    });
+
+    // Real-time validation with debounce
+    document.getElementById('clubEmail').addEventListener('input', function() {
+        const email = this.value.trim();
+        
+        // Clear previous timeout
+        if (emailCheckTimeout) {
+            clearTimeout(emailCheckTimeout);
+        }
+
+        // Basic format validation
+        if (email) {
+            validateEmail('clubEmail');
+        } else {
+            clearFieldError('clubEmail');
+        }
+
+        // Debounce email existence check (wait 500ms after user stops typing)
+        if (email && email.includes('@')) {
+            emailCheckTimeout = setTimeout(() => {
+                if (validateEmail('clubEmail')) {
+                    checkUserEmailExists(email);
+                }
+            }, 500);
+        }
     });
 
     // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
