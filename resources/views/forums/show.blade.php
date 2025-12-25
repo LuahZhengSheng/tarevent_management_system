@@ -242,7 +242,7 @@
                 <section class="comments-section-modern" id="commentsSection">
                     <div class="comments-header-modern">
                         <h3 class="comments-title-modern">
-                            Comments ({{ $post->comments_count }})
+                            Comments <span id="totalComments">{{ number_format($post->comments_count) }}
                         </h3>
 
                         <div class="comments-sort-modern" id="commentsSortTrigger">

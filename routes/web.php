@@ -503,6 +503,21 @@ Route::middleware(['auth', 'admin'])
   |--------------------------------------------------------------------------
   | Only accessible by users with 'club' role
  */
+Route::middleware('auth')->post('/club/select', function (Request $request) {
+    $clubId = (int) $request->input('club_id');
+    abort_if(!$clubId, 422);
+
+    $club = Club::findOrFail($clubId);
+
+    abort_unless($club->members()->where('users.id', auth()->id())->exists(), 403);
+
+    $request->session()->put('active_club_id', $club->id);
+
+    // 跳去真实 show
+    return redirect()->route('clubs.show', $club);
+})->name('club.select');
+        
+        
 Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(function () {
 //Route::prefix('events')->name('events.')->group(function () {
     // Event Management (Create, Edit, Delete)

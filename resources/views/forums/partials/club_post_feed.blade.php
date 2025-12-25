@@ -1,4 +1,4 @@
-{{-- resources/views/forums/partials/post_feed.blade.php --}}
+{{-- resources/views/forums/partials/club_post_feed.blade.php --}}
 
 @push('styles')
 @vite([
@@ -8,17 +8,14 @@
 ])
 @endpush
 
-@section('content')
 <div class="container py-4">
     <x-post-feed
         api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
+        :club="$club->id"
         :initial-posts="null"
         :show-filters="true"
-        data-bearer-token="{{ $bearerToken ?? '' }}"
         />
 </div>
-@endsection
-
 
 @push('scripts')
 @vite([
