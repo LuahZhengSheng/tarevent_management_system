@@ -561,16 +561,16 @@
     // =====================================================
     // Lightbox Integration
     // =====================================================
-    window.openLightbox = function (index) {
-        const gallery = event.target.closest('.media-gallery-facebook');
+    window.openLightbox = function (index, el) {
+        const gallery = el?.closest?.('.media-gallery-facebook');
         if (!gallery)
             return;
 
         const items = JSON.parse(gallery.dataset.lightboxItems || '[]');
-        if (window.lightbox && items.length > 0) {
+        if (window.lightbox && items.length > 0)
             window.lightbox.open(items, index);
-        }
     };
+
 
     // =====================================================
     // Initialize Application
@@ -597,6 +597,28 @@
         } catch (error) {
             console.error('❌ My Posts - Initialization error:', error);
         }
+
+        document.addEventListener('click', (e) => {
+            // 点到链接本身就让浏览器正常跳
+            if (e.target.closest('a'))
+                return;
+
+            // 点到 media 或 delete/edit 按钮不跳
+            if (e.target.closest('.fb-media-item'))
+                return;
+            if (e.target.closest('.js-delete-post'))
+                return;
+            if (e.target.closest('.post-actions'))
+                return;
+
+            const card = e.target.closest('.post-item');
+            if (!card)
+                return;
+
+            const link = card.querySelector('.post-title a');
+            if (link?.href)
+                window.location.href = link.href;
+        });
     }
 
     init();

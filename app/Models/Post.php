@@ -109,22 +109,62 @@ class Post extends Model {
 
     /**
      * Get all media files
+     * - public: generate direct url
+     * - local(private): url must be built in view/controller (needs media index + auth)
      */
     public function getMediaAttribute() {
-        if (!$this->media_paths || !is_array($this->media_paths)) {
+        // 兼容：有些代码叫 mediapaths，有些叫 media_paths
+        $paths = $this->mediapaths ?? $this->media_paths ?? null;
+
+        if (!$paths || !is_array($paths)) {
             return collect([]);
         }
 
-        return collect($this->media_paths)->map(function ($media) {
+        return collect($paths)->map(function ($media, $index) {
+                    if (!is_array($media)) {
+                        // 老数据是纯 string path，当作 public
+                        $disk = 'public';
+                        $path = (string) $media;
+                        $type = 'image';
+                        $mime = '';
+                        $size = 0;
+                        $original = '';
+                    } else {
+                        $disk = $media['disk'] ?? 'public';
+                        $path = $media['path'] ?? ($media['mediaPath'] ?? '');
+                        $type = $media['type'] ?? ($media['mediaType'] ?? 'image');
+                        $mime = $media['mimetype'] ?? ($media['mime_type'] ?? '');
+                        $size = $media['size'] ?? 0;
+                        $original = $media['originalname'] ?? ($media['original_name'] ?? '');
+                    }
+
+                    // 生成可访问 URL
+                    $url = null;
+                    if (!empty($path)) {
+                        if ($disk === 'local') {
+                            // 受保护媒体：必须走 controller + auth + authorization
+                            $url = route('forums.posts.media.show', [
+                                'post' => $this, 
+                                'index' => $index,
+                            ]);
+                        } else {
+                            $url = \Storage::disk($disk)->url($path);
+                        }
+                    }
+
                     return (object) [
-                        'type' => $media['type'] ?? 'image',
-                        'path' => $media['path'] ?? '',
-                        'mime_type' => $media['mime_type'] ?? '',
-                        'size' => $media['size'] ?? 0,
-                        'original_name' => $media['original_name'] ?? '',
-                        'url' => isset($media['path']) ? Storage::url($media['path']) : '',
+                        'index' => $index,
+                        'disk' => $disk,
+                        'type' => $type,
+                        'path' => $path,
+                        'mimetype' => $mime,
+                        'size' => $size,
+                        'originalname' => $original,
+                        'url' => $url,
                     ];
-                });
+                })->filter(function ($m) {
+                    return !empty($m->path);
+                })->values();
     }
 
     /**

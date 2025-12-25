@@ -14,9 +14,9 @@
                 <div class="user-info-content">
                     <h6 class="user-name">{{ auth()->user()->name }}</h6>
                     @if(auth()->user()->isSuperAdmin())
-                        <span class="user-badge badge-super">Super Admin</span>
+                    <span class="user-badge badge-super">Super Admin</span>
                     @else
-                        <span class="user-badge badge-admin">Admin</span>
+                    <span class="user-badge badge-admin">Admin</span>
                     @endif
                 </div>
                 <i class="bi bi-chevron-right user-arrow"></i>
@@ -88,6 +88,27 @@
                     </a>
                 </li>
                 @endif
+
+                <!-- Forum Management -->
+                <li class="nav-item">
+                    <div class="nav-section-title">Forum Management</div>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.forums.posts.*') ? 'active' : '' }}"
+                       href="{{ route('admin.forums.posts.index') }}">
+                        <i class="bi bi-chat-left-text"></i>
+                        <span>Forum Posts</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.forums.tags.*') ? 'active' : '' }}"
+                       href="{{ route('admin.forums.tags.index') }}">
+                        <i class="bi bi-tags"></i>
+                        <span>Forum Tags</span>
+                    </a>
+                </li>
 
                 <!-- Club Management -->
                 <li class="nav-item">
@@ -551,16 +572,330 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
     .admin-sidebar {
-        width: 100%;
-        position: relative;
-        top: 0;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
+        width: 280px;
+        min-height: calc(100vh - 70px);
+        background-color: var(--bg-primary);
+        border-right: 1px solid var(--border-color);
+        position: sticky;
+        top: 70px;
+        overflow-y: auto;
+        transition: all 0.3s ease;
     }
-}
 
-/* Dark Mode */
-[data-theme="dark"] .admin-sidebar {
-    background-color: var(--bg-secondary);
-}
+    .sidebar-content {
+        padding: 1.5rem 1rem;
+    }
+
+    /* ========================================
+       User Info Section - 简约高级感设计
+       ======================================== */
+    .sidebar-user-info {
+        position: relative;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: var(--bg-primary);
+        border-radius: 1rem;
+        border: 1px solid transparent;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-user-info::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 1rem;
+        padding: 1px;
+        background: linear-gradient(135deg, var(--border-color), transparent);
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-user-info:hover {
+        border-color: rgba(79, 70, 229, 0.1);
+        box-shadow: 0 4px 20px rgba(79, 70, 229, 0.08);
+    }
+
+    .sidebar-user-info:hover::before {
+        opacity: 0;
+    }
+
+    .user-info-link {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+    }
+
+    /* Avatar Container with Online Status */
+    .user-avatar-container {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .user-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 2px solid var(--bg-secondary);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .user-info-link:hover .user-avatar {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15);
+        border-color: rgba(79, 70, 229, 0.2);
+    }
+
+    /* Online Indicator */
+    .online-indicator {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 14px;
+        height: 14px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border: 2px solid var(--bg-primary);
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        animation: pulse-online 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-online {
+        0%, 100% {
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+        50% {
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+    }
+
+    /* User Info Content */
+    .user-info-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+
+    .user-name {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.3;
+        transition: color 0.2s ease;
+    }
+
+    .user-info-link:hover .user-name {
+        color: var(--primary);
+    }
+
+    /* Badge Styles */
+    .user-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        border-radius: 6px;
+        width: fit-content;
+        transition: all 0.2s ease;
+    }
+
+    .badge-super {
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+
+    .badge-admin {
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(79, 70, 229, 0.05));
+        color: var(--primary);
+        border: 1px solid rgba(79, 70, 229, 0.2);
+    }
+
+    .user-info-link:hover .badge-super {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        border-color: #dc3545;
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.25);
+    }
+
+    .user-info-link:hover .badge-admin {
+        background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+        color: white;
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+    }
+
+    /* Arrow Icon */
+    .user-arrow {
+        font-size: 0.875rem;
+        color: var(--text-tertiary);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0;
+    }
+
+    .user-info-link:hover .user-arrow {
+        opacity: 1;
+        transform: translateX(2px);
+        color: var(--primary);
+    }
+
+    .sidebar-nav .nav-link {
+        color: var(--text-secondary);
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.25rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .sidebar-nav .nav-link i {
+        font-size: 1.25rem;
+        width: 24px;
+        text-align: center;
+    }
+
+    .sidebar-nav .nav-link:hover {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .sidebar-nav .nav-link.active {
+        background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-hover));
+        color: white;
+        font-weight: 600;
+        box-shadow: var(--shadow-md);
+    }
+
+    .nav-section-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+        padding: 1rem 1rem 0.5rem;
+        margin-top: 1rem;
+        letter-spacing: 0.5px;
+    }
+
+    .nav-section-title:first-child {
+        margin-top: 0;
+    }
+
+    .sidebar-stats {
+        padding: 1rem 0;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background-color: var(--bg-secondary);
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateX(5px);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .stat-info {
+        flex: 1;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        margin-top: 0.25rem;
+    }
+
+    .sidebar-footer {
+        padding: 1rem 0;
+        border-top: 1px solid var(--border-color);
+        margin-top: 1rem;
+    }
+
+    .sidebar-footer .btn {
+        border-color: var(--admin-primary);
+        color: var(--admin-primary);
+    }
+
+    .sidebar-footer .btn:hover {
+        background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-hover));
+        color: white;
+        border-color: var(--admin-primary);
+    }
+
+    /* Scrollbar Styling */
+    .admin-sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .admin-sidebar::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+    }
+
+    .admin-sidebar::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 3px;
+    }
+
+    .admin-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--admin-primary);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .admin-sidebar {
+            width: 100%;
+            position: relative;
+            top: 0;
+            border-right: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .admin-sidebar {
+        background-color: var(--bg-secondary);
+    }
 </style>
