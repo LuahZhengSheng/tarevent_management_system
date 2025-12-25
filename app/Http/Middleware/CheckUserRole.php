@@ -24,8 +24,7 @@ class CheckUserRole
                 ], 401);
             }
 
-            // 你现在还没有 login 路由，可以先丢回 home 或预留
-            return redirect()->route('home')
+            return redirect()->route('login')
                              ->with('error', 'Please login to access this page.')
                              ->with('intended', $request->url());
         }

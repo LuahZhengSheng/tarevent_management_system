@@ -176,6 +176,7 @@ class UpdateEventRequest extends FormRequest {
             'custom_fields.*.options' => 'nullable|string',
             'custom_fields.*.placeholder' => 'nullable|string|max:255',
             'custom_fields.*.help_text' => 'nullable|string|max:500',
+            'custom_fields.*.required' => ['nullable', 'boolean', 'in:0,1'],
         ];
     }
 
@@ -292,6 +293,7 @@ class UpdateEventRequest extends FormRequest {
             'custom_fields.*.name.required_with' => 'Field name is required.',
             'custom_fields.*.type.required_with' => 'Field type is required.',
             'custom_fields.*.type.in' => 'Invalid field type selected.',
+            'custom_fields.*.required' => ['nullable', 'boolean', 'in:0,1'],
         ];
     }
 

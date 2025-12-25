@@ -190,6 +190,9 @@
            </span>`
                 : '';
 
+        const now = new Date();
+        const regStart = new Date(event.registration_start_time);
+
         if (event.is_full) {
             statusBadge = `
                 <div class="status-badge status-full">
@@ -202,6 +205,13 @@
                 <div class="status-badge status-open">
                     <i class="bi bi-check-circle"></i>
                     <span>Open</span>
+                </div>
+            `;
+        } else if (regStart > now) {
+            statusBadge = `
+                <div class="status-badge status-upcoming" style="background-color: #003366; color: white; border-color: #0dcaf0;">
+                    <i class="bi bi-hourglass-split"></i>
+                    <span>Upcoming</span>
                 </div>
             `;
         } else {

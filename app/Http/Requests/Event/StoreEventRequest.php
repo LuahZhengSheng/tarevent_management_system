@@ -128,6 +128,14 @@ class StoreEventRequest extends FormRequest {
                 'nullable',
                 Rule::in(['draft', 'published']),
             ],
+            'custom_fields' => ['nullable', 'array'],
+            'custom_fields.*.label' => ['required_with:custom_fields', 'string', 'max:255'],
+            'custom_fields.*.name' => ['required_with:custom_fields', 'string', 'max:255'],
+            'custom_fields.*.type' => ['required_with:custom_fields', 'string', Rule::in(['text', 'textarea', 'select', 'radio', 'checkbox', 'number', 'date', 'email', 'tel'])],
+            'custom_fields.*.options' => ['nullable', 'string'],
+            'custom_fields.*.placeholder' => ['nullable', 'string', 'max:255'],
+            'custom_fields.*.help_text' => ['nullable', 'string', 'max:500'],
+            'custom_fields.*.required' => ['nullable', 'boolean', 'in:0,1'],
         ];
     }
 

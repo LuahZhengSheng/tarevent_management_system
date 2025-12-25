@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.club')
 
 @section('title', 'Create New Event')
 
