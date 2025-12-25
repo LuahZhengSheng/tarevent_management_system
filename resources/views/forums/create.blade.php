@@ -499,8 +499,8 @@
             maxMediaFiles: 10,
             maxImageSize: 10 * 1024 * 1024,
             maxVideoSize: 100 * 1024 * 1024,
-            currentUserId: {{ auth() - > id() }},
-            clubsApiUrl: '{{ url(' / api / users / ' . auth()->id() . ' / clubs') }}',
+            currentUserId: {{ auth()->id() }},
+            clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}',
             joinClubModalId: 'selectClubModal',
     };
 </script>
