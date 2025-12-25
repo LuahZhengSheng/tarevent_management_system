@@ -7,7 +7,7 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
-                'resources/css/forum.css',
+                'resources/css/forums/forum.css',
                 'resources/css/forum-create.css',
                 'resources/css/my-posts.css',
                 'resources/css/media-lightbox.css',

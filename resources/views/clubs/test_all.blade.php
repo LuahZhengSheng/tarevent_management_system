@@ -123,7 +123,6 @@
     <p><em>Approve a student's request to join a club</em></p>
     <form method="POST" action="/clubs/{club}/join-requests/{user}/approve" onsubmit="this.action = '/clubs/' + document.getElementById('approve_join_club_id').value + '/join-requests/' + document.getElementById('approve_join_user_id').value + '/approve'; return true;">
         @csrf
-        @method('PUT')
         <div>
             <label>Club ID: <input type="number" id="approve_join_club_id" name="club_id" required></label>
         </div>
@@ -137,7 +136,6 @@
     <p><em>Reject a student's request to join a club</em></p>
     <form method="POST" action="/clubs/{club}/join-requests/{user}/reject" onsubmit="this.action = '/clubs/' + document.getElementById('reject_join_club_id').value + '/join-requests/' + document.getElementById('reject_join_user_id').value + '/reject'; return true;">
         @csrf
-        @method('PUT')
         <div>
             <label>Club ID: <input type="number" id="reject_join_club_id" name="club_id" required></label>
         </div>

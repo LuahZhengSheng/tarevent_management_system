@@ -22,11 +22,14 @@ Route::middleware(['web', 'auth'])->group(function () {
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);
 
-        // Update club
-        Route::put('/{club}', [ClubApiController::class, 'update']);
-
-        // Join request routes
+        // Club-specific routes
         Route::prefix('{club}')->group(function () {
+            // Get single club with membership status (must be before other routes)
+            Route::get('/', [ClubApiController::class, 'show']);
+
+            // Update club
+            Route::put('/', [ClubApiController::class, 'update']);
+
             // Request to join a club
             Route::post('/join', [ClubApiController::class, 'requestJoin']);
 

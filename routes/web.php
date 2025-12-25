@@ -394,6 +394,17 @@ Route::middleware(['auth', 'club'])->group(function () {
         '/clubs/{club}/members/{user}',
         [ClubController::class, 'updateMemberRole']
     )->name('clubs.members.updateRole');
+    
+    // Approve/Reject join requests
+    Route::post(
+        '/clubs/{club}/join-requests/{user}/approve',
+        [ClubController::class, 'approveJoin']
+    )->name('clubs.join.approve');
+    
+    Route::post(
+        '/clubs/{club}/join-requests/{user}/reject',
+        [ClubController::class, 'rejectJoin']
+    )->name('clubs.join.reject');
 });
 
 /*

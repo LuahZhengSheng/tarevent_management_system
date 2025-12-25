@@ -175,6 +175,7 @@ class ClubApiController extends Controller
                     'logo' => $club->logo,
                     'status' => $club->status,
                     'member_role' => $club->pivot->role ?? null,
+                    'member_status' => $club->pivot->status ?? 'active',
                     'joined_at' => $club->pivot->created_at ?? null,
                     'creator' => $club->creator ? [
                         'id' => $club->creator->id,
@@ -196,6 +197,61 @@ class ClubApiController extends Controller
                 'user_name' => $user->name,
                 'total_clubs' => $clubs->count(),
                 'clubs' => $clubs,
+            ],
+        ], 200);
+    }
+
+    /**
+     * Get a single club by ID with membership status for the authenticated user.
+     *
+     * @param Club $club
+     * @param ClubFacade $facade
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Club $club, ClubFacade $facade)
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        // Check if user is a member (only for student role)
+        $isMember = false;
+        if ($user->role === 'student') {
+            $isMember = $facade->hasMember($club, $user);
+        }
+
+        // Load relationships
+        $club->load(['creator', 'clubUser']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Club retrieved successfully.',
+            'data' => [
+                'id' => $club->id,
+                'name' => $club->name,
+                'slug' => $club->slug,
+                'description' => $club->description,
+                'email' => $club->email,
+                'phone' => $club->phone,
+                'logo' => $club->logo ? Storage::url($club->logo) : null,
+                'status' => $club->status,
+                'is_member' => $isMember,
+                'creator' => $club->creator ? [
+                    'id' => $club->creator->id,
+                    'name' => $club->creator->name,
+                ] : null,
+                'club_user' => $club->clubUser ? [
+                    'id' => $club->clubUser->id,
+                    'name' => $club->clubUser->name,
+                    'email' => $club->clubUser->email,
+                ] : null,
+                'created_at' => $club->created_at?->toISOString(),
+                'updated_at' => $club->updated_at?->toISOString(),
             ],
         ], 200);
     }
