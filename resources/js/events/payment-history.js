@@ -1,5 +1,5 @@
 // Payment History Page JavaScript
-$(function() {
+$(function () {
     const fetchUrl = window.PaymentHistoryConfig.fetchUrl;
     const csrfToken = window.PaymentHistoryConfig.csrfToken;
 
@@ -21,7 +21,7 @@ $(function() {
             url: fetchUrl,
             method: 'GET',
             data: filters,
-            success: function(response) {
+            success: function (response) {
                 $('#loadingState').addClass('d-none');
 
                 if (response.success && response.payments.length > 0) {
@@ -39,7 +39,7 @@ $(function() {
                     });
                 }
             },
-            error: function(xhr) {
+            error: function (xhr) {
                 $('#loadingState').addClass('d-none');
                 showToast('error', 'Failed to load payment history.');
             }
@@ -64,7 +64,7 @@ $(function() {
             const statusClass = `status-${payment.status}`;
             const typeClass = `type-${payment.type}`;
             const amountClass = isRefund ? 'amount-refund' : 'amount-payment';
-            
+
             const item = $(`
                 <div class="payment-item payment-type-${payment.type}" data-id="${payment.id}">
                     <div class="payment-header">
@@ -101,7 +101,7 @@ $(function() {
                 </div>
             `);
 
-            item.on('click', function() {
+            item.on('click', function () {
                 showPaymentDetail(payment);
             });
 
@@ -113,27 +113,53 @@ $(function() {
     function showPaymentDetail(payment) {
         const detailContent = $('#paymentDetailContent');
         detailContent.html(generatePaymentDetailHTML(payment));
-        
-        // Show/hide download button
-        if (payment.status === 'success' && payment.type === 'payment') {
-            $('#downloadReceiptBtn').removeClass('d-none').off('click').on('click', function() {
-                window.location.href = `/payments/${payment.id}/receipt/download`;
+
+        // 获取按钮元素
+        const downloadBtn = $('#downloadReceiptBtn');
+
+        // 🛡️ 第一步：先重置按钮 (隐藏 + 解绑之前的点击事件 + 重置样式)
+        downloadBtn.addClass('d-none').off('click');
+
+        // 🛡️ 第二步：根据类型判断逻辑
+        if (payment.type === 'payment' && payment.status === 'success') {
+            // ==========================
+            // 场景 A: 下载付款收据
+            // ==========================
+            downloadBtn.html('<i class="bi bi-download me-2"></i>Download Receipt');
+            downloadBtn.removeClass('btn-refund btn-info').addClass('btn-primary'); 
+
+            downloadBtn.on('click', function () {
+                // 对应路由: Route::get('/payments/{payment}/download-receipt', ...)
+                window.location.href = `/payments/${payment.id}/download-receipt`;
             });
-        } else if (payment.type === 'refund' && payment.refund_status === 'completed') {
-            $('#downloadReceiptBtn').removeClass('d-none').off('click').on('click', function() {
-                window.location.href = `/payments/${payment.id}/refund-receipt/download`;
+
+            downloadBtn.removeClass('d-none'); // 显示按钮
+
+        } else if (payment.type === 'refund') {
+            // ==========================
+            // 场景 B: 下载退款收据
+            // ==========================
+            // 注：后端已确保 type='refund' 时 refund_status 必然是 completed
+
+            downloadBtn.html('<i class="bi bi-file-earmark-arrow-down me-2"></i>Download Refund Receipt');
+            downloadBtn.removeClass('btn-primary btn-info').addClass('btn-refund');
+
+            downloadBtn.on('click', function () {
+                // 对应路由: Route::get('/payments/{payment}/download-refund-receipt', ...)
+                window.location.href = `/payments/${payment.id}/download-refund-receipt`;
             });
-        } else {
-            $('#downloadReceiptBtn').addClass('d-none');
+
+            downloadBtn.removeClass('d-none'); // 显示按钮
         }
 
+        // 显示模态框
         $('#paymentDetailModal').modal('show');
     }
 
     // Generate payment detail HTML
     function generatePaymentDetailHTML(payment) {
         const isRefund = payment.type === 'refund';
-        
+
         let html = `
             <div class="detail-section">
                 <h6>
@@ -327,12 +353,30 @@ $(function() {
     }
 
     // Event listeners
-    $('#applyFiltersBtn').on('click', fetchPayments);
-    
-    $('#searchInput').on('keyup', function(e) {
-        if (e.key === 'Enter') {
+    // 1. Search with Debounce (防抖: 停止输入 0.5s 后自动搜索)
+    let searchTimeout; // 定义一个计时器变量
+
+    $('#searchInput').on('input', function () {
+        // 每次输入都先清除上一次的计时器
+        clearTimeout(searchTimeout);
+
+        // 重新开始计时 500ms (0.5秒)
+        searchTimeout = setTimeout(function () {
             fetchPayments();
-        }
+        }, 500);
+    });
+
+    // 2. Filters: Auto-apply on change (下拉菜单一变动立刻刷新)
+    $('#typeFilter, #statusFilter, #methodFilter, #sortFilter').on('change', function () {
+        // 如果用户正在筛选，也可以顺便清除掉还没执行的搜索计时器，避免重复请求
+        clearTimeout(searchTimeout);
+        fetchPayments();
+    });
+
+    // 3. Keep manual button (保留按钮作为手动刷新，或者你可以删掉这个按钮的HTML)
+    $('#applyFiltersBtn').on('click', function () {
+        clearTimeout(searchTimeout);
+        fetchPayments();
     });
 
     // Initial load

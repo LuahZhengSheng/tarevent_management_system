@@ -69,9 +69,9 @@
                         <i class="bi bi-funnel"></i> Status
                     </label>
                     <select id="statusFilter" class="filter-select">
-                        <option value="all">All Events</option>
+                        <option value="all" selected>All Events</option>
                         <option value="ongoing">Ongoing</option>
-                        <option value="upcoming" selected>Upcoming</option>
+                        <option value="upcoming">Upcoming</option>
                         <option value="past">Past</option>
                         <option value="cancelled">Cancelled</option>
                     </select>
@@ -84,13 +84,11 @@
                     </label>
                     <select id="categoryFilter" class="filter-select">
                         <option value="all">All Categories</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Sports">Sports</option>
-                        <option value="Cultural">Cultural</option>
-                        <option value="Workshop">Workshop</option>
-                        <option value="Social">Social</option>
-                        <option value="Career">Career</option>
-                        <option value="Technology">Technology</option>
+
+                        @foreach($categories as $category)
+                        <option value="{{ $category }}">{{ $category }}</option>
+                        @endforeach
+
                     </select>
                 </div>
 

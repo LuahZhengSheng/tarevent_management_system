@@ -27,14 +27,14 @@
 
                 <!-- Events -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('events.*') ? 'active' : '' }}" href="{{ route('events.index') }}">
+                    <a class="nav-link {{ request()->routeIs('events.index') ? 'active' : '' }}" href="{{ route('events.index') }}">
                         <i class="bi bi-calendar-event me-1"></i>Events
                     </a>
                 </li>
 
                 <!-- Clubs -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('home') }}">
+                    <a class="nav-link {{ request()->routeIs('clubs.*') ? 'active' : '' }}" href="{{ route('clubs.index') }}">
                         <i class="bi bi-people me-1"></i>Clubs
                     </a>
                 </li>
@@ -54,11 +54,18 @@
                         <i class="bi bi-bookmark me-1"></i>My Events
                     </a>
                 </li>
-                
+
                 <!-- My Posts (for authenticated users) -->
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('forums.my-posts') ? 'active' : '' }}" href="{{ route('forums.my-posts') }}">
                         <i class="bi bi-bookmark me-1"></i>My Posts
+                    </a>
+                </li>
+
+                <!-- My Payments (for authenticated users) -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('payments.history') ? 'active' : '' }}" href="{{ route('payments.history') }}">
+                        <i class="bi bi-credit-card me-1"></i>My Payments
                     </a>
                 </li>
 

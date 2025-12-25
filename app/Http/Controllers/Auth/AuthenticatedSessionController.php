@@ -35,19 +35,25 @@ class AuthenticatedSessionController extends Controller
             Auth::user()->updateLastLogin();
         }
 
-        // Redirect based on user role
+        // Generate Bearer Token for API authentication
         $user = Auth::user();
+        $token = $user->createToken('web-login')->plainTextToken;
         
-        // Check email verification for students and clubs
-        if (in_array($user->role, ['student', 'club']) && !$user->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice');
-        }
-        
+        // Store token in session temporarily (will be picked up by frontend JavaScript)
+        $request->session()->put('api_token', $token);
+
+        // Redirect based on user role
+        // Email verification check is already done in LoginRequest::authenticate()
         if ($user->isAdmin() || $user->isSuperAdmin()) {
             return redirect()->intended(route('admin.dashboard', absolute: false));
         }
 
-        // For students and club organizers, redirect to home (events)
+        // For club role, redirect to club dashboard
+        if ($user->isClub()) {
+            return redirect()->intended(route('club.dashboard', absolute: false));
+        }
+
+        // For students, redirect to home (events)
         return redirect()->intended(route('home', absolute: false));
     }
 
@@ -56,12 +62,22 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // Revoke all API tokens for this user when logging out
+        $user = $request->user();
+        if ($user) {
+            $user->tokens()->delete();
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
+        // Flash flag to clear token from localStorage via JavaScript
+        $request->session()->flash('clear_token', true);
+
         return redirect('/');
     }
 }
+

@@ -50,16 +50,16 @@
                     <div class="mb-4">
                         <div class="row g-2">
                             <div class="col-md-8">
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <i class="bi bi-search"></i>
-                                    </span>
-                                    <input 
-                                        type="text" 
-                                        class="form-control select-club-search-input" 
-                                        id="clubSearchInput"
-                                        placeholder="Search clubs by name or description..."
-                                        autocomplete="off">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input 
+                                type="text" 
+                                class="form-control select-club-search-input" 
+                                id="clubSearchInput"
+                                placeholder="Search clubs by name or description..."
+                                autocomplete="off">
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -762,20 +762,20 @@
         }
 
         function filterClubs(searchTerm, categoryFilter = null) {
-            filteredClubs = clubsData.filter(club => {
+                filteredClubs = clubsData.filter(club => {
                 // Search filter
                 let matchesSearch = true;
                 if (searchTerm) {
                     const term = searchTerm.toLowerCase();
                     matchesSearch = club.name.toLowerCase().includes(term) ||
-                                   (club.description && club.description.toLowerCase().includes(term));
+                           (club.description && club.description.toLowerCase().includes(term));
                 }
                 
                 // Category filter
                 let matchesCategory = true;
                 if (categoryFilter) {
                     matchesCategory = club.category === categoryFilter;
-                }
+            }
                 
                 return matchesSearch && matchesCategory;
             });
@@ -864,7 +864,7 @@
                 const categoryBadge = club.category 
                     ? `<span class="badge bg-info-subtle text-info me-2">${categoryLabels[club.category] || club.category}</span>`
                     : '';
-                
+
                 return `
                     <div class="club-card ${isDisabled ? 'club-card-disabled' : ''}" 
                          data-club-id="${club.id}"
@@ -993,7 +993,7 @@
 
             // Add timestamp for IFA standard
             const timestamp = generateTimestamp();
-            
+
             fetch(`/api/clubs/${selectedClubId}/join`, {
                 method: 'POST',
                 headers: {

@@ -71,6 +71,17 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Check email verification for students and clubs
+        // They must verify their email before they can login
+        if (in_array($user->role, ['student', 'club']) && !$user->hasVerifiedEmail()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Please verify your email address before logging in. Check your inbox for the verification link.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

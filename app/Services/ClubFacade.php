@@ -324,6 +324,27 @@ class ClubFacade
     }
 
     /**
+     * Update club profile.
+     * 
+     * @param Club $club The club to update
+     * @param array $data Updated data
+     * @param User $updater The user updating the club
+     * @return Club
+     */
+    public function updateClubProfile(Club $club, array $data, User $updater): Club
+    {
+        // Delegate club update
+        $club = $this->clubService->update($club, $data);
+
+        // Delegate audit logging
+        $this->auditService->log($club, 'update_club_profile', $updater, null, [
+            'updated_fields' => array_keys($data),
+        ]);
+
+        return $club;
+    }
+
+    /**
      * List all members of a club.
      * 
      * @param Club $club The club

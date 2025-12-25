@@ -59,6 +59,12 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+
+    // Clear API token from session (called by frontend after storing in localStorage)
+    Route::post('clear-token', function (\Illuminate\Http\Request $request) {
+        $request->session()->forget('api_token');
+        return response()->json(['success' => true]);
+    })->name('auth.clear-token');
 });
 
 Route::middleware('auth')->group(function () {

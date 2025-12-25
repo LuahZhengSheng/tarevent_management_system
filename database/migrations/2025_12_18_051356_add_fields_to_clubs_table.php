@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clubs', function (Blueprint $table) {
-            
+
             // 1. Slug
             if (!Schema::hasColumn('clubs', 'slug')) {
                 $table->string('slug')->unique()->after('name');
@@ -36,12 +36,12 @@ return new class extends Migration
             // 5. Created By (包含 Foreign Key)
             if (!Schema::hasColumn('clubs', 'created_by')) {
                 $table->unsignedBigInteger('created_by')->after('logo');
-                
+
                 // 只有在创建了列之后才添加外键约束
                 $table->foreign('created_by')
-                      ->references('id')
-                      ->on('users')
-                      ->onDelete('restrict');
+                    ->references('id')
+                    ->on('users')
+                    ->onDelete('restrict');
             }
 
             // 6. Approved At
@@ -55,9 +55,9 @@ return new class extends Migration
 
                 // 只有在创建了列之后才添加外键约束
                 $table->foreign('approved_by')
-                      ->references('id')
-                      ->on('users')
-                      ->onDelete('set null');
+                    ->references('id')
+                    ->on('users')
+                    ->onDelete('set null');
             }
         });
     }
@@ -82,6 +82,6 @@ return new class extends Migration
                 'approved_at',
                 'approved_by',
             ]);
-        });
-    }
+            });
+        }
 };

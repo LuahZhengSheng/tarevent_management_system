@@ -18,24 +18,43 @@ class UserEventController extends Controller
         // ==========================================
         
         // 1.1 Check parameter existence
-        if (!$request->has('requestID')) {
+        // Either 'requestID' OR 'timestamp' must be provided for traceability
+        if (!$request->has('requestID') && !$request->has('timestamp')) {
             return response()->json([
                 'status'    => 'E', // Error: Missing parameters
-                'message'   => 'Mandatory Requirement Missing: requestID',
+                'message'   => 'Mandatory Requirement Missing: requestID or timestamp is required',
                 'timeStamp' => now()->toDateTimeString(),
             ], 400);
         }
 
-        $requestId = $request->input('requestID');
+        // Determine the primary identifier for logging (prefer requestID if available)
+        $logIdentifier = $request->input('requestID') ?? ('TIME-' . $request->input('timestamp'));
 
-        // 1.2 Check UUID Format (Defensive Programming)
+        // 1.2 Validation (Defensive Programming)use
+        
+        // A. Validate requestID (if present)
         // Ensures the frontend is sending a valid UUID v4 string
-        if (!Str::isUuid($requestId)) {
+        if ($request->has('requestID') && !Str::isUuid($request->input('requestID'))) {
             return response()->json([
                 'status'    => 'E', // Error: Invalid format
                 'message'   => 'Invalid Format: requestID must be a valid UUID',
                 'timeStamp' => now()->toDateTimeString(),
             ], 400);
+        }
+
+        // B. Validate timestamp (if present)
+        // Ensures the format is strictly YYYY-MM-DD HH:mm:ss
+        if ($request->has('timestamp')) {
+            // Using regex for strict format validation
+            $isValidTimestamp = preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $request->input('timestamp'));
+            
+            if (!$isValidTimestamp) {
+                return response()->json([
+                    'status'    => 'E', // Error: Invalid format
+                    'message'   => 'Invalid Format: timestamp must be YYYY-MM-DD HH:mm:ss',
+                    'timeStamp' => now()->toDateTimeString(),
+                ], 400);
+            }
         }
 
         // ==========================================
@@ -48,7 +67,7 @@ class UserEventController extends Controller
         if ($user->role !== 'student') { 
             // Log the permission denial
             Log::warning("API Permission Denied: User {$user->id} is not a student.", [
-                'request_id' => $requestId,
+                'request_identifier' => $logIdentifier,
                 'user_id' => $user->id
             ]);
 
@@ -62,11 +81,11 @@ class UserEventController extends Controller
         // ==========================================
         // 4. Log the Valid Request (Traceability)
         // ==========================================
-        // This links the Request ID to the User ID in your system logs
+        // This links the Request Identifier to the User ID in your system logs
         Log::info("API Request Processing: Fetching joined events.", [
-            'request_id' => $requestId,
+            'request_identifier' => $logIdentifier,
             'user_id'    => $user->id,
-            'timestamp'  => $request->input('timeStamp'),
+            'input_timestamp'  => $request->input('timestamp'),
             'ip'         => $request->ip()
         ]);
 
@@ -94,7 +113,7 @@ class UserEventController extends Controller
 
             // Log success
             Log::info("API Success: Returned {$formattedEvents->count()} events.", [
-                'request_id' => $requestId,
+                'request_identifier' => $logIdentifier,
                 'user_id' => $user->id
             ]);
 
@@ -117,7 +136,7 @@ class UserEventController extends Controller
             // ==========================================
             // Log the actual system error linked to the Request ID
             Log::error('API Internal Error: ' . $e->getMessage(), [
-                'request_id' => $requestId,
+                'request_identifier' => $logIdentifier,
                 'user_id' => $user->id,
                 'trace' => $e->getTraceAsString()
             ]);

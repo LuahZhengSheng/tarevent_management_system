@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Event;
 
 use App\Support\PhoneHelper;
+use App\Enums\EventCategory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Enum;
 
 class StoreEventRequest extends FormRequest {
 
@@ -65,11 +67,7 @@ class StoreEventRequest extends FormRequest {
                 'string',
                 'max:255',
             ],
-            'category' => [
-                'required',
-                'string',
-                Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology']),
-            ],
+            'category' => ['required', new Enum(EventCategory::class)],
             'is_public' => [
                 'required',
                 'boolean',
