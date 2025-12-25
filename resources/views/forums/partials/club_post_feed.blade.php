@@ -2,9 +2,9 @@
 
 @push('styles')
 @vite([
-  'resources/css/forums/forum.css',
-  'resources/css/forums/forum-media-gallery.css',
-  'resources/css/forums/media-lightbox.css'
+'resources/css/forums/forum.css',
+'resources/css/forums/forum-media-gallery.css',
+'resources/css/forums/media-lightbox.css'
 ])
 @endpush
 
@@ -14,6 +14,7 @@
         api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
         :initial-posts="null"
         :show-filters="true"
+        data-bearer-token="{{ $bearerToken ?? '' }}"
         />
 </div>
 @endsection
@@ -21,8 +22,8 @@
 
 @push('scripts')
 @vite([
-  'resources/js/forum.js',
-  'resources/js/post-feed.js',
-  'resources/js/media-lightbox.js'
+'resources/js/forum.js',
+'resources/js/post-feed.js',
+'resources/js/media-lightbox.js'
 ])
 @endpush

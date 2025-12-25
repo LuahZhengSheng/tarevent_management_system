@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load user clubs via API
     // ========================================
     async function loadUserClubs() {
-        if (!clubListContainer || !config.clubsApiUrl)
+        if (!clubListContainer || !config?.clubsApiUrl)
             return;
 
         const loadingText = document.getElementById('clubListLoading');
@@ -425,26 +425,46 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingText.textContent = 'Loading your clubs...';
 
         try {
-            const response = await fetch(config.clubsApiUrl, {
+            // 生成 requestID（旧浏览器 fallback）
+            const requestID = (window.crypto && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : String(Date.now());
+
+            // 把 requestID 放到 query string（后端现在要求的是“提供 timestamp 或 requestID”，
+            // 你的接口实际是从请求参数里读，不是从 header 读）
+            const url = new URL(config.clubsApiUrl, window.location.origin);
+            url.searchParams.set('requestID', requestID);
+            // 也可以用 timestamp（二选一即可）：
+            // url.searchParams.set('timestamp', new Date().toISOString());
+
+            const response = await fetch(url.toString(), {
+                method: 'GET',
                 headers: {
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
                 },
-                credentials: 'same-origin'
+                credentials: 'same-origin',
             });
 
+            // 如果失败，把后端 message 打出来方便定位
             if (!response.ok) {
-                throw new Error('Failed to load clubs');
+                let errBody = null;
+                try {
+                    errBody = await response.json();
+                } catch (_) {
+                }
+                console.error('Load clubs failed:', response.status, errBody);
+                throw new Error(errBody?.message || 'Failed to load clubs');
             }
 
             const json = await response.json();
-            const clubs = (json.data && json.data.clubs) ? json.data.clubs : [];
+            const clubs = (json.data && Array.isArray(json.data.clubs)) ? json.data.clubs : [];
 
             if (!clubs.length) {
                 clubListContainer.innerHTML = `
-                <p class="text-muted small">
-                    You are not a member of any club yet.
-                </p>
-            `;
+        <p class="text-muted small">
+          You are not a member of any club yet.
+        </p>
+      `;
                 refreshClubCheckboxes();
                 updateButtonStates();
                 return;
@@ -453,30 +473,29 @@ document.addEventListener('DOMContentLoaded', function () {
             // 渲染 checkbox 列表
             clubListContainer.innerHTML = clubs.map(club => {
                 const id = club.id;
-                const name = club.name;
+                const name = club.name ?? '';
                 const role = club.member_role || '';
                 const membersText = role ? `Role: ${role}` : '';
 
-                // 这里改用 config.oldClubIds
                 const checked =
                         Array.isArray(config.oldClubIds) && config.oldClubIds.includes(id)
                         ? 'checked'
                         : '';
 
                 return `
-                <label class="club-item">
-                    <input type="checkbox"
-                           name="club_ids[]"
-                           value="${id}"
-                           class="club-checkbox"
-                           ${checked}>
-                    <span class="club-checkbox-custom"></span>
-                    <div class="club-info">
-                        <div class="club-name">${name}</div>
-                        <div class="club-members">${membersText}</div>
-                    </div>
-                </label>
-            `;
+        <label class="club-item">
+          <input type="checkbox"
+                 name="club_ids[]"
+                 value="${id}"
+                 class="club-checkbox"
+                 ${checked}>
+          <span class="club-checkbox-custom"></span>
+          <div class="club-info">
+            <div class="club-name">${name}</div>
+            <div class="club-members">${membersText}</div>
+          </div>
+        </label>
+      `;
             }).join('');
 
             // 重新抓 checkbox 节点并绑定事件
@@ -492,10 +511,10 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {
             console.error(e);
             clubListContainer.innerHTML = `
-            <p class="text-danger small">
-                Failed to load clubs. Please try again later.
-            </p>
-        `;
+      <p class="text-danger small">
+        Failed to load clubs. Please try again later.
+      </p>
+    `;
         }
     }
 
@@ -503,17 +522,24 @@ document.addEventListener('DOMContentLoaded', function () {
     // ========================================
     // Join Club Modal
     // ========================================
-    if (joinClubButton && config.joinClubModalId) {
-        const modalElement = document.getElementById(config.joinClubModalId);
-        if (modalElement && window.bootstrap) {
-            const joinClubModal = new bootstrap.Modal(modalElement);
+    // Join Club button
+    if (joinClubButton) {
+        joinClubButton.addEventListener('click', function (e) {
+            e.preventDefault();
 
-            joinClubButton.addEventListener('click', function (e) {
-                e.preventDefault();
-                joinClubModal.show();
+            if (typeof window.openSelectClubModal !== 'function') {
+                console.error('openSelectClubModal not found. Is select_club_modal.blade.php included?');
+                return;
+            }
+
+            window.openSelectClubModal(function (clubId) {
+                console.log('Join request submitted for club:', clubId);
+                // 可选：成功后刷新你的 clubs 列表
+                // loadUserClubs();
             });
-        }
+        });
     }
+
 
 
     // ========================================

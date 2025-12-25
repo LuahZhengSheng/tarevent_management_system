@@ -75,6 +75,19 @@
         font-size: 0.875rem;
         color: var(--text-secondary);
     }
+
+    .profile-section-full {
+        grid-column: 1 / -1;
+    }
+
+    .profile-section-title {
+        display: flex;
+        align-items: center;
+    }
+
+    .profile-section-title i {
+        font-size: 1.125rem;
+    }
 </style>
 @endpush
 
@@ -97,6 +110,13 @@
                 @include('profile.partials.update-password-form')
             </div>
         </div>
+
+        <!-- Full Width: Joined Events (Student Only) -->
+        @if(auth()->check() && auth()->user()->role === 'student')
+        <div class="profile-section profile-section-full">
+            @include('profile.partials.joined-events')
+        </div>
+        @endif
     </div>
 </div>
 @endsection

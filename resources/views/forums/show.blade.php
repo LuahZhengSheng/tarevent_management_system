@@ -86,7 +86,7 @@
                                 src="{{ $post->user->profile_photo_url ?? asset('images/default-avatar.png') }}"
                                 alt="{{ $post->user->name }}"
                                 class="author-avatar-inline"
-                            >
+                                >
                             <div class="author-details-inline">
                                 <div class="author-name-inline">
                                     <span>{{ $post->user->name }}</span>
@@ -99,7 +99,7 @@
 
                                 <div class="post-meta-inline">
                                     <span>{{ $post->created_at->diffForHumans() }}</span>
-                                    
+
                                     @if($post->created_at != $post->updated_at)
                                     <span class="meta-separator">•</span>
                                     <span>Edited {{ $post->updated_at->diffForHumans() }}</span>
@@ -147,22 +147,30 @@
                         $mediaPath = is_array($media) ? ($media['path'] ?? '') : $media;
                         $mediaType = is_array($media) ? ($media['type'] ?? 'image') : 'image';
                         $mimeType  = is_array($media) ? ($media['mime_type'] ?? 'image/jpeg') : 'image/jpeg';
-                        $isVideo   = $mediaType === 'video' || str_starts_with($mimeType, 'video/');
+                        $mediaDisk = is_array($media) ? ($media['disk'] ?? 'public') : 'public';
+
+                        $isVideo = $mediaType === 'video' || str_starts_with($mimeType, 'video/');
                         if (empty($mediaPath)) continue;
+
+                        $mediaUrl = $mediaDisk === 'public'
+                        ? Storage::disk('public')->url($mediaPath)
+                        : route('forums.posts.media.show', ['post' => $post->slug, 'index' => $index]);
+
                         $isVisible = $index < 5;
                         @endphp
 
                         <div class="fb-media-item media-item item-{{ $index + 1 }} {{ !$isVisible ? 'd-none' : '' }}" data-index="{{ $index }}">
                             @if($isVideo)
                             <video class="fb-media-content" preload="metadata">
-                                <source src="{{ Storage::url($mediaPath) }}" type="{{ $mimeType }}">
+                                <source src="{{ $mediaUrl }}" type="{{ $mimeType }}">
                             </video>
                             <div class="fb-media-badge video-badge">
                                 <i class="bi bi-play-circle-fill"></i>
                             </div>
                             @else
-                            <img src="{{ Storage::url($mediaPath) }}" alt="Media {{ $index + 1 }}" class="fb-media-content" loading="lazy">
+                            <img src="{{ $mediaUrl }}" alt="Media {{ $index + 1 }}" class="fb-media-content" loading="lazy">
                             @endif
+
 
                             @if($index == 4 && $mediaCount > 5)
                             <div class="fb-overlay-more">
@@ -275,7 +283,7 @@
                                 src="{{ auth()->check() ? (auth()->user()->profilePhotoUrl ?? asset('images/default-avatar.png')) : asset('images/default-avatar.png') }}"
                                 class="comment-avatar-modern"
                                 alt="You"
-                            >
+                                >
 
                             <div class="comment-input-wrapper-modern">
                                 <textarea
@@ -284,7 +292,7 @@
                                     rows="1"
                                     placeholder="Write a comment..."
                                     @guest disabled @endguest
-                                ></textarea>
+                                    ></textarea>
 
                                 <div class="comment-composer-actions">
                                     <button
@@ -293,7 +301,7 @@
                                         data-emoji-target="commentInput"
                                         data-requires-auth="true"
                                         title="Emoji"
-                                    >
+                                        >
                                         <i class="bi bi-emoji-smile"></i>
                                     </button>
 
@@ -304,7 +312,7 @@
                                         accept="image/*,video/*"
                                         hidden
                                         @guest disabled @endguest
-                                    />
+                                        />
 
                                     <button
                                         type="button"
@@ -312,7 +320,7 @@
                                         id="commentCameraBtn"
                                         data-requires-auth="true"
                                         title="Photo/Video"
-                                    >
+                                        >
                                         <i class="bi bi-camera"></i>
                                     </button>
 
@@ -323,7 +331,7 @@
                                         data-requires-auth="true"
                                         title="Post"
                                         disabled
-                                    >
+                                        >
                                         <i class="bi bi-send-fill"></i>
                                     </button>
                                 </div>
@@ -361,15 +369,15 @@
                             src="{{ $post->user->profile_photo_url ?? asset('images/default-avatar.png') }}"
                             alt="{{ $post->user->name }}"
                             class="author-card-avatar"
-                        >
+                            >
                         <h3 class="author-card-name">{{ $post->user->name }}</h3>
                         <p class="author-card-role">
                             @if($post->user->hasRole('admin'))
-                                <i class="bi bi-shield-check"></i> Administrator
+                            <i class="bi bi-shield-check"></i> Administrator
                             @elseif($post->user->hasRole('club'))
-                                <i class="bi bi-people"></i> Club Admin
+                            <i class="bi bi-people"></i> Club Admin
                             @else
-                                <i class="bi bi-person"></i> Member
+                            <i class="bi bi-person"></i> Member
                             @endif
                         </p>
                     </div>
@@ -425,35 +433,35 @@
 
 <script>
 // Dark Mode Toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const darkModeToggle = document.getElementById('darkModeToggle');
-    const html = document.documentElement;
-    const icon = darkModeToggle.querySelector('i');
-    
-    // Check saved preference
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    html.setAttribute('data-theme', savedTheme);
-    updateIcon(savedTheme);
-    
-    darkModeToggle.addEventListener('click', function() {
-        const currentTheme = html.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
-        html.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateIcon(newTheme);
-    });
-    
-    function updateIcon(theme) {
-        if (theme === 'dark') {
-            icon.classList.remove('bi-moon-stars');
-            icon.classList.add('bi-sun');
-        } else {
-            icon.classList.remove('bi-sun');
-            icon.classList.add('bi-moon-stars');
+    document.addEventListener('DOMContentLoaded', function () {
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const html = document.documentElement;
+        const icon = darkModeToggle.querySelector('i');
+
+        // Check saved preference
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        updateIcon(savedTheme);
+
+        darkModeToggle.addEventListener('click', function () {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateIcon(newTheme);
+        });
+
+        function updateIcon(theme) {
+            if (theme === 'dark') {
+                icon.classList.remove('bi-moon-stars');
+                icon.classList.add('bi-sun');
+            } else {
+                icon.classList.remove('bi-sun');
+                icon.classList.add('bi-moon-stars');
+            }
         }
-    }
-});
+    });
 </script>
 @endsection
 

@@ -163,6 +163,51 @@
                 </div>
             </div>
 
+            <!-- Forum Activity -->
+            <div class="admin-detail-card mt-4">
+                <div class="admin-detail-card-header">
+                    <h2 class="admin-detail-card-title">
+                        <i class="bi bi-chat-square-text me-2"></i>Forum Activity
+                        <span id="forumCommentCountBadge" class="ms-2 badge bg-primary-subtle text-primary" style="display: none;"></span>
+                    </h2>
+                </div>
+                <div class="admin-detail-card-body">
+                    <!-- Loading State -->
+                    <div id="forumLoadingState" class="forum-loading-state">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Loading forum activity...</span>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="forumErrorState" class="forum-error-state" style="display: none;">
+                        <div class="forum-error-content">
+                            <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                            <span id="forumErrorMessage">Failed to load forum activity.</span>
+                        </div>
+                        <button type="button" id="retryLoadForum" class="btn-retry-forum">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Retry
+                        </button>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="forumEmptyState" class="forum-empty-state" style="display: none;">
+                        <div class="forum-empty-content">
+                            <i class="bi bi-chat-square-text text-muted"></i>
+                            <p class="forum-empty-text">This user has no forum activity.</p>
+                        </div>
+                    </div>
+
+                    <!-- Comments List Container -->
+                    <div id="forumCommentsContainer" class="forum-comments-container" style="display: none;">
+                        <div id="forumCommentsList" class="forum-comments-list"></div>
+                        <!-- Pagination -->
+                        <div id="forumPaginationContainer" class="forum-pagination-container" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Account Activity -->
             <div class="admin-detail-card mt-4">
                 <div class="admin-detail-card-header">
@@ -214,8 +259,35 @@
                             <i class="bi bi-chat-dots"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-value">{{ $user->posts->count() }}</div>
+                            <div class="stat-value" id="forumPostCount">–</div>
                             <div class="stat-label">Forum Posts</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon bg-warning">
+                            <i class="bi bi-heart"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="forumLikeCount">–</div>
+                            <div class="stat-label">Total Likes Received</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon bg-info">
+                            <i class="bi bi-bookmark"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="forumSaveCount">–</div>
+                            <div class="stat-label">Total Saves Received</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon bg-secondary">
+                            <i class="bi bi-chat-left-text"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="forumCommentCount">–</div>
+                            <div class="stat-label">Total Comments</div>
                         </div>
                     </div>
                 </div>
@@ -620,6 +692,229 @@
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
     }
+
+    /* Forum Activity Styles */
+    .forum-loading-state,
+    .forum-error-state,
+    .forum-empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .forum-loading-state {
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+        flex-direction: row;
+    }
+
+    .forum-error-state {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .forum-error-content {
+        display: flex;
+        align-items: center;
+        color: var(--error);
+        font-size: 0.9375rem;
+    }
+
+    .btn-retry-forum {
+        padding: 0.625rem 1.25rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-retry-forum:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .forum-empty-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .forum-empty-content i {
+        font-size: 3rem;
+        opacity: 0.5;
+    }
+
+    .forum-empty-text {
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+        margin: 0;
+    }
+
+    .forum-comments-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .forum-comments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 600px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .forum-comments-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .forum-comments-list::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+        border-radius: 3px;
+    }
+
+    .forum-comments-list::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 3px;
+    }
+
+    .forum-comments-list::-webkit-scrollbar-thumb:hover {
+        background: var(--primary);
+    }
+
+    .comment-item {
+        padding: 1rem 1.25rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        background: var(--bg-secondary);
+        transition: all 0.2s ease;
+    }
+
+    .comment-item:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-sm);
+        transform: translateX(2px);
+    }
+
+    .comment-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .comment-post-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        transition: color 0.2s ease;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .comment-post-link:hover {
+        color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+    .comment-id-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        border-radius: 0.375rem;
+        flex-shrink: 0;
+    }
+
+    .comment-content {
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        line-height: 1.6;
+        margin-bottom: 0.5rem;
+        word-wrap: break-word;
+    }
+
+    .comment-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
+
+    .comment-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .forum-pagination-container {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .forum-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .forum-pagination-btn {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .forum-pagination-btn:hover:not(:disabled) {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .forum-pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .forum-pagination-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .forum-pagination-info {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        padding: 0 0.5rem;
+    }
+
+    #forumCommentCountBadge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
 </style>
 @endpush
 
@@ -897,6 +1192,275 @@
     // Load club information on page load
     $(document).ready(function() {
         loadClubInformation();
+        loadForumStats();
+    });
+
+    // ============================================
+    // Forum Stats and Comments Loading
+    // ============================================
+    let currentForumPage = 1;
+    const forumPerPage = 10;
+
+    // Generate UUID for requestID
+    function generateUUID() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        // Fallback for older browsers
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // Get API token from localStorage
+    function getApiToken() {
+        return localStorage.getItem('api_token');
+    }
+
+    // Load forum statistics and comments
+    function loadForumStats(page = 1) {
+        const userId = {{ $user->id }};
+        const $loadingState = $('#forumLoadingState');
+        const $errorState = $('#forumErrorState');
+        const $emptyState = $('#forumEmptyState');
+        const $container = $('#forumCommentsContainer');
+        const $commentsList = $('#forumCommentsList');
+        const $paginationContainer = $('#forumPaginationContainer');
+
+        // Show loading state
+        $loadingState.show();
+        $errorState.hide();
+        $emptyState.hide();
+        $container.hide();
+
+        const requestID = generateUUID();
+        const token = getApiToken();
+
+        if (!token) {
+            showForumError('Authentication required. Please refresh the page and login again.');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/v1/forum/user-stats',
+            type: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            data: {
+                userId: userId,
+                requestId: requestID,
+                perPage: forumPerPage,
+                page: page
+            },
+            success: function(response) {
+                $loadingState.hide();
+
+                if (response.status === 'S' && response.forumStats) {
+                    const stats = response.forumStats;
+                    
+                    // Update statistics
+                    $('#forumPostCount').text(stats.totalPostCount || 0);
+                    $('#forumLikeCount').text(stats.totalLikeCount || 0);
+                    $('#forumSaveCount').text(stats.totalSaveCount || 0);
+                    $('#forumCommentCount').text(stats.totalCommentCount || 0);
+
+                    // Show comment count badge
+                    if (stats.totalCommentCount > 0) {
+                        $('#forumCommentCountBadge').text(stats.totalCommentCount).show();
+                    }
+
+                    // Handle comments
+                    const comments = stats.comments || [];
+                    const commentsMeta = stats.commentsMeta || {};
+
+                    if (comments.length === 0 && stats.totalCommentCount === 0) {
+                        $emptyState.show();
+                    } else if (comments.length === 0) {
+                        // No comments on this page, but user has comments
+                        $container.show();
+                        $commentsList.html('<p class="text-muted text-center">No comments on this page.</p>');
+                        renderForumPagination(commentsMeta);
+                    } else {
+                        renderComments(comments);
+                        renderForumPagination(commentsMeta);
+                        $container.show();
+                    }
+                } else {
+                    showForumError(response.message || 'Failed to load forum statistics.');
+                }
+            },
+            error: function(xhr) {
+                $loadingState.hide();
+                let errorMessage = 'Failed to load forum statistics.';
+
+                if (xhr.responseJSON) {
+                    const response = xhr.responseJSON;
+                    if (response.status === 'F' && response.message) {
+                        if (response.message.includes('Unauthenticated')) {
+                            errorMessage = 'Authentication required. Please refresh the page and login again.';
+                        } else if (response.message.includes('Forbidden')) {
+                            errorMessage = 'You do not have permission to view this information.';
+                        } else {
+                            errorMessage = response.message;
+                        }
+                    } else if (response.status === 'E' && response.message) {
+                        errorMessage = response.message;
+                    }
+                } else if (xhr.status === 401) {
+                    errorMessage = 'Authentication required. Please refresh the page and login again.';
+                } else if (xhr.status === 403) {
+                    errorMessage = 'You do not have permission to view this information.';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Server error. Please try again later.';
+                }
+
+                showForumError(errorMessage);
+            }
+        });
+    }
+
+    // Show error state
+    function showForumError(message) {
+        $('#forumErrorMessage').text(message);
+        $('#forumErrorState').show();
+    }
+
+    // Render comments list
+    function renderComments(comments) {
+        const $commentsList = $('#forumCommentsList');
+        $commentsList.empty();
+
+        if (!comments || comments.length === 0) {
+            $commentsList.html('<p class="text-muted text-center">No comments found.</p>');
+            return;
+        }
+
+        comments.forEach(function(comment) {
+            const commentItem = createCommentItem(comment);
+            $commentsList.append(commentItem);
+        });
+    }
+
+    // Create comment item HTML
+    function createCommentItem(comment) {
+        const commentDate = formatDate(comment.createdAt);
+        const postUrl = `/forums/posts/${comment.postId}`;
+        const truncatedContent = comment.content.length > 150 
+            ? comment.content.substring(0, 150) + '...' 
+            : comment.content;
+
+        return $(`
+            <div class="comment-item">
+                <div class="comment-header">
+                    <a href="${postUrl}" class="comment-post-link" target="_blank">
+                        <i class="bi bi-file-text me-1"></i>
+                        ${escapeHtml(comment.postTitle || 'Untitled Post')}
+                    </a>
+                    <span class="comment-id-badge">#${comment.commentId}</span>
+                </div>
+                <div class="comment-content">${escapeHtml(truncatedContent)}</div>
+                <div class="comment-meta">
+                    <div class="comment-meta-item">
+                        <i class="bi bi-clock"></i>
+                        <span>${commentDate}</span>
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+
+    // Render pagination
+    function renderForumPagination(meta) {
+        const $paginationContainer = $('#forumPaginationContainer');
+        $paginationContainer.empty();
+
+        if (!meta || meta.lastPage <= 1) {
+            $paginationContainer.hide();
+            return;
+        }
+
+        $paginationContainer.show();
+        const currentPage = meta.currentPage || 1;
+        const lastPage = meta.lastPage || 1;
+        const total = meta.total || 0;
+
+        let paginationHtml = '<div class="forum-pagination">';
+
+        // Previous button
+        paginationHtml += `
+            <button class="forum-pagination-btn" ${currentPage === 1 ? 'disabled' : ''} 
+                    onclick="loadForumPage(${currentPage - 1})">
+                <i class="bi bi-chevron-left"></i> Previous
+            </button>
+        `;
+
+        // Page numbers (show max 5 pages around current)
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(lastPage, currentPage + 2);
+
+        if (startPage > 1) {
+            paginationHtml += `<button class="forum-pagination-btn" onclick="loadForumPage(1)">1</button>`;
+            if (startPage > 2) {
+                paginationHtml += `<span class="forum-pagination-info">...</span>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const activeClass = i === currentPage ? 'active' : '';
+            paginationHtml += `
+                <button class="forum-pagination-btn ${activeClass}" onclick="loadForumPage(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+
+        if (endPage < lastPage) {
+            if (endPage < lastPage - 1) {
+                paginationHtml += `<span class="forum-pagination-info">...</span>`;
+            }
+            paginationHtml += `<button class="forum-pagination-btn" onclick="loadForumPage(${lastPage})">${lastPage}</button>`;
+        }
+
+        // Next button
+        paginationHtml += `
+            <button class="forum-pagination-btn" ${currentPage === lastPage ? 'disabled' : ''} 
+                    onclick="loadForumPage(${currentPage + 1})">
+                Next <i class="bi bi-chevron-right"></i>
+            </button>
+        `;
+
+        // Page info
+        paginationHtml += `
+            <span class="forum-pagination-info">
+                Page ${currentPage} of ${lastPage} (${total} total)
+            </span>
+        `;
+
+        paginationHtml += '</div>';
+        $paginationContainer.html(paginationHtml);
+    }
+
+    // Load specific page
+    function loadForumPage(page) {
+        currentForumPage = page;
+        loadForumStats(page);
+        // Scroll to comments section
+        $('html, body').animate({
+            scrollTop: $('#forumCommentsContainer').offset().top - 100
+        }, 300);
+    }
+
+    // Make loadForumPage available globally
+    window.loadForumPage = loadForumPage;
+
+    // Retry button click handler
+    $('#retryLoadForum').on('click', function() {
+        loadForumStats(currentForumPage);
     });
 
 })(jQuery);
