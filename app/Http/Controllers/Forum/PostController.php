@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\Category;
 use App\Models\Tag;
-use App\Models\User;
 use App\Http\Requests\Forum\StorePostRequest;
 use App\Http\Requests\Forum\UpdatePostRequest;
 use App\Decorators\BasePostDecorator;
@@ -18,22 +17,22 @@ use App\Decorators\MediaPostDecorator;
 use App\Decorators\TagsPostDecorator;
 use App\Support\PostMediaHelper;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller {
 
     public function __construct() {
-        if (config('app.env') === 'local' && !Auth::check()) {
-            $user = User::find(1);
-            if ($user) {
-                Auth::login($user);
-                \Log::info('Auto-logged in User ID = 1 for testing');
-            } else {
-                \Log::error('User ID = 1 not found in database');
-            }
-        }
+//        if (config('app.env') === 'local' && !Auth::check()) {
+//            $user = User::find(2);
+//            if ($user) {
+//                Auth::login($user);
+//                \Log::info('Auto-logged in User ID = 2 for testing');
+//            } else {
+//                \Log::error('User ID = 2 not found in database');
+//            }
+//        }
+        $this->middleware(['auth', 'check.active.user']);
     }
 
     /**
@@ -42,27 +41,57 @@ class PostController extends Controller {
     public function index(Request $request) {
         $query = Post::published()
                 ->public()
-                ->with(['user', 'category', 'tags', 'club'])
+                ->with(['user', 'category', 'tags', 'clubs'])
                 ->withCount(['comments', 'likes']);
 
-        // Filter by category
+        // Category filter
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
-        // Filter by tag
-        if ($request->filled('tag')) {
-            $query->whereHas('tags', function ($q) use ($request) {
-                $q->where('tags.slug', $request->tag);
-            });
+        /**
+         * Tags filter (multi-select)
+         * - supports tags[]=slug
+         * - also keep backward compatible with tag=slug (single)
+         * AND logic: post must have all selected tags
+         */
+        $selectedTags = $request->input('tags', []);
+        if (!is_array($selectedTags))
+            $selectedTags = [$selectedTags];
+
+        if (empty($selectedTags) && $request->filled('tag')) {
+            $selectedTags = [$request->tag];
         }
 
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('content', 'like', "%{$search}%");
+        $selectedTags = collect($selectedTags)
+                ->filter(fn($v) => is_string($v) && trim($v) !== '')
+                ->unique()
+                ->values()
+                ->all();
+
+        if (!empty($selectedTags)) {
+            foreach ($selectedTags as $slug) {
+                $query->whereHas('tags', function ($q) use ($slug) {
+                    $q->where('tags.slug', $slug);
+                });
+            }
+        }
+
+        // Search (keep your current param name "search")
+        $searchText = $request->get('search', $request->get('q', ''));
+        if (!empty(trim($searchText))) {
+            $searchText = trim($searchText);
+
+            $query->where(function ($q) use ($searchText) {
+                $q->where('title', 'like', "%{$searchText}%")
+                        ->orWhere('content', 'like', "%{$searchText}%")
+                        ->orWhereHas('user', function ($uq) use ($searchText) {
+                            $uq->where('name', 'like', "%{$searchText}%");
+                        })
+                        ->orWhereHas('tags', function ($tq) use ($searchText) {
+                            $tq->where('tags.name', 'like', "%{$searchText}%")
+                            ->orWhere('tags.slug', 'like', "%{$searchText}%");
+                        });
             });
         }
 
@@ -74,9 +103,39 @@ class PostController extends Controller {
             $query->recent();
         }
 
-        $posts = $query->paginate(15);
+        $posts = $query->paginate(15)->withQueryString();
+
         $categories = Category::active()->ordered()->get();
-        $popularTags = Tag::active()->popular(10)->get();
+        $popularTags = Tag::active()->popular(10)->get(); // by usage_count desc [file:180]
+        // AJAX response (search/filter/sort/tags/infinite-scroll)
+        if ($request->ajax() || $request->boolean('ajax')) {
+            $postsHtml = view('forums.partials.posts_page', ['posts' => $posts])->render();
+
+            // 下面两个 partial 我在第2点给你完整代码
+            $summaryHtml = view('forums.partials.results_summary_ajax', [
+                'posts' => $posts,
+                'categories' => $categories,
+                'selectedTags' => $selectedTags,
+                'searchText' => $searchText,
+                    ])->render();
+
+            $trendingHtml = view('forums.partials.trending_tags_ajax', [
+                'popularTags' => $popularTags,
+                'selectedTags' => $selectedTags,
+                    ])->render();
+
+            return response()->json([
+                        'success' => true,
+                        'posts_html' => $postsHtml,
+                        'summary_html' => $summaryHtml,
+                        'trending_html' => $trendingHtml,
+                        'meta' => [
+                            'current_page' => $posts->currentPage(),
+                            'last_page' => $posts->lastPage(),
+                            'total' => $posts->total(),
+                        ],
+            ]);
+        }
 
         return view('forums.index', compact('posts', 'categories', 'popularTags'));
     }
@@ -88,17 +147,7 @@ class PostController extends Controller {
         $categories = Category::active()->ordered()->get();
         $activeTags = Tag::active()->orderBy('name')->get();
 
-        // Mock clubs data (replace with real data when User/Club models are ready)
-        $userClubs = collect([
-            (object) ['id' => 1, 'name' => 'Tech Club', 'member_count' => 45],
-            (object) ['id' => 2, 'name' => 'Photography Society', 'member_count' => 32],
-            (object) ['id' => 3, 'name' => 'Music Band', 'member_count' => 28],
-        ]);
-
-        // When User model is ready, replace with:
-        // $userClubs = auth()->user()->clubs ?? collect([]);
-
-        return view('forums.create', compact('categories', 'activeTags', 'userClubs'));
+        return view('forums.create', compact('categories', 'activeTags'));
     }
 
     /**
@@ -109,21 +158,11 @@ class PostController extends Controller {
             DB::beginTransaction();
 
             // Build decorator chain (order matters!)
-            // 1. Start with base decorator (extracts basic data)
-            $baseDecorator = new BasePostDecorator($request);
-
-            // 2. Sanitize content (remove dangerous HTML)
-            $sanitizedDecorator = new ContentSanitizationDecorator($baseDecorator);
-
-            // 3. Validate sanitized content
-            $validatedDecorator = new ValidationPostDecorator($sanitizedDecorator);
-
-            // 4. Process media files
-            $mediaDecorator = new MediaPostDecorator($validatedDecorator);
-
-            // 5. Process tags (last because it creates DB records)
-            $tagsDecorator = new TagsPostDecorator($mediaDecorator);
-
+            $baseDecorator = new BasePostDecorator($request);                 // 1. 基础数据
+            $sanitizedDecorator = new ContentSanitizationDecorator($baseDecorator); // 2. 内容清洗
+            $validatedDecorator = new ValidationPostDecorator($sanitizedDecorator); // 3. 校验
+            $mediaDecorator = new MediaPostDecorator($validatedDecorator);      // 4. 媒体
+            $tagsDecorator = new TagsPostDecorator($mediaDecorator);           // 5. 标签
             // Process all data through decorators
             $processedData = $tagsDecorator->process();
 
@@ -134,14 +173,7 @@ class PostController extends Controller {
             // Set user ID
             $processedData['user_id'] = auth()->id();
 
-            // Handle club_ids for club_only visibility
-            if ($processedData['visibility'] === 'club_only' && $request->filled('club_ids')) {
-                // For now, use first club (update when multi-club support is ready)
-                $processedData['club_id'] = $request->input('club_ids')[0];
-            } else {
-                $processedData['club_id'] = null;
-            }
-
+            // 不再使用 club_id 字段，visibility + club_ids 由中间表 club_posts 表达
             // Set published_at timestamp
             if ($processedData['status'] === 'published') {
                 $processedData['published_at'] = now();
@@ -153,6 +185,23 @@ class PostController extends Controller {
             // Attach tags with usage count tracking
             if (!empty($tagIds)) {
                 $post->syncTagsWithCount($tagIds, auth()->id());
+            }
+
+            // === 新增：写入 club_posts 中间表 ===
+            if ($processedData['visibility'] === 'club_only' && $request->filled('club_ids')) {
+                $clubIds = $request->input('club_ids'); // array
+                // 构建 pivot 数据：默认 pinned=false, status=active
+                $pivotData = collect($clubIds)
+                        ->unique()
+                        ->mapWithKeys(function ($id) {
+                            return [$id => ['pinned' => false, 'status' => 'active']];
+                        })
+                        ->toArray();
+
+                $post->clubs()->sync($pivotData);
+            } else {
+                // 不是 club_only，确保没有 club 关联
+                $post->clubs()->detach();
             }
 
             DB::commit();
@@ -171,14 +220,17 @@ class PostController extends Controller {
                             'success' => true,
                             'message' => $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!',
                             'redirect' => route('forums.posts.show', $post->slug),
-                            'post' => $post->load(['category', 'tags']),
+                            'post' => $post->load(['category', 'tags', 'clubs']),
                 ]);
             }
 
             // Redirect for normal form submissions
             return redirect()
                             ->route('forums.posts.show', $post->slug)
-                            ->with('success', $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!');
+                            ->with(
+                                    'success',
+                                    $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!'
+            );
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
 
@@ -228,7 +280,7 @@ class PostController extends Controller {
             'user',
             'category',
             'tags',
-            'club',
+            'clubs',
             'comments' => function ($q) {
                 $q->whereNull('parent_id')
                         ->with([
@@ -279,19 +331,10 @@ class PostController extends Controller {
         $categories = Category::active()->ordered()->get();
         $activeTags = Tag::active()->orderBy('name')->get();
 
-        // Mock clubs
-        $userClubs = collect([
-            (object) ['id' => 1, 'name' => 'Tech Club', 'member_count' => 45],
-            (object) ['id' => 2, 'name' => 'Photography Society', 'member_count' => 32],
-            (object) ['id' => 3, 'name' => 'Music Band', 'member_count' => 28],
-        ]);
+        // 预加载关系：clubs
+        $post->load(['category', 'tags', 'clubs']);
 
-        // When User model is ready:
-        // $userClubs = auth()->user()->clubs ?? collect([]);
-
-        $post->load(['category', 'tags', 'club']);
-
-        return view('forums.edit', compact('post', 'categories', 'activeTags', 'userClubs'));
+        return view('forums.edit', compact('post', 'categories', 'activeTags'));
     }
 
     /**
@@ -301,7 +344,7 @@ class PostController extends Controller {
         try {
             DB::beginTransaction();
 
-            // Use Decorator Pattern to process data
+            // Decorator chain
             $baseDecorator = new BasePostDecorator($request);
             $sanitizedDecorator = new ContentSanitizationDecorator($baseDecorator);
             $validatedDecorator = new ValidationPostDecorator($sanitizedDecorator);
@@ -314,52 +357,64 @@ class PostController extends Controller {
             $tagIds = $processedData['tag_ids'] ?? [];
             unset($processedData['tag_ids']);
 
-            // Handle club_ids
-            if ($processedData['visibility'] === 'club_only' && $request->filled('club_ids')) {
-                $processedData['club_id'] = $request->input('club_ids')[0];
-            } else {
-                $processedData['club_id'] = null;
-            }
-
-            // Handle media replacement or addition
+            // ===== Media 处理：保留你现有逻辑 =====
             if ($request->boolean('replace_media', false)) {
-                // Delete old media files
+                // 删除旧 media
                 if ($post->hasMedia()) {
                     PostMediaHelper::deletePostMedia($post->media_paths);
                 }
-                // Use only new media
-                // $processedData['media_paths'] is already set by decorator
+                // 使用 decorator 生成的新 media_paths
+                // $processedData['media_paths'] 已经设置好
             } elseif (isset($processedData['media_paths'])) {
-                // Merge with existing media
+                // 合并旧 media 和新增 media
                 $existingMedia = $post->media_paths ?? [];
                 $processedData['media_paths'] = array_merge($existingMedia, $processedData['media_paths']);
 
-                // Limit to max count
                 if (count($processedData['media_paths']) > MediaHelper::POST_MAX_MEDIA_COUNT) {
                     $processedData['media_paths'] = array_slice(
                             $processedData['media_paths'],
                             0,
-                            PostMediaHelper::POST_MAX_MEDIA_COUNT
+                            MediaHelper::POST_MAX_MEDIA_COUNT
                     );
                 }
             }
 
-            // Handle published_at timestamp
+            // ===== published_at 处理：和 store 一致 =====
             if ($processedData['status'] === 'published' && !$post->published_at) {
                 $processedData['published_at'] = now();
             } elseif ($processedData['status'] === 'draft') {
                 $processedData['published_at'] = null;
             }
 
-            // Update post
+            // 不再使用 club_id 列
+            unset($processedData['club_id']);
+
+            // 更新 post 本身
             $post->update($processedData);
 
-            // Update tags
+            // 更新 tags
             if (!empty($tagIds)) {
                 $post->syncTagsWithCount($tagIds, auth()->id());
             } elseif (isset($tagIds)) {
-                // Empty array means remove all tags
+                // 空数组 => 清空 tags
                 $post->tags()->detach();
+            }
+
+            // ===== 更新 club_posts 中间表 =====
+            if ($processedData['visibility'] === 'club_only' && $request->filled('club_ids')) {
+                $clubIds = $request->input('club_ids');
+
+                $pivotData = collect($clubIds)
+                        ->unique()
+                        ->mapWithKeys(function ($id) {
+                            return [$id => ['pinned' => false, 'status' => 'active']];
+                        })
+                        ->toArray();
+
+                $post->clubs()->sync($pivotData);
+            } else {
+                // 改回 public 等非 club_only，可视为不再属于任何 club
+                $post->clubs()->detach();
             }
 
             DB::commit();
@@ -380,6 +435,18 @@ class PostController extends Controller {
             return redirect()
                             ->route('forums.posts.show', $post->slug)
                             ->with('success', 'Post updated successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                            'success' => false,
+                            'message' => 'Validation failed.',
+                            'errors' => $e->errors(),
+                                ], 422);
+            }
+
+            return back()->withInput()->withErrors($e->errors());
         } catch (\Exception $e) {
             DB::rollBack();
 

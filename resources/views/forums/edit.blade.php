@@ -7,6 +7,9 @@
 @vite(['resources/css/forums/forum-create.css', 'resources/css/forums/media-lightbox.css'])
 @endpush
 
+{{-- Join Club Modal --}}
+@include('clubs.join_modal')
+
 @section('content')
 <div class="forum-create-wrapper">
     {{-- Hero Section --}}
@@ -164,22 +167,32 @@
                     </div>
 
                     {{-- Existing Media --}}
+                    {{-- Existing Media --}}
                     @if($post->hasMedia())
                     <div class="form-group">
                         <label class="form-label">Current Media</label>
+
                         <div class="media-grid" id="existingMediaGrid">
-                            @foreach($post->media_paths as $index => $mediaPath)
+                            @foreach($post->media_paths as $index => $media)
                             @php
-                            $isVideo = str_contains($mediaPath, '.mp4') || str_contains($mediaPath, '.mov') || str_contains($mediaPath, '.avi');
+                            $path = is_array($media) ? ($media['path'] ?? '') : $media;
+                            $type = is_array($media) ? ($media['type'] ?? '') : '';
+                            $mime = is_array($media) ? ($media['mime_type'] ?? '') : '';
+
+                            $isVideo = ($type === 'video') || str_starts_with($mime, 'video/');
                             @endphp
+
+                            @continue(empty($path))
+
                             <div class="media-item" data-existing-index="{{ $index }}">
                                 @if($isVideo)
-                                <video src="{{ Storage::url($mediaPath) }}" controls></video>
+                                <video src="{{ Storage::url($path) }}" controls></video>
                                 <span class="media-badge">VIDEO</span>
                                 @else
-                                <img src="{{ Storage::url($mediaPath) }}" alt="Media" loading="lazy">
+                                <img src="{{ Storage::url($path) }}" alt="Media" loading="lazy">
                                 <span class="media-badge">IMAGE</span>
                                 @endif
+
                                 <button type="button" class="media-remove-btn" onclick="removeExistingMedia({{ $index }})">
                                     <i class="bi bi-x"></i>
                                 </button>
@@ -245,7 +258,7 @@
 
                             <p class="tags-hint">
                                 <i class="bi bi-info-circle"></i>
-                                Select existing tags or create new ones (up to {{ config('forum.max_tags', 10) }} tags). 
+                                Select existing tags or create new ones (up to {{ config('forum.max_tags', 10) }} tags).
                                 New tags require admin approval.
                             </p>
 
@@ -279,7 +292,12 @@
                             </div>
 
                             {{-- Hidden input --}}
-                            <input type="hidden" name="tags" id="tagsInput" value="{{ old('tags') ? json_encode(old('tags')) : json_encode($post->tags->pluck('name')->toArray()) }}">
+                            <input
+                                type="hidden"
+                                name="tags"
+                                id="tagsInput"
+                                value="{{ old('tags') ? json_encode(old('tags')) : json_encode($post->tags->pluck('name')->toArray()) }}"
+                                >
                         </div>
                     </div>
                 </div>
@@ -301,7 +319,13 @@
 
                                 <div class="visibility-options">
                                     <label class="visibility-option" data-value="public">
-                                        <input type="radio" name="visibility" value="public" id="visibilityPublic" {{ old('visibility', $post->visibility) === 'public' ? 'checked' : '' }}>
+                                        <input
+                                            type="radio"
+                                            name="visibility"
+                                            value="public"
+                                            id="visibilityPublic"
+                                            {{ old('visibility', $post->visibility) === 'public' ? 'checked' : '' }}
+                                        >
                                         <div class="visibility-card">
                                             <div class="visibility-icon">
                                                 <i class="bi bi-globe"></i>
@@ -314,7 +338,13 @@
                                     </label>
 
                                     <label class="visibility-option" data-value="club_only">
-                                        <input type="radio" name="visibility" value="club_only" id="visibilityClubOnly" {{ old('visibility', $post->visibility) === 'club_only' ? 'checked' : '' }}>
+                                        <input
+                                            type="radio"
+                                            name="visibility"
+                                            value="club_only"
+                                            id="visibilityClubOnly"
+                                            {{ old('visibility', $post->visibility) === 'club_only' ? 'checked' : '' }}
+                                        >
                                         <div class="visibility-card">
                                             <div class="visibility-icon">
                                                 <i class="bi bi-lock"></i>
@@ -331,29 +361,26 @@
                             </div>
 
                             {{-- Club Selection --}}
-                            <div class="form-group" id="clubSelectionContainer" style="display: {{ old('visibility', $post->visibility) === 'club_only' ? 'block' : 'none' }};">
+                            <div
+                                class="form-group"
+                                id="clubSelectionContainer"
+                                style="display: {{ old('visibility', $post->visibility) === 'club_only' ? 'block' : 'none' }};"
+                                >
                                 <label class="form-label">
                                     Select Clubs <span class="required-mark">*</span>
                                 </label>
-                                <div class="club-list">
-                                    @foreach($userClubs as $club)
-                                    <label class="club-item">
-                                        <input
-                                            type="checkbox"
-                                            name="club_ids[]"
-                                            value="{{ $club->id }}"
-                                            class="club-checkbox"
-                                            {{ (is_array(old('club_ids')) && in_array($club->id, old('club_ids'))) || (!old('club_ids') && $post->club_id == $club->id) ? 'checked' : '' }}
-                                        >
-                                        <span class="club-checkbox-custom"></span>
-                                        <div class="club-info">
-                                            <div class="club-name">{{ $club->name }}</div>
-                                            <div class="club-members">{{ $club->member_count }} members</div>
-                                        </div>
-                                    </label>
-                                    @endforeach
+
+                                {{-- 由 JS 通过 /api/users/{userId}/clubs 渲染 --}}
+                                <div class="club-list" id="clubListContainer">
+                                    <p class="text-muted small" id="clubListLoading">Loading your clubs...</p>
                                 </div>
-                                <div class="form-error" id="clubError"></div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <div class="form-error" id="clubError"></div>
+                                    <button type="button" class="btn btn-link btn-sm" id="joinClubButton">
+                                        Join a club
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -475,27 +502,37 @@
 
 @push('scripts')
 <script>
-    window.forumConfig = {
-    availableTags: @json($activeTags ?? []),
-            maxTags: 10,
-            maxMediaFiles: 10,
-            maxImageSize: 10 * 1024 * 1024,
-            maxVideoSize: 100 * 1024 * 1024,
-            existingMediaPaths: @json($post - > media_paths ?? []),
+    const config = {
+        availableTags: @json($activeTags ?? []),
+        maxTags: 10,
+        maxMediaFiles: 10,
+        maxImageSize: 10 * 1024 * 1024,
+        maxVideoSize: 100 * 1024 * 1024,
+
+        existingMediaPaths: @json($post->media_paths ?? []),
+
+        currentUserId: {{ auth()->id() }},
+        clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}',
+        joinClubModalId: 'joinClubModal',
+
+        oldClubIds: @json(old('club_ids', $post->clubs->pluck('id')->all())),
     };
-    // Track existing media removal
+
+    window.forumConfig = config;
+
     window.existingMediaToRemove = [];
-    window.removeExistingMedia = function(index) {
-    const grid = document.getElementById('existingMediaGrid');
-    if (!grid) return;
-    const item = grid.querySelector(`[data-existing-index="${index}"]`);
-    if (item) {
-    item.remove();
-    window.existingMediaToRemove.push(index);
-    if (grid.children.length === 0) {
-    grid.style.display = 'none';
-    }
-    }
+    window.removeExistingMedia = function (index) {
+        const grid = document.getElementById('existingMediaGrid');
+        if (!grid) return;
+
+        const item = grid.querySelector(`[data-existing-index="${index}"]`);
+        if (item) {
+            item.remove();
+            window.existingMediaToRemove.push(index);
+            if (grid.children.length === 0) {
+                grid.style.display = 'none';
+            }
+        }
     };
 </script>
 @vite(['resources/js/forum-create.js', 'resources/js/media-lightbox.js'])

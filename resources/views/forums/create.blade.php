@@ -7,6 +7,9 @@
 @vite(['resources/css/forums/forum-create.css', 'resources/css/forums/media-lightbox.css'])
 @endpush
 
+{{-- Join Club Modal --}}
+@include('clubs.join_modal')
+
 @section('content')
 <div class="forum-create-wrapper">
     {{-- Hero Section --}}
@@ -282,29 +285,27 @@
                             </div>
 
                             {{-- Club Selection --}}
-                            <div class="form-group" id="clubSelectionContainer" style="display: none;">
+                            <div class="form-group" id="clubSelectionContainer" style="display: none">
                                 <label class="form-label">
-                                    Select Clubs <span class="required-mark">*</span>
+                                    Select Clubs
+                                    <span class="required-mark">*</span>
                                 </label>
-                                <div class="club-list">
-                                    @foreach($userClubs as $club)
-                                    <label class="club-item">
-                                        <input
-                                            type="checkbox"
-                                            name="club_ids[]"
-                                            value="{{ $club->id }}"
-                                            class="club-checkbox"
-                                            {{ is_array(old('club_ids')) && in_array($club->id, old('club_ids')) ? 'checked' : '' }}
-                                        >
-                                        <span class="club-checkbox-custom"></span>
-                                        <div class="club-info">
-                                            <div class="club-name">{{ $club->name }}</div>
-                                            <div class="club-members">{{ $club->member_count }} members</div>
-                                        </div>
-                                    </label>
-                                    @endforeach
+
+                                {{-- 由 JS 通过 /api/users/{userId}/clubs 渲染 --}}
+                                <div class="club-list" id="clubListContainer">
+                                    <p class="text-muted small" id="clubListLoading">Loading your clubs...</p>
                                 </div>
-                                <div class="form-error" id="clubError"></div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <div class="form-error" id="clubError"></div>
+
+                                    {{-- Join Club 按钮 --}}
+                                    <button type="button"
+                                            class="btn btn-link btn-sm"
+                                            id="joinClubButton">
+                                        Join a club
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -493,11 +494,17 @@
 <script>
     window.forumConfig = {
         availableTags: @json($activeTags ?? []),
-                maxTags: 10,
+        maxTags: 10,
         maxMediaFiles: 10,
         maxImageSize: 10 * 1024 * 1024,
         maxVideoSize: 100 * 1024 * 1024,
+
+        // club 相关配置
+        currentUserId: {{ auth()->id() }},
+        clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}', // 对应 api.php
+        joinClubModalId: 'joinClubModal', // JS 用这个 id 打开 modal
     };
 </script>
 @vite(['resources/js/forum-create.js', 'resources/js/media-lightbox.js'])
 @endpush
+

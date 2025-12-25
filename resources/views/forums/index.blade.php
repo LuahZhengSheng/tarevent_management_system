@@ -4,296 +4,190 @@
 @section('title', 'Community Forum - TAREvent')
 
 @push('styles')
-    @vite(['resources/css/forums/forum.css', 'resources/css/forums/forum-media-gallery.css', 'resources/css/forums/media-lightbox.css'])
+@vite([
+    'resources/css/forums/forum.css',
+    'resources/css/forums/forum-media-gallery.css',
+    'resources/css/forums/media-lightbox.css'
+])
 @endpush
 
 @section('content')
-    <div class="forum-index-page user-site">
-        {{-- Hero Section --}}
-        <section class="forum-hero">
-            <div class="container">
-                <div class="hero-content">
-                    <div class="hero-text">
-                        <h1 class="hero-title">Community Forum</h1>
-                        <p class="hero-subtitle">Join the conversation, share ideas, and connect with fellow students</p>
+<section class="forum-hero forum-hero--enhanced">
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-left">
+                <h1 class="hero-title">Community Forum</h1>
+                <p class="hero-subtitle">Join the conversation, share ideas, and connect with fellow students</p>
+
+                <div class="hero-quick-actions">
+                    <a href="{{ route('forums.create') }}" class="btn btn-primary hero-btn">
+                        <i class="bi bi-plus-circle me-2"></i> Create Post
+                    </a>
+
+                    <a href="{{ route('forums.my-posts') }}" class="btn btn-outline-light hero-btn">
+                        <i class="bi bi-journal-text me-2"></i> My Posts
+                    </a>
+                </div>
+            </div>
+
+            <div class="hero-right">
+                <div class="hero-stats-card">
+                    <div class="stat">
+                        <div class="stat-value">{{ $posts->total() }}</div>
+                        <div class="stat-label">Posts</div>
                     </div>
-                    <div class="hero-actions">
-                        <a href="{{ route('forums.create') }}" class="btn btn-primary btn-lg">
-                            <i class="bi bi-plus-circle me-2"></i>Create Post
-                        </a>
+                    <div class="stat">
+                        <div class="stat-value">{{ $popularTags->count() }}</div>
+                        <div class="stat-label">Trending tags</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ $categories->count() }}</div>
+                        <div class="stat-label">Categories</div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
-        <div class="container forum-container">
-            {{-- Search and Filter Bar --}}
-            <div class="filter-section">
-                <form action="{{ route('forums.index') }}" method="GET" id="filterForm" class="filter-form">
-                    <div class="filter-grid">
-                        {{-- Search Input --}}
-                        <div class="filter-item filter-search">
-                            <div class="search-wrapper">
-                                <i class="bi bi-search search-icon"></i>
-                                <input type="text"
-                                       class="form-control search-input"
-                                       name="search"
-                                       placeholder="Search discussions..."
-                                       value="{{ request('search') }}"
-                                       autocomplete="off">
-                            </div>
+<div class="container forum-index-container">
+    <div class="forum-index-layout">
+        {{-- Left sidebar --}}
+        <aside class="forum-sidebar">
+            {{-- sticky 包裹层（用来固定并允许内部滚动） --}}
+            <div class="sidebar-sticky">
+                <form id="filterForm" class="filter-card filter-card--compact" method="GET" action="{{ route('forums.index') }}">
+                    <div class="filter-card-header">
+                        <h3 class="filter-title">
+                            <i class="bi bi-funnel me-2"></i> Search & Filter
+                        </h3>
+
+                        {{-- ✅ Reset 改成 link，不要“难看 button” --}}
+                        <a href="{{ route('forums.index') }}" class="reset-link" id="resetBtn" aria-label="Reset filters">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span class="reset-text">Reset</span>
+                        </a>
+                    </div>
+
+                    {{-- Search --}}
+                    <div class="filter-group">
+                        <label class="filter-label">Search</label>
+                        <div class="input-icon">
+                            <i class="bi bi-search search-icon"></i>
+                            <input
+                                type="text"
+                                name="search"
+                                class="form-control search-input"
+                                placeholder="Title, content, author, tag…"
+                                value="{{ request('search', request('q')) }}"
+                                autocomplete="off"
+                            >
+                        </div>
+                        <div class="filter-hint">
+                            Searches: title/content + author name + tags.
+                        </div>
+                    </div>
+
+                    {{-- Category --}}
+                    <div class="filter-group">
+                        <label class="filter-label">Category</label>
+                        <select name="category_id" class="form-select filter-select">
+                            <option value="">All categories</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ (string)request('category_id') === (string)$category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Sort --}}
+                    <div class="filter-group">
+                        <label class="filter-label">Sort</label>
+                        <select name="sort" class="form-select filter-select">
+                            <option value="recent" {{ request('sort','recent') === 'recent' ? 'selected' : '' }}>Most recent</option>
+                            <option value="popular" {{ request('sort') === 'popular' ? 'selected' : '' }}>Most popular</option>
+                        </select>
+                    </div>
+
+                    {{-- tags[] hidden inputs (JS 会维护) --}}
+                    <div id="selectedTagsInputs"></div>
+
+                    {{-- Trending tags --}}
+                    <div class="filter-group">
+                        <div class="filter-label d-flex justify-content-between align-items-center">
+                            <span>Trending</span>
+                            <a class="small text-decoration-none" href="{{ route('forums.index') }}">Clear</a>
                         </div>
 
-                        {{-- Category Filter --}}
-                        <div class="filter-item">
-                            <select class="form-select filter-select" name="category_id" onchange="this.form.submit()">
-                                <option value="">All Categories</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                                        {{ $category->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                        <div id="trendingTags">
+                            {{-- ✅ 你的 partial 里 chips 请使用 .js-tag-chip 才能被 JS 识别 --}}
+                            @include('forums.partials.trending_tags_ajax', [
+                                'popularTags' => $popularTags,
+                                'selectedTags' => request('tags', [])
+                            ])
                         </div>
+                    </div>
 
-                        {{-- Sort Filter --}}
-                        <div class="filter-item">
-                            <select class="form-select filter-select" name="sort" onchange="this.form.submit()">
-                                <option value="recent" {{ request('sort') == 'recent' ? 'selected' : '' }}>Most Recent</option>
-                                <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Most Popular</option>
-                            </select>
-                        </div>
-
-                        {{-- Clear Filters --}}
-                        @if(request()->hasAny(['search', 'category_id', 'sort', 'tag']))
-                            <div class="filter-item">
-                                <a href="{{ route('forums.index') }}" class="btn btn-outline-secondary btn-clear">
-                                    <i class="bi bi-x-circle me-1"></i>Clear
-                                </a>
-                            </div>
-                        @endif
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-primary w-100" id="applyBtn">
+                            <i class="bi bi-search me-2"></i> Apply
+                        </button>
                     </div>
                 </form>
             </div>
+        </aside>
 
-            {{-- Results Summary --}}
-            <div class="results-summary">
-                <div class="results-info">
-                    <i class="bi bi-chat-dots-fill"></i>
-                    <span class="results-count">{{ $posts->total() }}</span>
-                    <span class="results-text">{{ Str::plural('Discussion', $posts->total()) }}</span>
-                </div>
-
-                @if(request()->hasAny(['search', 'category_id', 'tag']))
-                    <div class="active-filters">
-                        @if(request()->has('search'))
-                            <span class="filter-tag">
-                                Search: {{ request('search') }}
-                                <a href="{{ route('forums.index', request()->except('search')) }}" class="filter-tag-close">
-                                    <i class="bi bi-x"></i>
-                                </a>
-                            </span>
-                        @endif
-
-                        @if(request()->has('category_id'))
-                            @php
-                                $selectedCategory = $categories->firstWhere('id', request('category_id'));
-                            @endphp
-                            @if($selectedCategory)
-                                <span class="filter-tag">
-                                    {{ $selectedCategory->name }}
-                                    <a href="{{ route('forums.index', request()->except('category_id')) }}" class="filter-tag-close">
-                                        <i class="bi bi-x"></i>
-                                    </a>
-                                </span>
-                            @endif
-                        @endif
-
-                        @if(request()->has('tag'))
-                            <span class="filter-tag">
-                                #{{ request('tag') }}
-                                <a href="{{ route('forums.index', request()->except('tag')) }}" class="filter-tag-close">
-                                    <i class="bi bi-x"></i>
-                                </a>
-                            </span>
-                        @endif
-                    </div>
-                @endif
+        {{-- Right content --}}
+        <main class="forum-feed">
+            <div class="results-summary" id="resultsSummary">
+                @include('forums.partials.results_summary_ajax', [
+                    'posts' => $posts,
+                    'categories' => $categories,
+                    'selectedTags' => request('tags', []),
+                    'searchText' => request('search', request('q', ''))
+                ])
             </div>
 
-            {{-- Posts Grid --}}
-            <div class="posts-grid">
-                @forelse($posts as $post)
-                    <article class="post-card" onclick="window.location='{{ route('forums.posts.show', $post->slug) }}'">
-                        <div class="post-card-inner">
-                            {{-- Post Header --}}
-                            <div class="post-header">
-                                <div class="post-author">
-                                    <img src="{{ $post->user->profile_photo_url ?? asset('images/default-avatar.png') }}"
-                                         alt="{{ $post->user->name ?? 'User' }}"
-                                         class="author-avatar">
-                                    <div class="author-info">
-                                        <span class="author-name">{{ $post->user->name ?? 'Anonymous' }}</span>
-                                        <span class="post-time">
-                                            <i class="bi bi-clock"></i>{{ $post->created_at->diffForHumans() }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="post-badges">
-                                    @if($post->category)
-                                        <span class="badge category-badge" style="background: {{ $post->category->color ?? 'var(--user-primary)' }}">
-                                            <i class="{{ $post->category->icon ?? 'bi bi-folder' }}"></i>
-                                            {{ $post->category->name }}
-                                        </span>
-                                    @endif
-                                    @if($post->club)
-                                        <span class="badge club-badge">
-                                            <i class="bi bi-people-fill"></i>{{ $post->club->name }}
-                                        </span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- Post Content --}}
-                            <div class="post-content">
-                                <h2 class="post-title">{{ $post->title }}</h2>
-                                <p class="post-excerpt">{{ $post->excerpt ?? Str::limit(strip_tags($post->content), 180) }}</p>
-
-                                {{-- Post Tags --}}
-                                @if($post->tags && $post->tags->count() > 0)
-                                    <div class="post-tags">
-                                        @foreach($post->tags->take(4) as $tag)
-                                            <a href="{{ route('forums.index', ['tag' => $tag->slug]) }}"
-                                               class="tag-item"
-                                               onclick="event.stopPropagation()">
-                                                {{ $tag->name }}
-                                            </a>
-                                        @endforeach
-                                        @if($post->tags->count() > 4)
-                                            <span class="tag-item tag-more">+{{ $post->tags->count() - 4 }}</span>
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
-
-                            {{-- Post Media Preview (改成 show.blade.php 同款布局 + lightbox) --}}
-                            @if($post->media_paths && count($post->media_paths) > 0)
-                                @php
-                                    $mediaCount = count($post->media_paths);
-                                    $layoutClass = 'layout-' . min($mediaCount, 5);
-                                @endphp
-
-                                <div class="media-gallery-facebook {{ $layoutClass }}"
-                                     id="mediaGrid"
-                                     data-count="{{ $mediaCount }}"
-                                     onclick="event.stopPropagation()">
-                                    @foreach($post->media_paths as $index => $media)
-                                        @php
-                                            $mediaPath = is_array($media) ? ($media['path'] ?? '') : $media;
-                                            $mediaType = is_array($media) ? ($media['type'] ?? 'image') : 'image';
-                                            $mimeType  = is_array($media) ? ($media['mime_type'] ?? 'image/jpeg') : 'image/jpeg';
-
-                                            $isVideo = $mediaType === 'video' || str_starts_with($mimeType, 'video/');
-                                            if (empty($mediaPath)) continue;
-
-                                            // 只在前5个显示，其他隐藏但仍然存在于 DOM 中
-                                            $isVisible = $index < 5;
-                                        @endphp
-
-                                        <div class="fb-media-item media-item item-{{ $index + 1 }} {{ !$isVisible ? 'd-none' : '' }}"
-                                             data-index="{{ $index }}"
-                                             onclick="event.stopPropagation(); openLightbox({{ $index }});">
-                                            @if($isVideo)
-                                                <video class="fb-media-content" preload="metadata">
-                                                    <source src="{{ Storage::url($mediaPath) }}" type="{{ $mimeType }}">
-                                                </video>
-                                                <div class="fb-media-badge video-badge">
-                                                    <i class="bi bi-play-circle-fill"></i>
-                                                </div>
-                                            @else
-                                                <img src="{{ Storage::url($mediaPath) }}"
-                                                     alt="Media {{ $index + 1 }}"
-                                                     class="fb-media-content"
-                                                     loading="lazy">
-                                            @endif
-
-                                            {{-- Overlay for 5th item if more media --}}
-                                            @if($index == 4 && $mediaCount > 5)
-                                                <div class="fb-overlay-more">
-                                                    <span class="overlay-number">+{{ $mediaCount - 5 }}</span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-
-                            {{-- Post Footer --}}
-                            <div class="post-footer">
-                                <div class="post-stats">
-                                    <span class="stat-item">
-                                        <i class="bi bi-eye-fill"></i>
-                                        <span>{{ number_format($post->views_count) }}</span>
-                                    </span>
-                                    <span class="stat-item">
-                                        <i class="bi bi-heart-fill"></i>
-                                        <span>{{ number_format($post->likes_count) }}</span>
-                                    </span>
-                                    <span class="stat-item">
-                                        <i class="bi bi-chat-fill"></i>
-                                        <span>{{ number_format($post->comments_count) }}</span>
-                                    </span>
-                                    <span class="stat-item">
-                                        <i class="bi bi-clock-fill"></i>
-                                        <span>{{ $post->read_time }}</span>
-                                    </span>
-                                </div>
-
-                                <div class="post-action">
-                                    <span class="read-more">
-                                        Read More <i class="bi bi-arrow-right"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
-                @empty
-                    {{-- Empty State --}}
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="bi bi-chat-left-text"></i>
-                        </div>
-                        <h3 class="empty-title">No Discussions Found</h3>
-                        <p class="empty-text">
-                            @if(request()->hasAny(['search', 'category_id', 'tag']))
-                                Try adjusting your filters or search terms to find what you're looking for.
-                            @else
-                                Be the first to start a meaningful discussion in our community!
-                            @endif
-                        </p>
-                        <a href="{{ route('forums.posts.create') }}" class="btn btn-primary">
-                            <i class="bi bi-plus-circle me-2"></i>Create First Post
-                        </a>
-                    </div>
-                @endforelse
+            <div id="postsGrid" class="posts-grid">
+                @include('forums.partials.posts_page', ['posts' => $posts])
             </div>
 
-            {{-- Pagination --}}
-            @if($posts->hasPages())
-                <div class="pagination-wrapper">
-                    {{ $posts->appends(request()->query())->links() }}
-                </div>
-            @endif
-        </div>
+            <div class="feed-footer">
+                <div id="infiniteSentinel"></div>
 
-        {{-- Dark Mode Toggle --}}
-        <button class="dark-mode-toggle" id="darkModeToggle" title="Toggle Dark Mode">
-            <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
-        </button>
+                <div id="feedLoading" class="feed-loading" style="display:none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="loading-text">Loading more posts…</div>
+                </div>
+
+                <div id="feedEnd" class="feed-end" style="display:none;">
+                    <i class="bi bi-check2-circle me-2"></i> You’ve reached the end.
+                </div>
+            </div>
+
+            <noscript>
+                <div class="pagination-wrapper mt-4">
+                    {{ $posts->withQueryString()->links() }}
+                </div>
+            </noscript>
+        </main>
     </div>
+</div>
 @endsection
 
 @push('scripts')
-    @vite(['resources/js/forum.js', 'resources/js/media-lightbox.js'])
+<script>
+    window.FORUM_INDEX = {
+        ajaxUrl: "{{ route('forums.index') }}",
+        initialPage: {{ (int)$posts->currentPage() }},
+        lastPage: {{ (int)$posts->lastPage() }},
+        query: @json(request()->query()),
+    };
+</script>
+
+@vite([
+    'resources/js/forum.js',
+    'resources/js/media-lightbox.js'
+])
 @endpush

@@ -25,6 +25,10 @@ class CommentController extends Controller {
      * Store a new comment / reply (same endpoint)
      */
     public function store(Request $request, Post $post) {
+        if (!$post->canBeViewedBy($request->user())) {
+            return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+        }
+
         $request->validate([
             'content' => ['nullable', 'string', 'max:2000'],
             'parent_id' => ['nullable', 'exists:post_comments,id'],

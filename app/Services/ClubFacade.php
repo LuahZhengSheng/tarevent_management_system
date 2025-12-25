@@ -9,6 +9,7 @@ use App\Services\Club\ClubService;
 use App\Services\Club\MembershipService;
 use App\Services\Club\ClubAuditService;
 use App\Services\Club\ClubAuthorizationService;
+use App\Services\Club\AnnouncementService;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -33,17 +34,20 @@ class ClubFacade
     protected MembershipService $membershipService;
     protected ClubAuditService $auditService;
     protected ClubAuthorizationService $authorizationService;
+    protected AnnouncementService $announcementService;
 
     public function __construct(
         ClubService $clubService,
         MembershipService $membershipService,
         ClubAuditService $auditService,
-        ClubAuthorizationService $authorizationService
+        ClubAuthorizationService $authorizationService,
+        AnnouncementService $announcementService
     ) {
         $this->clubService = $clubService;
         $this->membershipService = $membershipService;
         $this->auditService = $auditService;
         $this->authorizationService = $authorizationService;
+        $this->announcementService = $announcementService;
     }
 
     /**
@@ -548,5 +552,224 @@ class ClubFacade
     public function isBlacklisted(Club $club, User $user): bool
     {
         return $this->membershipService->isBlacklisted($club, $user);
+    }
+
+    // ============================================
+    // Announcement Management Methods
+    // ============================================
+
+    /**
+     * Create a new announcement for a club.
+     * 
+     * Facade method: Coordinates authorization, creation, and audit logging.
+     * 
+     * @param Club $club The club
+     * @param array $data Announcement data
+     * @param User $creator The user creating the announcement
+     * @return \App\Models\ClubAnnouncement
+     * @throws \Exception If creation fails
+     */
+    public function createAnnouncement(Club $club, array $data, User $creator): \App\Models\ClubAnnouncement
+    {
+        // Delegate authorization check
+        $this->authorizationService->ensureCanManageAnnouncements($creator, $club);
+
+        // Delegate announcement creation
+        $announcement = $this->announcementService->create($club, $data, $creator);
+
+        // Delegate audit logging
+        $this->auditService->log($club, 'create_announcement', $creator, null, [
+            'announcement_id' => $announcement->id,
+            'title' => $announcement->title,
+        ]);
+
+        return $announcement;
+    }
+
+    /**
+     * Update an announcement.
+     * 
+     * @param Club $club The club
+     * @param \App\Models\ClubAnnouncement $announcement The announcement to update
+     * @param array $data Updated data
+     * @param User $updater The user updating the announcement
+     * @return \App\Models\ClubAnnouncement
+     */
+    public function updateAnnouncement(Club $club, \App\Models\ClubAnnouncement $announcement, array $data, User $updater): \App\Models\ClubAnnouncement
+    {
+        // Delegate authorization check
+        $this->authorizationService->ensureCanManageAnnouncements($updater, $club);
+
+        // Ensure announcement belongs to club
+        if ($announcement->club_id !== $club->id) {
+            throw new \Exception("Announcement does not belong to this club.");
+        }
+
+        // Delegate announcement update
+        $announcement = $this->announcementService->update($announcement, $data);
+
+        // Delegate audit logging
+        $this->auditService->log($club, 'update_announcement', $updater, null, [
+            'announcement_id' => $announcement->id,
+            'title' => $announcement->title,
+        ]);
+
+        return $announcement;
+    }
+
+    /**
+     * Delete an announcement.
+     * 
+     * @param Club $club The club
+     * @param \App\Models\ClubAnnouncement $announcement The announcement to delete
+     * @param User $deleter The user deleting the announcement
+     * @return bool
+     */
+    public function deleteAnnouncement(Club $club, \App\Models\ClubAnnouncement $announcement, User $deleter): bool
+    {
+        // Delegate authorization check
+        $this->authorizationService->ensureCanManageAnnouncements($deleter, $club);
+
+        // Ensure announcement belongs to club
+        if ($announcement->club_id !== $club->id) {
+            throw new \Exception("Announcement does not belong to this club.");
+        }
+
+        $announcementId = $announcement->id;
+        $announcementTitle = $announcement->title;
+
+        // Delegate announcement deletion
+        $result = $this->announcementService->delete($announcement);
+
+        // Delegate audit logging
+        if ($result) {
+            $this->auditService->log($club, 'delete_announcement', $deleter, null, [
+                'announcement_id' => $announcementId,
+                'title' => $announcementTitle,
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Publish an announcement.
+     * 
+     * @param Club $club The club
+     * @param \App\Models\ClubAnnouncement $announcement The announcement to publish
+     * @param User $publisher The user publishing the announcement
+     * @return \App\Models\ClubAnnouncement
+     */
+    public function publishAnnouncement(Club $club, \App\Models\ClubAnnouncement $announcement, User $publisher): \App\Models\ClubAnnouncement
+    {
+        // Delegate authorization check
+        $this->authorizationService->ensureCanManageAnnouncements($publisher, $club);
+
+        // Ensure announcement belongs to club
+        if ($announcement->club_id !== $club->id) {
+            throw new \Exception("Announcement does not belong to this club.");
+        }
+
+        // Delegate announcement publishing
+        $announcement = $this->announcementService->publish($announcement);
+
+        // Delegate audit logging
+        $this->auditService->log($club, 'publish_announcement', $publisher, null, [
+            'announcement_id' => $announcement->id,
+            'title' => $announcement->title,
+        ]);
+
+        return $announcement;
+    }
+
+    /**
+     * Unpublish an announcement.
+     * 
+     * @param Club $club The club
+     * @param \App\Models\ClubAnnouncement $announcement The announcement to unpublish
+     * @param User $unpublisher The user unpublishing the announcement
+     * @return \App\Models\ClubAnnouncement
+     */
+    public function unpublishAnnouncement(Club $club, \App\Models\ClubAnnouncement $announcement, User $unpublisher): \App\Models\ClubAnnouncement
+    {
+        // Delegate authorization check
+        $this->authorizationService->ensureCanManageAnnouncements($unpublisher, $club);
+
+        // Ensure announcement belongs to club
+        if ($announcement->club_id !== $club->id) {
+            throw new \Exception("Announcement does not belong to this club.");
+        }
+
+        // Delegate announcement unpublishing
+        $announcement = $this->announcementService->unpublish($announcement);
+
+        // Delegate audit logging
+        $this->auditService->log($club, 'unpublish_announcement', $unpublisher, null, [
+            'announcement_id' => $announcement->id,
+            'title' => $announcement->title,
+        ]);
+
+        return $announcement;
+    }
+
+    /**
+     * Get announcements for a club.
+     * 
+     * @param Club $club The club
+     * @param array $filters Optional filters
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAnnouncements(Club $club, array $filters = []): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->announcementService->getAnnouncements($club, $filters);
+    }
+
+    /**
+     * Get a single announcement.
+     * 
+     * @param Club $club The club
+     * @param int $announcementId The announcement ID
+     * @return \App\Models\ClubAnnouncement|null
+     */
+    public function getAnnouncement(Club $club, int $announcementId): ?\App\Models\ClubAnnouncement
+    {
+        return $this->announcementService->getAnnouncement($club, $announcementId);
+    }
+
+    // ============================================
+    // Logging Helper Methods (for GET requests)
+    // ============================================
+
+    /**
+     * Log a club view action (for GET requests).
+     * 
+     * @param Club $club The club being viewed
+     * @param User $viewer The user viewing the club
+     * @param string|null $requestId Optional request ID for tracking
+     * @return void
+     */
+    public function logClubView(Club $club, User $viewer, ?string $requestId = null): void
+    {
+        $this->auditService->log($club, 'view_club', $viewer, null, [], $requestId);
+    }
+
+    /**
+     * Log a user clubs list view (for GET requests).
+     * 
+     * @param User $user The user whose clubs are being viewed
+     * @param User $viewer The user viewing the clubs list
+     * @param string|null $requestId Optional request ID for tracking
+     * @return void
+     */
+    public function logUserClubsView(User $user, User $viewer, ?string $requestId = null): void
+    {
+        // Get the first club for logging (or create a system club if user has no clubs)
+        // Since this is a user-level action, we might not have a specific club
+        // Option 1: Log to a system club (if exists)
+        // Option 2: Skip logging for this action
+        // Option 3: Create a special log entry without club_id
+        
+        // For now, we'll skip logging this action as it's user-level, not club-level
+        // If needed, you can create a system club or modify the log structure
     }
 }

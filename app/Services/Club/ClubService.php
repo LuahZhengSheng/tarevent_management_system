@@ -207,6 +207,11 @@ class ClubService
                   ->orWhere('description', 'like', "%{$filters['search']}%");
             });
         }
+        
+        // Apply category filter if provided
+        if (isset($filters['category'])) {
+            $query->where('category', $filters['category']);
+        }
 
         return $query->get();
     }

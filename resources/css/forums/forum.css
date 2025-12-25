@@ -1033,3 +1033,317 @@
         font-size: 1rem;
     }
 }
+
+
+
+
+/* resources/css/forums/forum-index.css */
+
+.forum-hero--enhanced .hero-quick-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+}
+
+.hero-stats-card {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    min-width: 340px;
+}
+
+.hero-stats-card .stat-value {
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: #fff;
+    line-height: 1.1;
+}
+.hero-stats-card .stat-label {
+    color: rgba(255,255,255,0.85);
+    font-size: 0.9rem;
+}
+
+.forum-index-container {
+    padding-bottom: 4rem;
+}
+
+.forum-index-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.forum-sidebar {
+    position: sticky;
+    top: 1rem;
+}
+
+.filter-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-md);
+    padding: 1rem;
+}
+
+.filter-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0.75rem;
+}
+
+.filter-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.filter-group {
+    margin-top: 0.9rem;
+}
+
+.filter-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+
+.filter-hint {
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+}
+
+.input-icon {
+    position: relative;
+}
+.input-icon i {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+}
+.input-icon input {
+    padding-left: 2.6rem;
+    border-radius: 0.75rem;
+}
+
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 10px;
+}
+
+.tag-chip {
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tag-chip:hover {
+    transform: translateY(-1px);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.tag-chip.is-active {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.feed-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.feed-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.active-filters-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.active-pill {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+}
+
+.feed-footer {
+    margin-top: 1.25rem;
+    padding: 1rem 0 0;
+}
+.feed-loading, .feed-end {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    padding: 1rem 0;
+}
+
+/* reveal animation */
+.js-reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 420ms ease, transform 420ms ease;
+}
+.js-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (max-width: 992px) {
+    .forum-index-layout {
+        grid-template-columns: 1fr;
+    }
+    .forum-sidebar {
+        position: static;
+    }
+    .hero-stats-card {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+
+
+/* =========================================================
+   Search & Filter UI polish (sticky + nicer reset + roomy tags)
+   ========================================================= */
+
+/* Sticky sidebar container */
+.forum-sidebar .sidebar-sticky {
+  position: sticky;
+  top: 1rem;
+  /* 让左侧永远可见，同时不挡底部：内部滚动 */
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+
+  /* 让滚动更顺滑（mac/ios） */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+/* 让 sticky 区域滚动时不要贴边难看 */
+.forum-sidebar .sidebar-sticky {
+  padding-bottom: 0.5rem;
+}
+
+/* Filter card compact spacing */
+.filter-card--compact {
+  padding: 1rem;
+}
+
+/* Header: make reset look like a subtle action (not a button) */
+.filter-card-header .reset-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  color: var(--text-tertiary);
+  text-decoration: none;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.65rem;
+
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.filter-card-header .reset-link:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+  transform: translateY(-1px);
+}
+
+.filter-card-header .reset-link:active {
+  transform: translateY(0);
+}
+
+.filter-card-header .reset-link i {
+  font-size: 1rem;
+}
+
+/* Reset text on very small widths: keep only icon */
+@media (max-width: 380px) {
+  .filter-card-header .reset-link .reset-text {
+    display: none;
+  }
+}
+
+/* Make trending area roomier */
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem; /* 原本 0.5，稍微放大 */
+}
+
+/* Larger chips, less cramped */
+.tag-chip {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.9rem;
+  line-height: 1.15;
+  border-radius: 999px;
+
+  /* 增强可读性 */
+  letter-spacing: 0.01em;
+}
+
+/* Prevent chips from looking too tight in a row */
+.tag-chip + .tag-chip {
+  margin-left: 0;
+}
+
+/* Optional: make tag section visually separated */
+.filter-group .tag-cloud {
+  margin-top: 0.25rem;
+}
+
+/* Improve focus accessibility */
+.tag-chip:focus-visible,
+.filter-card-header .reset-link:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+/* Mobile: disable sticky (avoid taking too much screen and weird scroll) */
+@media (max-width: 992px) {
+  .forum-sidebar .sidebar-sticky {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}

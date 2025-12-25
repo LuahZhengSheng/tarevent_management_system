@@ -19,7 +19,6 @@ class Post extends Model {
     protected $fillable = [
         'user_id',
         'category_id',
-        'club_id',
         'title',
         'slug',
         'content',
@@ -84,11 +83,10 @@ class Post extends Model {
                         ->orderByPivot('order', 'asc');
     }
 
-    /**
-     * Post belongs to a club (optional)
-     */
-    public function club() {
-        return $this->belongsTo(Club::class);
+    public function clubs() {
+        return $this->belongsToMany(Club::class, 'club_posts')
+                        ->withPivot(['pinned', 'status'])
+                        ->withTimestamps();
     }
 
     /**
@@ -172,11 +170,20 @@ class Post extends Model {
      * Delete all media files from storage
      */
     public function deleteMediaFiles() {
-        if ($this->hasMedia()) {
-            foreach ($this->media_paths as $media) {
-                if (isset($media['path']) && Storage::disk('public')->exists($media['path'])) {
-                    Storage::disk('public')->delete($media['path']);
-                }
+        if (!$this->hasMedia()) {
+            return;
+        }
+
+        foreach ($this->media_paths as $media) {
+            if (!is_array($media)) {
+                continue;
+            }
+
+            $disk = $media['disk'] ?? 'public';  // 没有 disk 当 public
+            $path = $media['path'] ?? null;
+
+            if ($path && Storage::disk($disk)->exists($path)) {
+                Storage::disk($disk)->delete($path);
             }
         }
     }
@@ -403,7 +410,7 @@ class Post extends Model {
      * Scope: With full relationships
      */
     public function scopeWithFullRelations($query) {
-        return $query->with(['user', 'category', 'tags', 'club']);
+        return $query->with(['user', 'category', 'tags', 'clubs']);
     }
 
     /**
@@ -492,7 +499,7 @@ class Post extends Model {
             return true;
         }
 
-        if ($user->hasRole('club') && $this->club_id === $user->club_id) {
+        if ($user->hasRole('clubs') && $this->club_id === $user->club_id) {
             return true;
         }
 
@@ -502,23 +509,26 @@ class Post extends Model {
     /**
      * Check if user can view this post
      */
-    public function canBeViewedBy(?User $user) {
-        // Drafts only visible to author and admin
+    public function canBeViewedBy(?User $user): bool {
+        // drafts: only author/admin
         if ($this->status !== 'published') {
-            return $user && $this->canBeEditedBy($user);
+            return $this->canBeEditedBy($user);
         }
 
-        // Public posts visible to everyone
         if ($this->visibility === 'public') {
             return true;
         }
 
-        // Club-only posts require membership
         if ($this->visibility === 'club_only') {
-            return $user && (
-                    $user->club_id === $this->club_id ||
-                    $user->hasRole('admin')
-                    );
+            if (!$user)
+                return false;
+            if ($user->hasRole('admin'))
+                return true;
+
+            // user clubs (club_user) ∩ post clubs (club_posts)
+            return $this->clubs()
+                            ->whereIn('clubs.id', $user->clubs()->select('clubs.id'))
+                            ->exists();
         }
 
         return false;

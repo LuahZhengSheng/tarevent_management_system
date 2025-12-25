@@ -8,16 +8,15 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/css/forums/forum.css',
-                'resources/css/forum-create.css',
-                'resources/css/my-posts.css',
-                'resources/css/media-lightbox.css',
+                'resources/css/forums/forum-create.css',
+                'resources/css/forums/my-posts.css',
+                'resources/css/forums/media-lightbox.css',
                 'resources/js/app.js',
                 'resources/js/forum.js',
                 'resources/js/forum-create.js',
-                'resources/css/my-posts.js',
+                'resources/js/my-posts.js',
                 'resources/js/media-lightbox.js',
-                'resources/css/events/payment-history.css',
-                'resources/js/events/payment-history.js'
+                'resources/js/post-feed.js'
             ],
             refresh: true,
         }),

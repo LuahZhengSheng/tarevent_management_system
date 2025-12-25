@@ -11,16 +11,17 @@ class Club extends Model {
         'name',
         'slug',
         'description',
+        'category',
         'email',
         'phone',
         'logo',
+        'background_image',
         'status',
         'created_by',
         'approved_at',
         'approved_by',
         'club_user_id',
     ];
-
     protected $casts = [
         'approved_at' => 'datetime',
     ];
@@ -58,11 +59,18 @@ class Club extends Model {
                     ->withTimestamps();
     }
 
+    public function announcements() {
+        return $this->hasMany(ClubAnnouncement::class);
+    }
+
+    public function publishedAnnouncements() {
+        return $this->hasMany(ClubAnnouncement::class)->published();
+    }
+
     /**
      * Boot the model.
      */
-    protected static function boot()
-    {
+    protected static function boot() {
         parent::boot();
 
         static::creating(function ($club) {
@@ -71,5 +79,11 @@ class Club extends Model {
                 $club->slug = Str::slug($club->name);
             }
         });
+    }
+
+    public function posts() {
+        return $this->belongsToMany(Post::class, 'club_posts')
+                        ->withPivot(['pinned', 'status'])
+                        ->withTimestamps();
     }
 }

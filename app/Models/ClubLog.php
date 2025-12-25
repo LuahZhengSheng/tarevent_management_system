@@ -14,6 +14,7 @@ class ClubLog extends Model
         'actor_id',
         'target_user_id',
         'metadata',
+        'request_id',
     ];
 
     protected $casts = [

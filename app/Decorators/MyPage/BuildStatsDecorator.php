@@ -2,24 +2,39 @@
 
 namespace App\Decorators\MyPage;
 
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\Post;
+use App\Models\PostLike;
+use App\Models\PostSave;
+use App\Models\PostComment;
 
 class BuildStatsDecorator extends BaseMyPageDecorator
 {
-    public function build(Request $request, User $user): array
+    public function build(\Illuminate\Http\Request $request, \App\Models\User $user): array
     {
-        $data = parent::build($request, $user);
+        $data = $this->decorator
+            ? $this->decorator->build($request, $user)
+            : [];
 
-        $posts = Post::query()->where('user_id', $user->id);
+        $postsQuery = Post::where('user_id', $user->id);
 
-        $data['stats'] = [
-            'total_posts' => (clone $posts)->count(),
-            'published_posts' => (clone $posts)->published()->count(),
-            'draft_posts' => (clone $posts)->draft()->count(),
-            'total_views' => (clone $posts)->sum('views_count'),
-        ];
+        $stats = [];
+
+        $stats['total_posts']  = (clone $postsQuery)->where('status', 'published')->count();
+        $stats['total_drafts'] = (clone $postsQuery)->where('status', 'draft')->count();
+
+        $stats['likes_received'] = PostLike::whereHas('post', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })->count();
+
+        $stats['saves_received'] = PostSave::whereHas('post', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })->count();
+
+        $stats['likes_given'] = PostLike::where('user_id', $user->id)->count();
+        $stats['saves_given'] = PostSave::where('user_id', $user->id)->count();
+        $stats['comments']    = PostComment::where('user_id', $user->id)->count();
+
+        $data['stats'] = $stats;
 
         return $data;
     }

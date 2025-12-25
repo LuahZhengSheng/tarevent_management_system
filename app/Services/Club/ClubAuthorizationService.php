@@ -77,6 +77,36 @@ class ClubAuthorizationService
             throw new \Exception("Approver must be provided.");
         }
     }
+
+    /**
+     * Ensure user can manage announcements for a club.
+     * 
+     * @param User $user The user to check
+     * @param Club $club The club
+     * @throws \Exception If user cannot manage announcements
+     */
+    public function ensureCanManageAnnouncements(User $user, Club $club): void
+    {
+        // Admin can manage all announcements
+        if ($user->role === 'admin') {
+            return;
+        }
+
+        // Club user can manage their own club's announcements
+        if ($user->role === 'club' && $user->id === $club->club_user_id) {
+            return;
+        }
+
+        // Club members with appropriate role can manage announcements
+        if ($user->role === 'student') {
+            $membership = $club->members()->where('user_id', $user->id)->first();
+            if ($membership && in_array($membership->pivot->role, ['president', 'vice_president', 'secretary', 'admin'])) {
+                return;
+            }
+        }
+
+        throw new \Exception("You do not have permission to manage announcements for this club.");
+    }
 }
 
 
