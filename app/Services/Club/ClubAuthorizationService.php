@@ -2,6 +2,8 @@
 
 namespace App\Services\Club;
 
+use App\Models\Club;
+use App\Models\ClubMemberRole;
 use App\Models\User;
 
 /**
@@ -100,7 +102,7 @@ class ClubAuthorizationService
         // Club members with appropriate role can manage announcements
         if ($user->role === 'student') {
             $membership = $club->members()->where('user_id', $user->id)->first();
-            if ($membership && in_array($membership->pivot->role, ['president', 'vice_president', 'secretary', 'admin'])) {
+            if ($membership && ClubMemberRole::canManage($membership->pivot->role)) {
                 return;
             }
         }

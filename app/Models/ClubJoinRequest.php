@@ -20,6 +20,22 @@ class ClubJoinRequest extends Model
     ];
 
     /**
+     * Get the user who made the join request.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the club for this join request.
+     */
+    public function club()
+    {
+        return $this->belongsTo(Club::class);
+    }
+
+    /**
      * Check if the request is rejected.
      * 
      * @return bool
