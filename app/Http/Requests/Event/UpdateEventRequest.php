@@ -5,8 +5,10 @@ namespace App\Http\Requests\Event;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Enum;
 use App\Models\Event;
 use App\Support\PhoneHelper;
+use App\Enums\EventCategory;
 
 class UpdateEventRequest extends FormRequest {
 
@@ -93,7 +95,7 @@ class UpdateEventRequest extends FormRequest {
         return [
             'title' => 'required|string|min:5|max:255',
             'description' => 'required|string|min:20|max:5000',
-            'category' => ['required', 'string', Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology'])],
+            'category' => ['required', new Enum(EventCategory::class)],
             'is_public' => 'required|boolean',
             'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',
@@ -135,7 +137,7 @@ class UpdateEventRequest extends FormRequest {
             // Display fields - can modify
             'title' => 'required|string|min:5|max:255',
             'description' => 'required|string|min:20|max:5000',
-            'category' => ['required', 'string', Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology'])],
+            'category' => ['required', new Enum(EventCategory::class)],
             'venue' => 'required|string|max:255',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'tags' => 'nullable|array|max:10',
@@ -187,7 +189,7 @@ class UpdateEventRequest extends FormRequest {
             // Display fields only
             'title' => 'required|string|min:5|max:255',
             'description' => 'required|string|min:20|max:5000',
-            'category' => ['required', 'string', Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology'])],
+            'category' => ['required', new Enum(EventCategory::class)],
             'venue' => 'required|string|max:255', // Small changes only
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'tags' => 'nullable|array|max:10',
@@ -247,7 +249,7 @@ class UpdateEventRequest extends FormRequest {
             'title' => 'required|string|min:5|max:255',
             'description' => 'required|string|min:20|max:5000',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'category' => ['required', 'string', Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology'])],
+            'category' => ['required', new Enum(EventCategory::class)],
             'tags' => 'nullable|array|max:10',
             'tags.*' => 'string|max:50',
                 // All historical data locked

@@ -29,7 +29,7 @@
                             </div>
                             <div class="stat-divider"></div>
                             <div class="stat-item">
-                                <div class="stat-value">{{ $categories->count() }}</div>
+                                <div class="stat-value">{{ count($categories) }}</div>
                                 <div class="stat-label">Categories</div>
                             </div>
                             <div class="stat-divider"></div>
@@ -187,7 +187,7 @@
                         @else
                         <div class="image-placeholder">
                             <i class="bi bi-calendar-event"></i>
-                            <span>{{ $event->category }}</span>
+                            <span>{{ $event->category instanceof \App\Enums\EventCategory ? $event->category->value : $event->category }}</span>
                         </div>
                         @endif
 

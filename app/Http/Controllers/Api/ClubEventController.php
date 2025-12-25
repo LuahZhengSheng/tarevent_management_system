@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\EventRegistration;
+use App\Models\Event;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str; // Required for UUID validation
 
-class UserEventController extends Controller
+class ClubEventController extends Controller
 {
     public function index(Request $request)
     {
@@ -27,13 +27,13 @@ class UserEventController extends Controller
             ], 400);
         }
 
-        // Determine the primary identifier for logging (prefer requestID if available)
-        $logIdentifier = $request->input('requestID') ?? ('TIME-' . $request->input('timestamp'));
+        // Determine the primary identifier for logging
+        // Use requestID if available, otherwise fallback to prefixed timestamp
+        $requestId = $request->input('requestID') ?? ('TIME-' . $request->input('timestamp'));
 
-        // 1.2 Validation (Defensive Programming)use
+        // 1.2 Check Format (Defensive Programming)
         
         // A. Validate requestID (if present)
-        // Ensures the frontend is sending a valid UUID v4 string
         if ($request->has('requestID') && !Str::isUuid($request->input('requestID'))) {
             return response()->json([
                 'status'    => 'E', // Error: Invalid format
@@ -43,12 +43,9 @@ class UserEventController extends Controller
         }
 
         // B. Validate timestamp (if present)
-        // Ensures the format is strictly YYYY-MM-DD HH:mm:ss
         if ($request->has('timestamp')) {
-            // Using regex for strict format validation
-            $isValidTimestamp = preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $request->input('timestamp'));
-            
-            if (!$isValidTimestamp) {
+            // Strict Regex for YYYY-MM-DD HH:mm:ss
+            if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $request->input('timestamp'))) {
                 return response()->json([
                     'status'    => 'E', // Error: Invalid format
                     'message'   => 'Invalid Format: timestamp must be YYYY-MM-DD HH:mm:ss',
@@ -60,20 +57,19 @@ class UserEventController extends Controller
         // ==========================================
         // 2. Auth Context (Guaranteed by Middleware)
         // ==========================================
-        // Auth::check() is not needed because the middleware already indicates that the user is logged in
         $user = Auth::user(); 
 
         // 3. Permission Check
-        if ($user->role !== 'student') { 
+        if ($user->role !== 'club') { 
             // Log the permission denial
-            Log::warning("API Permission Denied: User {$user->id} is not a student.", [
-                'request_identifier' => $logIdentifier,
-                'user_id' => $user->id
+            Log::warning("API Permission Denied: User {$user->id} is not a club.", [
+                'request_id' => $requestId, // Traceability key
+                'user_id'    => $user->id
             ]);
 
              return response()->json([
                 'status'    => 'F', // Fail: Permission denied
-                'message'   => 'Forbidden: Only students allowed',
+                'message'   => 'Forbidden: Only clubs allowed',
                 'timeStamp' => now()->toDateTimeString(),
             ], 403);
         }
@@ -81,11 +77,10 @@ class UserEventController extends Controller
         // ==========================================
         // 4. Log the Valid Request (Traceability)
         // ==========================================
-        // This links the Request Identifier to the User ID in your system logs
-        Log::info("API Request Processing: Fetching joined events.", [
-            'request_identifier' => $logIdentifier,
+        Log::info("API Request Processing: Fetching club dashboard stats.", [
+            'request_id' => $requestId,
             'user_id'    => $user->id,
-            'input_timestamp'  => $request->input('timestamp'),
+            'timestamp'  => $request->input('timestamp'),
             'ip'         => $request->ip()
         ]);
 
@@ -93,28 +88,30 @@ class UserEventController extends Controller
         // 5. Business Logic
         // ==========================================
         try {
-            $registrations = EventRegistration::with('event')
-                ->where('user_id', $user->id)
-                ->where('status', 'confirmed')
-                ->whereHas('event')
-                ->latest()
-                ->get();
+            // Initialize default stats to ensure structure consistency
+            $defaultStats = [
+                'draft'     => 0,
+                'published' => 0,
+                'cancelled' => 0,
+                'completed' => 0,
+            ];
 
-            $formattedEvents = $registrations->map(function ($reg) {
-                return [
-                    'event_id'      => $reg->event->id,
-                    'event_name'    => $reg->event->title, 
-                    'register_date' => $reg->created_at->toDateTimeString(),
-                    'status'        => $reg->status,
-                ];
-            })
-            ->unique('event_id')
-            ->values();
+            // Optimized Query: Group By for efficient counting
+            $dbStats = Event::where('organizer_id', $user->id) // 🔒 Security: Only own events
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status') // Returns array like ['published' => 5]
+                ->toArray();
+
+            // Merge DB results into default stats (DB overwrites defaults)
+            $finalStats = array_merge($defaultStats, $dbStats);
+            $totalEvents = array_sum($finalStats);
 
             // Log success
-            Log::info("API Success: Returned {$formattedEvents->count()} events.", [
-                'request_identifier' => $logIdentifier,
-                'user_id' => $user->id
+            Log::info("API Success: Returned stats for club {$user->id}.", [
+                'request_id' => $requestId,
+                'user_id'    => $user->id,
+                'total_events' => $totalEvents
             ]);
 
             // ==========================================
@@ -125,8 +122,8 @@ class UserEventController extends Controller
                 'timeStamp' => now()->toDateTimeString(), 
                 'message'   => 'Data retrieved successfully',
                 'data'      => [
-                    'totalEvents' => $formattedEvents->count(), 
-                    'events'      => $formattedEvents,
+                    'counts' => $finalStats, // { "draft": 0, "published": 5, ... }
+                    'total'  => $totalEvents
                 ],
             ], 200);
 
@@ -136,9 +133,9 @@ class UserEventController extends Controller
             // ==========================================
             // Log the actual system error linked to the Request ID
             Log::error('API Internal Error: ' . $e->getMessage(), [
-                'request_identifier' => $logIdentifier,
-                'user_id' => $user->id,
-                'trace' => $e->getTraceAsString()
+                'request_id' => $requestId,
+                'user_id'    => $user->id,
+                'trace'      => $e->getTraceAsString()
             ]);
             
             return response()->json([

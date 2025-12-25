@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ClubApiController;
 use App\Http\Controllers\Api\ClubUserController;
 use App\Http\Controllers\Api\UserEventController;
+use App\Http\Controllers\Api\ClubEventController;
 use App\Http\Controllers\Api\ClubPostFeedController;
 use App\Http\Controllers\Api\ForumUserStatsController;
 use App\Http\Controllers\Api\AuthTokenController;
@@ -157,4 +158,5 @@ Route::prefix('v1')->group(function () {
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user/joined-events', [UserEventController::class, 'index']);
+    Route::get('/club/event-counts', [ClubEventController::class, 'index']);
 });

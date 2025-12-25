@@ -389,15 +389,12 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::get('/registrations/{registration}/receipt', [PaymentController::class, 'receipt'])
             ->name('registrations.receipt');
             
-    // Download Payment Receipt (PDF) -> Pointing to PaymentController
-//    Route::get('/payments/{payment}/download-receipt', [PaymentController::class, 'downloadPaymentReceipt'])
-//            ->name('payments.download-receipt');
-    
-    Route::get('/payments/{payment}/download-receipt', [RefundController::class, 'downloadReceipt'])
+    // Download Payment Receipt (PDF) 
+    Route::get('/payments/{payment}/download-receipt', [PaymentController::class, 'downloadReceipt'])
             ->name('payments.download-receipt');
 
     // Download Refund Receipt (PDF) -> Pointing to PaymentController
-    Route::get('/payments/{payment}/download-refund-receipt', [PaymentController::class, 'downloadRefundReceipt'])
+    Route::get('/payments/{payment}/download-refund-receipt', [RefundController::class, 'downloadRefundReceipt'])
             ->name('payments.download-refund-receipt');
 
     // Request Refund

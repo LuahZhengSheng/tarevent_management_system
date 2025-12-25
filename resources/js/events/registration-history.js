@@ -1,5 +1,5 @@
 // Registration History Page JavaScript
-$(function() {
+$(function () {
     const eventId = window.RegistrationHistoryConfig.eventId;
     const fetchUrl = window.RegistrationHistoryConfig.fetchUrl;
     const csrfToken = window.RegistrationHistoryConfig.csrfToken;
@@ -20,7 +20,7 @@ $(function() {
             url: fetchUrl,
             method: 'GET',
             data: filters,
-            success: function(response) {
+            success: function (response) {
                 $('#loadingState').addClass('d-none');
 
                 if (response.success && response.registrations.length > 0) {
@@ -31,7 +31,7 @@ $(function() {
                     $('#emptyState').removeClass('d-none');
                 }
             },
-            error: function(xhr) {
+            error: function (xhr) {
                 $('#loadingState').addClass('d-none');
                 showToast('error', 'Failed to load registration history.');
             }
@@ -46,7 +46,7 @@ $(function() {
         registrations.forEach(reg => {
             const statusClass = `status-${reg.status.replace('_', '')}`;
             const statusLabel = reg.status.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            
+
             const item = $(`
                 <div class="registration-item" data-id="${reg.id}">
                     <div class="registration-header">
@@ -76,7 +76,7 @@ $(function() {
                 </div>
             `);
 
-            item.on('click', function() {
+            item.on('click', function () {
                 showRegistrationDetail(reg);
             });
 
@@ -88,14 +88,35 @@ $(function() {
     function showRegistrationDetail(reg) {
         const detailContent = $('#detailContent');
         detailContent.html(generateDetailHTML(reg));
-        
+
+        // ===============================================
+        // 1. Payment Receipt Button Logic
+        // ===============================================
+        const btnPayment = $('#downloadReceiptBtn');
+
         // Show/hide download button
-        if (reg.payment_status === 'success' && reg.status === 'confirmed') {
-            $('#downloadReceiptBtn').removeClass('d-none').off('click').on('click', function() {
-                window.location.href = `/registrations/${reg.id}/receipt/download`;
+        if (reg.payment && reg.payment.status === 'success') {
+            btnPayment.removeClass('d-none').off('click').on('click', function () {
+                window.location.href = `/payments/${reg.payment.id}/download-receipt`;
             });
         } else {
-            $('#downloadReceiptBtn').addClass('d-none');
+            btnPayment.addClass('d-none');
+        }
+
+        // ===============================================
+        // 2. Refund Receipt Button Logic
+        // ===============================================
+        const btnRefund = $('#downloadRefundReceiptBtn');
+
+        // 只有当退款状态是 COMPLETED 时才显示
+        if (reg.payment && reg.payment.refund_status === 'completed') {
+            btnRefund.removeClass('d-none')
+                    .off('click').on('click', function () {
+                // 对应后端路由: /payments/{payment}/download-refund-receipt
+                window.location.href = `/payments/${reg.payment.id}/download-refund-receipt`;
+            });
+        } else {
+            btnRefund.addClass('d-none');
         }
 
         $('#detailModal').modal('show');
@@ -190,9 +211,9 @@ $(function() {
 
         // Refund section
         if (reg.refund_status && reg.refund_status !== null) {
-            const refundClass = reg.refund_status === 'completed' ? 'refund-completed' : 
-                              reg.refund_status === 'rejected' ? 'refund-rejected' : 'refund-pending';
-            
+            const refundClass = reg.refund_status === 'completed' ? 'refund-completed' :
+                    reg.refund_status === 'rejected' ? 'refund-rejected' : 'refund-pending';
+
             html += `
                 <div class="detail-section">
                     <div class="refund-status-section ${refundClass}">
@@ -267,7 +288,7 @@ $(function() {
     }
 
     function formatStatus(status) {
-        return status.replace('_', ' ').split(' ').map(w => 
+        return status.replace('_', ' ').split(' ').map(w =>
             w.charAt(0).toUpperCase() + w.slice(1)
         ).join(' ');
     }
@@ -289,12 +310,30 @@ $(function() {
     }
 
     // Event listeners
-    $('#applyFiltersBtn').on('click', fetchRegistrations);
-    
-    $('#searchInput').on('keyup', function(e) {
-        if (e.key === 'Enter') {
+    // 定义一个定时器变量
+    let debounceTimer;
+
+    // 监听 'input' 事件 
+    $('#searchInput').on('input', function () {
+        // 每次输入都先清除上一次的定时器
+        clearTimeout(debounceTimer);
+
+        // 重新设置一个 500ms (0.5秒) 的定时器
+        debounceTimer = setTimeout(function () {
             fetchRegistrations();
-        }
+        }, 500);
+    });
+
+    // 让下拉菜单 (Dropdown) 改变时也自动刷新，不用点 Apply
+    $('#statusFilter, #sortFilter').on('change', function () {
+        fetchRegistrations();
+    });
+    
+//    $('#applyFiltersBtn').on('click', fetchRegistrations);
+    
+    $('#applyFiltersBtn').on('click', function() {
+        clearTimeout(debounceTimer);
+        fetchRegistrations();
     });
 
     // Initial load
