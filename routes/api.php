@@ -38,10 +38,31 @@ Route::middleware(['web', 'auth'])->group(function () {
             // Request to join a club
             Route::post('/join', [ClubApiController::class, 'requestJoin']);
 
-            // Approve/Reject join requests
+            // Join Request routes
+            Route::prefix('join-requests')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getJoinRequests']);
+                Route::post('/{user}/approve', [ClubApiController::class, 'approveJoin']);
+                Route::post('/{user}/reject', [ClubApiController::class, 'rejectJoin']);
+            });
+
+            // Legacy routes (for backward compatibility)
             Route::prefix('join/{user}')->group(function () {
                 Route::post('/approve', [ClubApiController::class, 'approveJoin']);
                 Route::post('/reject', [ClubApiController::class, 'rejectJoin']);
+            });
+
+            // Member Management routes
+            Route::prefix('members')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getMembers']);
+                Route::put('/{user}/role', [ClubApiController::class, 'updateMemberRole']);
+                Route::delete('/{user}', [ClubApiController::class, 'removeMember']);
+            });
+
+            // Blacklist routes
+            Route::prefix('blacklist')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getBlacklist']);
+                Route::post('/{user}', [ClubApiController::class, 'addToBlacklist']);
+                Route::delete('/{user}', [ClubApiController::class, 'removeFromBlacklist']);
             });
 
             // Announcement routes

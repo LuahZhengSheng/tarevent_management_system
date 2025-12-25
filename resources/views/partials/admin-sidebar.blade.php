@@ -94,10 +94,17 @@
                     <div class="nav-section-title">Club Management</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.clubs.*') ? 'active' : '' }}" 
-                       href="{{ route('home') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.clubs.index') ? 'active' : '' }}" 
+                       href="{{ route('admin.clubs.index') }}">
                         <i class="bi bi-building"></i>
                         <span>All Clubs</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.clubs.create') ? 'active' : '' }}" 
+                       href="{{ route('admin.clubs.create') }}">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Create Club</span>
                     </a>
                 </li>
 
@@ -193,7 +200,9 @@
 
 <style>
 .admin-sidebar {
-    width: 280px;
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
     min-height: calc(100vh - 70px);
     background-color: var(--bg-primary);
     border-right: 1px solid var(--border-color);

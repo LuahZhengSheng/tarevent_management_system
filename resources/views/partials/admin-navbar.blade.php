@@ -45,7 +45,7 @@
                 <!-- Clubs Management -->
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.clubs.*') ? 'active' : '' }}" 
-                       href="{{ route('home') }}">
+                       href="{{ route('admin.clubs.index') }}">
                         <i class="bi bi-building me-1"></i>Clubs
                     </a>
                 </li>
@@ -88,7 +88,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('home') }}">
+                            <a class="dropdown-item" href="{{ route('admin.clubs.create') }}">
                                 <i class="bi bi-building-add me-2"></i>Create Club
                             </a>
                         </li>
