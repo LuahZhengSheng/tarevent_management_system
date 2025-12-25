@@ -36,12 +36,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Redirect based on user role
+        // Email verification check is already done in LoginRequest::authenticate()
         $user = Auth::user();
-        
-        // Check email verification for students and clubs
-        if (in_array($user->role, ['student', 'club']) && !$user->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice');
-        }
         
         if ($user->isAdmin() || $user->isSuperAdmin()) {
             return redirect()->intended(route('admin.dashboard', absolute: false));
