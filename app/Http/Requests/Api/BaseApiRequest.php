@@ -16,18 +16,18 @@ abstract class BaseApiRequest extends FormRequest
     /**
      * Prepare the data for validation.
      * Automatically generate requestID if not provided and timestamp is also missing.
+     * 
+     * According to IFA standard: All requests (including GET) must include timestamp or requestID.
      */
     protected function prepareForValidation(): void
     {
-        // Only for POST/PUT/PATCH requests
-        if (in_array($this->method(), ['POST', 'PUT', 'PATCH'])) {
-            // If neither timestamp nor requestID is provided, generate a random requestID
-            if (!$this->filled('timestamp') && !$this->filled('requestID')) {
-                // Generate a unique requestID using UUID
-                $this->merge([
-                    'requestID' => (string) Str::uuid(),
-                ]);
-            }
+        // For all HTTP methods (including GET)
+        // If neither timestamp nor requestID is provided, generate a random requestID
+        if (!$this->filled('timestamp') && !$this->filled('requestID')) {
+            // Generate a unique requestID using UUID
+            $this->merge([
+                'requestID' => (string) Str::uuid(),
+            ]);
         }
     }
     /**
@@ -47,13 +47,15 @@ abstract class BaseApiRequest extends FormRequest
     /**
      * Configure the validator instance.
      * 
-     * Note: Validation is no longer needed here because prepareForValidation()
-     * automatically generates a requestID if neither timestamp nor requestID is provided.
+     * Ensure at least one of timestamp or requestID is provided.
      */
     public function withValidator($validator): void
     {
-        // Validation is handled in prepareForValidation() by auto-generating requestID
-        // This method is kept for potential future custom validations
+        $validator->after(function ($validator) {
+            // Check if at least one of timestamp or requestID is provided
+            // (This is handled by prepareForValidation which auto-generates requestID if missing)
+            // But we can add additional validation here if needed
+        });
     }
 
     /**

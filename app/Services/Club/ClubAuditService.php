@@ -23,9 +23,10 @@ class ClubAuditService
      * @param User $actor The user who performed the action
      * @param User|null $target Optional target user
      * @param array $meta Optional metadata
+     * @param string|null $requestId Optional request ID for tracking
      * @return void
      */
-    public function log(Club $club, string $action, User $actor, ?User $target = null, array $meta = []): void
+    public function log(Club $club, string $action, User $actor, ?User $target = null, array $meta = [], ?string $requestId = null): void
     {
         ClubLog::create([
             'club_id' => $club->id,
@@ -33,6 +34,7 @@ class ClubAuditService
             'actor_id' => $actor->id,
             'target_user_id' => $target?->id,
             'metadata' => $meta,
+            'request_id' => $requestId,
         ]);
     }
 }

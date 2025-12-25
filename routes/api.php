@@ -39,6 +39,19 @@ Route::middleware(['web', 'auth'])->group(function () {
                 Route::post('/approve', [ClubApiController::class, 'approveJoin']);
                 Route::post('/reject', [ClubApiController::class, 'rejectJoin']);
             });
+
+            // Announcement routes
+            Route::prefix('announcements')->group(function () {
+                Route::get('/', [ClubApiController::class, 'getAnnouncements']);
+                Route::post('/', [ClubApiController::class, 'createAnnouncement']);
+                Route::prefix('{announcement}')->group(function () {
+                    Route::get('/', [ClubApiController::class, 'getAnnouncement']);
+                    Route::put('/', [ClubApiController::class, 'updateAnnouncement']);
+                    Route::delete('/', [ClubApiController::class, 'deleteAnnouncement']);
+                    Route::post('/publish', [ClubApiController::class, 'publishAnnouncement']);
+                    Route::post('/unpublish', [ClubApiController::class, 'unpublishAnnouncement']);
+                });
+            });
         });
     });
 

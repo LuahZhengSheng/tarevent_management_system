@@ -46,18 +46,34 @@
 
                 {{-- Club List View (default) --}}
                 <div id="clubListView">
-                    {{-- Search Box --}}
+                    {{-- Search and Filter Box --}}
                     <div class="mb-4">
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="bi bi-search"></i>
-                            </span>
-                            <input 
-                                type="text" 
-                                class="form-control select-club-search-input" 
-                                id="clubSearchInput"
-                                placeholder="Search clubs by name or description..."
-                                autocomplete="off">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input 
+                                        type="text" 
+                                        class="form-control select-club-search-input" 
+                                        id="clubSearchInput"
+                                        placeholder="Search clubs by name or description..."
+                                        autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select select-club-search-input" id="clubCategoryFilter">
+                                    <option value="">All Categories</option>
+                                    <option value="academic">Academic</option>
+                                    <option value="sports">Sports</option>
+                                    <option value="cultural">Cultural</option>
+                                    <option value="social">Social</option>
+                                    <option value="volunteer">Volunteer</option>
+                                    <option value="professional">Professional</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -267,7 +283,6 @@
     width: 60px;
     height: 60px;
     border-radius: 12px;
-    object-fit: cover;
     flex-shrink: 0;
     background: var(--bg-secondary);
     display: flex;
@@ -275,6 +290,13 @@
     justify-content: center;
     color: var(--text-tertiary);
     font-size: 1.5rem;
+}
+
+.club-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
 }
 
 .club-info {
@@ -644,7 +666,16 @@
         // Search functionality
         if (searchInput) {
             searchInput.addEventListener('input', function() {
-                filterClubs(this.value.trim());
+                const categoryFilter = document.getElementById('clubCategoryFilter')?.value || null;
+                filterClubs(this.value.trim(), categoryFilter);
+            });
+        }
+        
+        const categoryFilter = document.getElementById('clubCategoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', function() {
+                const searchTerm = searchInput?.value.trim() || '';
+                filterClubs(searchTerm, this.value || null);
             });
         }
 
@@ -677,12 +708,28 @@
             });
         }
 
+        // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
+        function generateTimestamp() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+
         function loadClubs() {
             showLoading();
             hideListError();
             hideEmpty();
 
-            fetch('/api/clubs/available', {
+            // Add timestamp for IFA standard
+            const timestamp = generateTimestamp();
+            const url = `/api/clubs/available?timestamp=${encodeURIComponent(timestamp)}`;
+
+            fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -714,16 +761,24 @@
             });
         }
 
-        function filterClubs(searchTerm) {
-            if (!searchTerm) {
-                filteredClubs = clubsData;
-            } else {
-                const term = searchTerm.toLowerCase();
-                filteredClubs = clubsData.filter(club => {
-                    return club.name.toLowerCase().includes(term) ||
-                           (club.description && club.description.toLowerCase().includes(term));
-                });
-            }
+        function filterClubs(searchTerm, categoryFilter = null) {
+            filteredClubs = clubsData.filter(club => {
+                // Search filter
+                let matchesSearch = true;
+                if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    matchesSearch = club.name.toLowerCase().includes(term) ||
+                                   (club.description && club.description.toLowerCase().includes(term));
+                }
+                
+                // Category filter
+                let matchesCategory = true;
+                if (categoryFilter) {
+                    matchesCategory = club.category === categoryFilter;
+                }
+                
+                return matchesSearch && matchesCategory;
+            });
             renderClubs();
         }
 
@@ -779,17 +834,47 @@
                         break;
                 }
 
-                const logoHtml = club.logo 
-                    ? `<img src="${club.logo}" alt="${club.name}" class="club-logo">`
+                // Handle logo URL - ensure it's a valid URL
+                let logoUrl = null;
+                if (club.logo) {
+                    // If logo starts with http/https, use as is
+                    // If logo starts with /storage/, use as is
+                    // Otherwise, prepend /storage/
+                    if (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/')) {
+                        logoUrl = club.logo;
+                    } else {
+                        logoUrl = `/storage/${club.logo}`;
+                    }
+                }
+                
+                const logoHtml = logoUrl 
+                    ? `<img src="${logoUrl}" alt="${club.name}" class="club-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
                     : `<div class="club-logo"><i class="bi bi-people"></i></div>`;
 
+                // Category badge
+                const categoryLabels = {
+                    'academic': 'Academic',
+                    'sports': 'Sports',
+                    'cultural': 'Cultural',
+                    'social': 'Social',
+                    'volunteer': 'Volunteer',
+                    'professional': 'Professional',
+                    'other': 'Other'
+                };
+                const categoryBadge = club.category 
+                    ? `<span class="badge bg-info-subtle text-info me-2">${categoryLabels[club.category] || club.category}</span>`
+                    : '';
+                
                 return `
                     <div class="club-card ${isDisabled ? 'club-card-disabled' : ''}" 
                          data-club-id="${club.id}"
                          ${!isDisabled ? 'onclick="window._selectClubModalData.selectClub(' + club.id + ')"' : ''}>
                         ${logoHtml}
                         <div class="club-info">
-                            <div class="club-name">${escapeHtml(club.name)}</div>
+                            <div class="club-name">
+                                ${escapeHtml(club.name)}
+                                ${categoryBadge}
+                            </div>
                             <p class="club-description">${escapeHtml(club.description || 'No description available.')}</p>
                             <span class="club-status-badge ${statusClass}">
                                 ${statusText}${cooldownText}
@@ -834,8 +919,21 @@
 
             // Render selected club info
             if (selectedClubInfo && selectedClubData) {
-                const logoHtml = selectedClubData.logo 
-                    ? `<img src="${selectedClubData.logo}" alt="${selectedClubData.name}" class="club-logo">`
+                // Handle logo URL - ensure it's a valid URL
+                let logoUrl = null;
+                if (selectedClubData.logo) {
+                    // If logo starts with http/https, use as is
+                    // If logo starts with /storage/, use as is
+                    // Otherwise, prepend /storage/
+                    if (selectedClubData.logo.startsWith('http://') || selectedClubData.logo.startsWith('https://') || selectedClubData.logo.startsWith('/storage/')) {
+                        logoUrl = selectedClubData.logo;
+                    } else {
+                        logoUrl = `/storage/${selectedClubData.logo}`;
+                    }
+                }
+                
+                const logoHtml = logoUrl 
+                    ? `<img src="${logoUrl}" alt="${selectedClubData.name}" class="club-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
                     : `<div class="club-logo"><i class="bi bi-people"></i></div>`;
 
                 selectedClubInfo.innerHTML = `
@@ -893,6 +991,9 @@
             setLoadingState(true);
             hideFormError();
 
+            // Add timestamp for IFA standard
+            const timestamp = generateTimestamp();
+            
             fetch(`/api/clubs/${selectedClubId}/join`, {
                 method: 'POST',
                 headers: {
@@ -902,6 +1003,7 @@
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({
+                    timestamp: timestamp,
                     reason: reason,
                     agree: agree
                 })
@@ -1040,6 +1142,8 @@
             showListView();
             if (form) form.reset();
             if (searchInput) searchInput.value = '';
+            const categoryFilter = document.getElementById('clubCategoryFilter');
+            if (categoryFilter) categoryFilter.value = '';
             hideFormError();
             hideListError();
             setLoadingState(false);
