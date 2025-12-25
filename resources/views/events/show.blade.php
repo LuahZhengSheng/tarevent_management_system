@@ -940,10 +940,12 @@
                             </div>
                         </div>
                         @if($event->organizer)
-                        <a href="{{ route('home', $event->organizer_id) }}" class="btn btn-outline-primary w-100 mt-3">
+                        <button type="button" 
+                            class="btn btn-outline-primary w-100 mt-3" 
+                            onclick="window.openClubProfileModal({{ $event->organizer_id }})">
                             <i class="bi bi-building me-2"></i>
-                            View Profile
-                        </a>
+                                View Profile
+                        </button>
                         @endif
                     </div>
                 </div>
@@ -1391,5 +1393,6 @@
 </script>
 @endpush
 
-@include('clubs.join_modal')
+@include('clubs.join-modal')
+@include('clubs.club-profile-modal')
 @endsection
