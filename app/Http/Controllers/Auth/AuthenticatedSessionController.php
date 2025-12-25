@@ -43,7 +43,12 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('admin.dashboard', absolute: false));
         }
 
-        // For students and club organizers, redirect to home (events)
+        // For club role, redirect to club dashboard
+        if ($user->isClub()) {
+            return redirect()->intended(route('club.dashboard', absolute: false));
+        }
+
+        // For students, redirect to home (events)
         return redirect()->intended(route('home', absolute: false));
     }
 
@@ -61,3 +66,4 @@ class AuthenticatedSessionController extends Controller
         return redirect('/');
     }
 }
+
