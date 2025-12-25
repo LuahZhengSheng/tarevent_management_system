@@ -219,6 +219,11 @@
                             <i class="bi bi-check-circle"></i>
                             <span>Open</span>
                         </div>
+                        @elseif($event->registration_start_time > now())
+                        <div class="status-badge status-upcoming" style="background-color: #003366; color: white; border-color: #0dcaf0;">
+                            <i class="bi bi-hourglass-split"></i>
+                            <span>Upcoming</span>
+                        </div>
                         @else
                         <div class="status-badge status-closed">
                             <i class="bi bi-clock"></i>

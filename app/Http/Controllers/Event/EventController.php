@@ -57,11 +57,6 @@ class EventController extends Controller {
         $events = $query->orderBy('start_time')
                 ->paginate(12);
 
-//        $categories = Event::published()
-//                ->distinct()
-//                ->pluck('category')
-//                ->filter();
-
         $categories = EventCategory::values();
 
         return view('events.index', compact('events', 'categories'));
@@ -408,6 +403,7 @@ class EventController extends Controller {
             'poster_path' => $event->poster_path,
             'is_full' => $event->is_full,
             'is_registration_open' => $event->is_registration_open,
+            'registration_start_time' => $event->registration_start_time->toIso8601String(), 
             'start_time_formatted' => $event->start_time->format('d M Y'),
             'start_time_time' => $event->start_time->format('h:i A'),
             'organizer_name' => $event->organizer->name ?? 'TARCampus',

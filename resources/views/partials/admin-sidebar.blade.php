@@ -211,10 +211,17 @@
 
         <!-- Back to User Site -->
         <div class="sidebar-footer">
-            <a href="{{ route('home') }}" class="btn btn-outline-light w-100" target="_blank">
+            <a href="{{ route('home') }}" class="btn btn-outline-light w-100 mb-2" target="_blank">
                 <i class="bi bi-box-arrow-up-right me-2"></i>
                 View User Site
             </a>
+            <form action="{{ route('logout') }}" method="POST" class="logout-form">
+                @csrf
+                <button type="submit" class="btn btn-logout w-100">
+                    <i class="bi bi-box-arrow-right me-2"></i>
+                    Logout
+                </button>
+            </form>
         </div>
     </div>
 </aside>
@@ -436,6 +443,12 @@
     box-shadow: var(--shadow-md);
 }
 
+/* Logout Form Styling */
+.logout-form {
+    margin: 0;
+    padding: 0;
+}
+
 .nav-section-title {
     font-size: 0.75rem;
     font-weight: 700;
@@ -514,6 +527,28 @@
     background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-hover));
     color: white;
     border-color: var(--admin-primary);
+}
+
+/* Logout Button Styling */
+.btn-logout {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05)) !important;
+    border: 1px solid rgba(220, 53, 69, 0.3) !important;
+    color: #dc3545 !important;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-logout:hover {
+    background: linear-gradient(135deg, #dc3545, #c82333) !important;
+    color: white !important;
+    border-color: #dc3545 !important;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+.btn-logout:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2) !important;
 }
 
 /* Scrollbar Styling */
