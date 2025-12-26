@@ -15,12 +15,15 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Forum\ForumMessageController;
+use App\Http\Controllers\Forum\PostSaveController;
+use App\Http\Controllers\Forum\PostReportController;
 //use App\Http\Controllers\Forum\ForumController;
 //use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Forum\PostController;
 use App\Http\Controllers\Forum\MyPostController;
 use App\Http\Controllers\Forum\CommentController;
 use App\Http\Controllers\Forum\LikeController;
+use App\Http\Controllers\Forum\PostMediaController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Club\ClubController;
@@ -235,7 +238,6 @@ Route::redirect('/', '/events')->name('home');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/fetch', [EventController::class, 'fetchPublic'])->name('events.fetch');
 //Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
-
 // Public Club Browsing (Student Side)
 Route::get('/clubs', [ClubController::class, 'index'])->name('clubs.index');
 Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
@@ -308,7 +310,7 @@ Route::middleware(['auth'])->group(function () {
   |--------------------------------------------------------------------------
  */
 Route::middleware(['auth', 'user'])->group(function () {
-        
+
     // ==========================================
     // 1. Event Registration
     // ==========================================
@@ -325,7 +327,6 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::delete('/registrations/{registration}', [EventRegistrationController::class, 'destroy'])
             ->name('registrations.cancel');
 
-
     // ==========================================
     // 2. My Events & Dashboard
     // ==========================================
@@ -337,32 +338,29 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::get('/my-events/fetch', [EventRegistrationController::class, 'fetchMyEvents'])
             ->name('events.my.fetch');
 
-    
     // ==========================================
     // 3. Registration History
     // ==========================================
     // History Page
     Route::get('/events/{event}/registrations/history', [EventRegistrationController::class, 'history'])
-        ->name('registrations.history');
-        
+            ->name('registrations.history');
+
     // Fetch History Data (AJAX)
     Route::get('/events/{event}/registrations/fetch-history', [EventRegistrationController::class, 'fetchHistory'])
-        ->name('registrations.fetchHistory');
-
+            ->name('registrations.fetchHistory');
 
     // ==========================================
     // 4. Payment System
     // ==========================================
-    
     // --- Checkout / Landing ---
     Route::get('/registrations/{registration}/payment', [PaymentController::class, 'payment'])
             ->name('registrations.payment');
 
     // --- Payment History ---
     Route::get('/payments/history', [PaymentController::class, 'history'])
-        ->name('payments.history');
+            ->name('payments.history');
     Route::get('/payments/fetch-history', [PaymentController::class, 'fetchHistory'])
-        ->name('payments.fetchHistory');
+            ->name('payments.fetchHistory');
 
     // --- Stripe Integration ---
     Route::post('/payments/create-intent', [PaymentController::class, 'createIntent'])
@@ -380,24 +378,19 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::get('/registrations/{registration}/check-status', [PaymentController::class, 'checkStatus'])
             ->name('registrations.check-status');
 
-            
     // ==========================================
     // 5. Receipts & Refunds
     // ==========================================
-    
     // View Receipt (HTML Page)
     Route::get('/registrations/{registration}/receipt', [PaymentController::class, 'receipt'])
             ->name('registrations.receipt');
-            
-    // Download Payment Receipt (PDF) -> Pointing to PaymentController
-//    Route::get('/payments/{payment}/download-receipt', [PaymentController::class, 'downloadPaymentReceipt'])
-//            ->name('payments.download-receipt');
-    
-    Route::get('/payments/{payment}/download-receipt', [RefundController::class, 'downloadReceipt'])
+
+    // Download Payment Receipt (PDF) 
+    Route::get('/payments/{payment}/download-receipt', [PaymentController::class, 'downloadReceipt'])
             ->name('payments.download-receipt');
 
     // Download Refund Receipt (PDF) -> Pointing to PaymentController
-    Route::get('/payments/{payment}/download-refund-receipt', [PaymentController::class, 'downloadRefundReceipt'])
+    Route::get('/payments/{payment}/download-refund-receipt', [RefundController::class, 'downloadRefundReceipt'])
             ->name('payments.download-refund-receipt');
 
     // Request Refund
@@ -416,6 +409,9 @@ Route::prefix('forums')->name('forums.')->group(function () {
     // Public (view only)
     Route::get('/', [PostController::class, 'index'])->name('index');
     Route::get('/posts/{post:slug}', [PostController::class, 'show'])->name('posts.show');
+    Route::get('/posts/{post:slug}/media/{index}', [PostMediaController::class, 'show'])
+            ->middleware('auth')   // 私密媒体强制 auth
+            ->name('posts.media.show');
 
     // Tags: search public, request auth
     Route::prefix('tags')->name('tags.')->group(function () {
@@ -482,6 +478,25 @@ Route::prefix('forums')->name('forums.')->group(function () {
     });
 });
 
+// Admin Forum Moderation (MUST be under /admin)
+Route::middleware(['auth', 'admin'])
+        ->prefix('admin/forums')
+        ->name('admin.forums.')
+        ->group(function () {
+            Route::get('/', [AdminForumController::class, 'index'])->name('index');
+
+            Route::get('/posts', [AdminForumPostController::class, 'index'])->name('posts.index');
+
+            // admin.forums.posts.show
+            Route::get('/posts/{post}', [AdminForumPostController::class, 'show'])->name('posts.show');
+
+            Route::get('/tags', [AdminForumTagController::class, 'index'])->name('tags.index');
+            Route::get('/tags/table', [AdminForumTagController::class, 'table'])->name('tags.table');
+            Route::patch('/tags/{tag}/approve', [AdminForumTagController::class, 'approve'])->name('tags.approve');
+            Route::patch('/tags/{tag}/reject', [AdminForumTagController::class, 'reject'])->name('tags.reject');
+            Route::patch('/tags/{tag}', [AdminForumTagController::class, 'update'])->name('tags.update');
+        });
+
 /*
   |--------------------------------------------------------------------------
   | Club Admin Routes
@@ -528,7 +543,7 @@ Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(fu
 Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(function () {
     // Club Dashboard
     Route::get('/dashboard', [ClubController::class, 'dashboard'])->name('dashboard');
-    
+
     // Club Profile Management
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/edit', [ClubController::class, 'editProfile'])->name('edit');
@@ -602,16 +617,16 @@ Route::middleware(['auth', 'club'])->group(function () {
             '/clubs/{club}/members/{user}',
             [ClubController::class, 'updateMemberRole']
     )->name('clubs.members.updateRole');
-    
+
     // Approve/Reject join requests
     Route::post(
-        '/clubs/{club}/join-requests/{user}/approve',
-        [ClubController::class, 'approveJoin']
+            '/clubs/{club}/join-requests/{user}/approve',
+            [ClubController::class, 'approveJoin']
     )->name('clubs.join.approve');
-    
+
     Route::post(
-        '/clubs/{club}/join-requests/{user}/reject',
-        [ClubController::class, 'rejectJoin']
+            '/clubs/{club}/join-requests/{user}/reject',
+            [ClubController::class, 'rejectJoin']
     )->name('clubs.join.reject');
 });
 
@@ -677,6 +692,22 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/', [EventController::class, 'adminIndex'])->name('index');
         Route::post('/{event}/approve', [EventController::class, 'approve'])->name('approve');
         Route::post('/{event}/reject', [EventController::class, 'reject'])->name('reject');
+    });
+
+    // ===== Admin Forum Moderation =====
+    Route::prefix('forums')->name('forums.')->group(function () {
+        Route::get('/posts', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'index'])->name('posts.index');
+        Route::get('/posts/{post}', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'show'])->name('posts.show'); // JSON for modal
+        // Tags admin page (separate page)
+        Route::get('/tags', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'index'])->name('tags.index');
+
+        // AJAX table partial
+        Route::get('/tags/table', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'table'])->name('tags.table');
+
+        // Tag actions (AJAX)
+        Route::patch('/tags/{tag}/approve', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'approve'])->name('tags.approve');
+        Route::patch('/tags/{tag}/reject', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'reject'])->name('tags.reject');
+        Route::patch('/tags/{tag}', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'update'])->name('tags.update'); // rename, status
     });
 
     // Club Management

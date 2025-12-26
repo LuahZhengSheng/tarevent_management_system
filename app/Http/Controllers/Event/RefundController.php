@@ -214,28 +214,6 @@ class RefundController extends Controller
     }
 
     /**
-     * Download payment receipt
-     */
-    public function downloadReceipt(Payment $payment)
-    {
-        // Authorization
-        if ($payment->user_id !== auth()->id() && !auth()->user()->isAdmin()) {
-            abort(403, 'Unauthorized access to this receipt.');
-        }
-
-        try {
-            return PdfHelper::generateReceipt($payment, true);
-        } catch (\Exception $e) {
-            Log::error('Receipt download failed', [
-                'payment_id' => $payment->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return back()->with('error', 'Failed to generate receipt. Please try again.');
-        }
-    }
-
-    /**
      * Download refund receipt
      */
     public function downloadRefundReceipt(Payment $payment)

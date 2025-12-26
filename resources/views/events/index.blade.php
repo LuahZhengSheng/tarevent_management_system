@@ -29,7 +29,7 @@
                             </div>
                             <div class="stat-divider"></div>
                             <div class="stat-item">
-                                <div class="stat-value">{{ $categories->count() }}</div>
+                                <div class="stat-value">{{ count($categories) }}</div>
                                 <div class="stat-label">Categories</div>
                             </div>
                             <div class="stat-divider"></div>
@@ -187,7 +187,7 @@
                         @else
                         <div class="image-placeholder">
                             <i class="bi bi-calendar-event"></i>
-                            <span>{{ $event->category }}</span>
+                            <span>{{ $event->category instanceof \App\Enums\EventCategory ? $event->category->value : $event->category }}</span>
                         </div>
                         @endif
 
@@ -218,6 +218,11 @@
                         <div class="status-badge status-open">
                             <i class="bi bi-check-circle"></i>
                             <span>Open</span>
+                        </div>
+                        @elseif($event->registration_start_time > now())
+                        <div class="status-badge status-upcoming" style="background-color: #003366; color: white; border-color: #0dcaf0;">
+                            <i class="bi bi-hourglass-split"></i>
+                            <span>Upcoming</span>
                         </div>
                         @else
                         <div class="status-badge status-closed">

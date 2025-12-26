@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Event;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\EventRegistration;
+use App\Support\PdfHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -859,5 +860,151 @@ class PaymentController extends Controller {
 
         // Show success receipt
         return view('events.payment-receipt', compact('registration', 'payment'));
+    }
+    
+    /**
+     * Download payment receipt
+     */
+    public function downloadReceipt(Payment $payment)
+    {
+        // Authorization
+        if ($payment->user_id !== auth()->id() && !auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized access to this receipt.');
+        }
+
+        try {
+            return PdfHelper::generateReceipt($payment, true);
+        } catch (\Exception $e) {
+            Log::error('Receipt download failed', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Failed to generate receipt. Please try again.');
+        }
+    }
+
+    /**
+     * Show payment history page
+     */
+    public function history() {
+        return view('events.payment-history'); 
+    }
+
+    /**
+     * Fetch payment history via AJAX
+     */
+    public function fetchHistory(Request $request) {
+        try {
+            $query = Payment::where('user_id', auth()->id())
+                    ->with(['event', 'registration']);
+
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('transaction_id', 'like', "%{$search}%")
+                            ->orWhereHas('event', function ($eq) use ($search) {
+                                $eq->where('title', 'like', "%{$search}%");
+                            });
+                });
+            }
+
+            // Filter by type (payment or refund)
+            if ($request->filled('type')) {
+                if ($request->type === 'refund') {
+                    $query->where('refund_status', 'completed');
+                } elseif ($request->type === 'payment') {
+                    $query->whereNull('refund_status');
+                }
+            }
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Filter by method
+            if ($request->filled('method')) {
+                $query->where('method', $request->method);
+            }
+
+            // Sort
+            $sort = $request->input('sort', 'recent');
+            if ($sort === 'recent') {
+                $query->orderBy('created_at', 'desc');
+            } elseif ($sort === 'oldest') {
+                $query->orderBy('created_at', 'asc');
+            } elseif ($sort === 'amount_high') {
+                $query->orderBy('amount', 'desc');
+            } elseif ($sort === 'amount_low') {
+                $query->orderBy('amount', 'asc');
+            }
+
+            $payments = $query->get();
+
+            // Calculate statistics
+            $statistics = [
+                'success_count' => Payment::where('user_id', auth()->id())
+                        ->where('status', 'success')
+                        ->whereNull('refund_status')
+                        ->count(),
+                'pending_count' => Payment::where('user_id', auth()->id())
+                        ->where('status', 'pending')
+                        ->count(),
+                'refund_total' => Payment::where('user_id', auth()->id())
+                        ->where('refund_status', 'completed')
+                        ->sum('refund_amount'),
+                'total_spent' => Payment::where('user_id', auth()->id())
+                        ->where('status', 'success')
+                        ->whereNull('refund_status')
+                        ->sum('amount'),
+            ];
+
+            $formattedPayments = $payments->map(function ($payment) {
+                $isRefund = $payment->refund_status === 'completed';
+
+                return [
+            'id' => $payment->id,
+            'type' => $isRefund ? 'refund' : 'payment',
+            'amount' => $isRefund ? $payment->refund_amount : $payment->amount,
+            'method' => $payment->method,
+            'status' => $payment->status,
+            'transaction_id' => $payment->transaction_id,
+            'created_at' => $payment->created_at->toISOString(),
+            'paid_at' => $payment->paid_at ? $payment->paid_at->toISOString() : null,
+            'event_title' => $payment->event ? $payment->event->title : 'N/A',
+            'event_date' => $payment->event ? $payment->event->start_time->toISOString() : null,
+            'registration_number' => $payment->registration ? $payment->registration->registration_number : 'N/A',
+            'payer_name' => $payment->payer_name,
+            'payer_email' => $payment->payer_email,
+            'refund_status' => $payment->refund_status,
+            'refund_reason' => $payment->refund_reason,
+            'refund_requested_at' => $payment->refund_requested_at ? $payment->refund_requested_at->toISOString() : null,
+            'refund_processed_at' => $payment->refund_processed_at ? $payment->refund_processed_at->toISOString() : null,
+            'refund_rejection_reason' => $payment->refund_rejection_reason,
+            'card_info' => $payment->metadata['card_brand'] ?? null ? [
+        'brand' => $payment->metadata['card_brand'] ?? null,
+        'last4' => $payment->metadata['card_last4'] ?? null,
+            ] : null,
+                ];
+            });
+
+            return response()->json([
+                        'success' => true,
+                        'payments' => $formattedPayments,
+                        'statistics' => $statistics,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Fetch payment history error', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to fetch payment history.',
+                            ], 500);
+        }
     }
 }

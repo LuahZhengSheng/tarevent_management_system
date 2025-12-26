@@ -3,11 +3,11 @@
         <!-- Logo & Brand -->
         <a class="navbar-brand d-flex align-items-center" href="{{ route('club.dashboard') }}">
             @php
-                $user = auth()->user();
-                $clubNav = null;
-                if ($user && $user->role === 'club' && $user->club_id) {
-                    $clubNav = \App\Models\Club::where('club_user_id', $user->id)->first();
-                }
+            $user = auth()->user();
+            $clubNav = null;
+            if ($user && $user->role === 'club' && $user->club_id) {
+            $clubNav = \App\Models\Club::where('club_user_id', $user->id)->first();
+            }
             @endphp
             <span class="brand-text">
                 <strong>{{ $clubNav->name ?? 'Club' }}</strong>
@@ -50,35 +50,36 @@
                     </a>
                 </li>
 
-                    <!-- Events (Reserved) -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('club.events.*') ? 'active' : '' }}" href="#">
-                            <i class="bi bi-calendar-event me-1"></i>Events
-                        </a>
-                    </li>
+                <!-- Events (Reserved) -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('club.events.*') ? 'active' : '' }}"
+                       href="{{ route('club.events.index') }}">
+                        <i class="bi bi-calendar-event me-1"></i>Events
+                    </a>
+                </li>
 
-                    <!-- Forum (Reserved) -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('club.forum.*') ? 'active' : '' }}" href="{{ route('club.forum.index') }}">
-                            <i class="bi bi-chat-dots me-1"></i>Forum
-                        </a>
-                    </li>
+                <!-- Forum (Reserved) -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('club.forum.*') ? 'active' : '' }}" href="{{ route('club.forum.index') }}">
+                        <i class="bi bi-chat-dots me-1"></i>Forum
+                    </a>
+                </li>
 
                 <!-- User Profile Dropdown -->
                 @auth
                 @php
-                    $user = auth()->user();
-                    $clubNav = null;
-                    if ($user && $user->role === 'club' && $user->club_id) {
-                        $clubNav = \App\Models\Club::where('club_user_id', $user->id)->first();
-                    }
-                    // For club account, prefer club logo over user profile photo
-                    $avatarUrl = null;
-                    if ($clubNav && $clubNav->logo) {
-                        $avatarUrl = asset('storage/' . $clubNav->logo);
-                    } else {
-                        $avatarUrl = $user->profile_photo_url;
-                    }
+                $user = auth()->user();
+                $clubNav = null;
+                if ($user && $user->role === 'club' && $user->club_id) {
+                $clubNav = \App\Models\Club::where('club_user_id', $user->id)->first();
+                }
+                // For club account, prefer club logo over user profile photo
+                $avatarUrl = null;
+                if ($clubNav && $clubNav->logo) {
+                $avatarUrl = asset('storage/' . $clubNav->logo);
+                } else {
+                $avatarUrl = $user->profile_photo_url;
+                }
                 @endphp
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 

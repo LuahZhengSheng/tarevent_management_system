@@ -9,11 +9,13 @@ use App\Models\Club;
 use App\Http\Requests\Event\StoreEventRequest;
 use App\Http\Requests\Event\UpdateEventRequest;
 use App\Support\MediaHelper;
+use App\Enums\EventCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Enum;
 
 class EventController extends Controller {
 
@@ -55,10 +57,7 @@ class EventController extends Controller {
         $events = $query->orderBy('start_time')
                 ->paginate(12);
 
-        $categories = Event::published()
-                ->distinct()
-                ->pluck('category')
-                ->filter();
+        $categories = EventCategory::values();
 
         return view('events.index', compact('events', 'categories'));
     }
@@ -78,6 +77,7 @@ class EventController extends Controller {
         // Check if user is registered
         $isRegistered = false;
         $userRegistration = null;
+        $hasHistory = false;
 
         if (auth()->check()) {
             $userRegistration = $event->registrations()
@@ -87,6 +87,9 @@ class EventController extends Controller {
                     ->latest() // 或者取最新的
                     ->first();
             $isRegistered = $userRegistration !== null && $userRegistration->status !== 'cancelled';
+            $hasHistory = $event->registrations()
+                    ->where('user_id', auth()->id())
+                    ->exists();
         }
 
         // Determine if user can manage this event
@@ -164,6 +167,7 @@ class EventController extends Controller {
                         'event',
                         'isRegistered',
                         'userRegistration',
+                        'hasHistory',
                         'canManageEvent',
                         'canRegister',
                         'registrationBlockReason',
@@ -182,16 +186,8 @@ class EventController extends Controller {
 //        }
 
         $clubs = Club::where('status', 'active')->get();
-//        $clubs = collect(); // 给个空集合避免视图报错
-        $categories = [
-            'Academic',
-            'Sports',
-            'Cultural',
-            'Workshop',
-            'Social',
-            'Career',
-            'Technology'
-        ];
+
+        $categories = EventCategory::values();
 
         return view('events.create', compact('clubs', 'categories'));
     }
@@ -321,149 +317,6 @@ class EventController extends Controller {
         }
     }
 
-//    public function store(StoreEventRequest $request) {
-//        // Authorization already checked in StoreEventRequest
-//
-//        try {
-//            DB::beginTransaction();
-//
-//            $data = $request->validated();
-//
-//            // Handle poster upload using MediaHelper
-//            if ($request->hasFile('poster')) {
-//                try {
-//                    $imageResult = MediaHelper::processImage(
-//                                    $request->file('poster'),
-//                                    'event-posters',
-//                                    [
-//                                        'max_size' => 5,
-//                                        'max_width' => 2000,
-//                                        'max_height' => 2000,
-//                                        'quality' => 85,
-//                                        'format' => 'jpg',
-//                                        'compress' => true,
-//                                        'thumbnail' => true,
-//                                        'thumbnail_width' => 400,
-//                                        'thumbnail_height' => 300,
-//                                    ]
-//                    );
-//
-////                    $data['poster_path'] = $imageResult['path'];
-////                    $data['poster_thumbnail_path'] = $imageResult['thumbnail_path'] ?? null;
-//
-//                    $data['poster_path'] = $imageResult['filename'];
-//                    $data['poster_thumbnail_path'] = $imageResult['thumbnail_filename'] ?? null;
-//
-//                    Log::info('Event poster processed', [
-//                        'path' => $imageResult['path'],
-//                        'size' => $imageResult['metadata']['size'],
-//                        'dimensions' => $imageResult['metadata']['width'] . 'x' . $imageResult['metadata']['height'],
-//                    ]);
-//                } catch (\Exception $e) {
-//                    Log::error('Poster upload failed', [
-//                        'error' => $e->getMessage(),
-//                    ]);
-//
-//                    if ($request->expectsJson()) {
-//                        return response()->json([
-//                                    'success' => false,
-//                                    'message' => 'Failed to process poster image: ' . $e->getMessage(),
-//                                        ], 422);
-//                    }
-//
-//                    return back()
-//                                    ->withInput()
-//                                    ->withErrors(['poster' => 'Failed to process poster image: ' . $e->getMessage()]);
-//                }
-//            }
-//
-//            // Set organizer info
-//            // Uncomment when auth is ready
-//            // $data['organizer_id'] = $request->club_id ?? auth()->user()->club_id;
-//            $data['organizer_id'] = $request->club_id ?? 1; // Temporary
-//            $data['organizer_type'] = 'club';
-//
-//            $data['allow_cancellation'] = $request->has('allow_cancellation') ? 1 : 0;
-//            $data['require_emergency_contact'] = $request->has('require_emergency_contact') ? 1 : 0;
-//            $data['require_dietary_info'] = $request->has('require_dietary_info') ? 1 : 0;
-//            $data['require_special_requirements'] = $request->has('require_special_requirements') ? 1 : 0;
-//            $data['registration_instructions'] = $request->registration_instructions;
-//
-//            $data['created_by'] = auth()->id() ?? 1; // Temporary
-//            // Handle tags if present
-//            if ($request->has('tags') && is_array($request->tags)) {
-//                $data['tags'] = $request->tags;
-//            }
-//
-//            $data['status'] = $request->input('status', 'draft');
-//
-//            // Create event using ORM (prepared statement automatically)
-//            $event = Event::create($data);
-//
-//            // Handle custom registration fields
-//            if ($request->has('custom_fields') && is_array($request->custom_fields)) {
-//                foreach ($request->custom_fields as $index => $fieldData) {
-//                    EventRegistrationField::create([
-//                        'event_id' => $event->id,
-//                        'name' => $fieldData['name'],
-//                        'label' => $fieldData['label'],
-//                        'type' => $fieldData['type'],
-//                        'required' => isset($fieldData['required']) ? 1 : 0,
-//                        'options' => isset($fieldData['options']) ? json_decode($fieldData['options'], true) : null,
-//                        'order' => $index,
-//                        'placeholder' => $fieldData['placeholder'] ?? null,
-//                        'help_text' => $fieldData['help_text'] ?? null,
-//                    ]);
-//                }
-//            }
-//
-//            DB::commit();
-//
-//            Log::info('Event created successfully', [
-//                'event_id' => $event->id,
-//                'title' => $event->title,
-//                'user_id' => auth()->id() ?? 'guest',
-//            ]);
-//
-//            if ($request->expectsJson()) {
-//                return response()->json([
-//                            'success' => true,
-//                            'message' => $request->status === 'published' ? 'Event published successfully! 🎉' : 'Event saved as draft.',
-//                            'redirect' => route('events.show', $event),
-//                            'event' => [
-//                                'id' => $event->id,
-//                                'title' => $event->title,
-//                                'slug' => $event->slug ?? $event->id,
-//                            ]
-//                ]);
-//            }
-//
-//            return redirect()
-//                            ->route('events.show', $event)
-//                            ->with('success', 'Event created successfully! 🎉');
-//        } catch (\Exception $e) {
-//            DB::rollBack();
-//
-//            Log::error('Event creation failed', [
-//                'error' => $e->getMessage(),
-//                'trace' => $e->getTraceAsString(),
-//                'user_id' => auth()->id() ?? 'guest',
-//            ]);
-//
-//            if ($request->expectsJson()) {
-//                return response()->json([
-//                            'success' => false,
-//                            'message' => 'Failed to create event. Please try again.',
-//                            'error' => config('app.debug') ? $e->getMessage() : null,
-//                                ], 500);
-//            }
-//
-//            return back()
-//                            ->withInput()
-//                            ->withErrors(['error' => 'Failed to create event. Please try again.']);
-//        }
-//    }
-
     /**
      * Fetch public events via AJAX
      */
@@ -550,6 +403,7 @@ class EventController extends Controller {
             'poster_path' => $event->poster_path,
             'is_full' => $event->is_full,
             'is_registration_open' => $event->is_registration_open,
+            'registration_start_time' => $event->registration_start_time->toIso8601String(), 
             'start_time_formatted' => $event->start_time->format('d M Y'),
             'start_time_time' => $event->start_time->format('h:i A'),
             'organizer_name' => $event->organizer->name ?? 'TARCampus',
@@ -588,15 +442,8 @@ class EventController extends Controller {
         }
 
         $clubs = Club::where('status', 'active')->get();
-        $categories = [
-            'Academic',
-            'Sports',
-            'Cultural',
-            'Workshop',
-            'Social',
-            'Career',
-            'Technology'
-        ];
+
+        $categories = EventCategory::values();
 
         return view('events.edit', compact('event', 'clubs', 'categories'));
     }
@@ -1050,8 +897,7 @@ class EventController extends Controller {
             'venue' => 'required|string|max:255',
             'category' => [
                 'required',
-                'string',
-                \Illuminate\Validation\Rule::in(['Academic', 'Sports', 'Cultural', 'Workshop', 'Social', 'Career', 'Technology']),
+                new Enum(EventCategory::class),
             ],
             'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',

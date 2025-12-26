@@ -461,93 +461,122 @@
     }
 
     function handleSubmit() {
+        // 1. Check for required Club ID before proceeding
         if (!currentClubId) {
             showError('Club ID is missing. Please try again.');
             return;
         }
 
-        // Validate form
+        // 2. Client-side Validation: Ensure 'Agree to Rules' is checked
         const agreeCheckbox = document.getElementById('agreeToRules');
         if (!agreeCheckbox || !agreeCheckbox.checked) {
             showError('Please agree to the club rules and guidelines.');
-            agreeCheckbox?.focus();
+            agreeCheckbox?.focus(); // Set focus to checkbox for better UX
             return;
         }
 
-        // Get form data
+        // 3. Prepare Form Data
         const reason = reasonTextarea?.value.trim() || '';
         const agree = agreeCheckbox?.checked || false;
 
-        // Show loading state
+        // 4. Update UI State: Show Loading, Hide Previous Errors
         setLoadingState(true);
         hideError();
         hideSuccess();
 
-        // Add timestamp for IFA standard
-        const timestamp = generateTimestamp();
+        // 5. Generate UUID using Native Browser API
+        // crypto.randomUUID() generates a v4 UUID compliant with RFC 4122
+        const requestId = crypto.randomUUID();
 
-        // Submit request
+        // Get Token from Local Storage
+        const token = localStorage.getItem('api_token') || '';
+
+        // 6. Send AJAX Request to Backend
         fetch(`/api/clubs/${currentClubId}/join`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                'Accept': 'application/json', // Force JSON response for errors (prevents redirects)
                 'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${token}`
             },
             credentials: 'same-origin',
             body: JSON.stringify({
-                timestamp: timestamp,
+                requestID: requestId,
                 reason: reason,
                 agree: agree
             })
         })
         .then(async response => {
-            const data = await response.json();
+            // Parse JSON response safely (handles empty responses)
+            const data = await response.json().catch(() => ({})); 
+            const status = response.status;
             
-            // Check HTTP status
-            if (!response.ok) {
-                // HTTP error (400, 500, etc.)
-                const errorMessage = data.message || data.error || 
-                                   (data.errors ? Object.values(data.errors).flat().join(', ') : '') ||
-                                   `Server error (${response.status}). Please try again.`;
-                showError(errorMessage);
-                console.error('API Error:', response.status, data);
-                return;
-            }
-            
-            // Check success flag
-            if (data.success === false || data.errors) {
-                // Business logic error
-                const errorMessage = data.message || data.error || 
-                                   (data.errors ? Object.values(data.errors).flat().join(', ') : '') ||
-                                   'Failed to submit join request. Please try again.';
-                showError(errorMessage);
-                console.error('Business Logic Error:', data);
-                return;
-            }
-            
-            // Success
-            console.log('Join request successful:', data);
-            showSuccess();
-            
-            // Close modal after 2 seconds
-            setTimeout(() => {
-                if (modalInstance) {
-                    modalInstance.hide();
-                }
+            // ==========================================
+            // Handle Response Status Codes
+            // ==========================================
+
+            // Case A: Success (HTTP 200)
+            if (response.ok && data.success) {
+                console.log('Join request successful:', data);
+                showSuccess(); // Show success UI
                 
-                // Trigger callback if provided
-                if (typeof successCallback === 'function') {
-                    successCallback(currentClubId);
+                // Close modal after delay and trigger callback
+                setTimeout(() => {
+                    if (modalInstance) modalInstance.hide();
+                    if (typeof successCallback === 'function') successCallback(currentClubId);
+                }, 2000);
+                return;
+            }
+
+            // Case B: Error Handling based on Status Code
+            let errorMessage = 'An unexpected error occurred.';
+
+            if (status === 400 || status === 422) {
+                // Validation Error (e.g., Missing fields)
+                // specific field error > generic message
+                if (data.errors && data.errors.agree) {
+                    errorMessage = data.errors.agree[0]; 
+                } else {
+                    errorMessage = data.message || "Please check your input.";
                 }
-            }, 2000);
+            } 
+            else if (status === 409) {
+                // Conflict: User already has a pending request
+                errorMessage = data.message || "You have already requested to join this club.";
+            } 
+            else if (status === 403) {
+                // Forbidden: User is blacklisted or banned
+                errorMessage = data.message || "You are not allowed to join this club.";
+            } 
+            else if (status === 401) {
+                // Unauthorized: User session expired or not logged in
+                errorMessage = "Please login to continue.";
+                // Optional: Redirect to login page here if needed
+            } 
+            else if (status === 500) {
+                // Server Error
+                errorMessage = "Server error. Please try again later.";
+            } 
+            else {
+                // Fallback for other errors
+                errorMessage = data.message || `Error (${status})`;
+            }
+
+            // Display the error message to the user
+            showError(errorMessage);
+            console.error('Join API Error:', status, data);
         })
         .catch(error => {
-            console.error('Join club request error:', error);
+            // Network or Fetch Error (e.g., Offline)
+            console.error('Join club network error:', error);
             showError('Network error. Please check your connection and try again.');
         })
         .finally(() => {
-            setLoadingState(false);
+            // Always reset button state (unless success UI is showing)
+            if (document.getElementById('joinClubFormContainer').style.display !== 'none') {
+                setLoadingState(false);
+            }
         });
     }
 
@@ -708,4 +737,3 @@
     }
 })();
 </script>
-

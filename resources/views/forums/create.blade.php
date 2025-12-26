@@ -8,7 +8,7 @@
 @endpush
 
 {{-- Join Club Modal --}}
-@include('clubs.join_modal')
+@include('clubs.select_club_modal')
 
 @section('content')
 <div class="forum-create-wrapper">
@@ -492,17 +492,16 @@
 
 @push('scripts')
 <script>
+    console.log(123);
     window.forumConfig = {
-        availableTags: @json($activeTags ?? []),
-        maxTags: 10,
-        maxMediaFiles: 10,
-        maxImageSize: 10 * 1024 * 1024,
-        maxVideoSize: 100 * 1024 * 1024,
-
-        // club 相关配置
-        currentUserId: {{ auth()->id() }},
-        clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}', // 对应 api.php
-        joinClubModalId: 'joinClubModal', // JS 用这个 id 打开 modal
+    availableTags: @json($activeTags ?? []),
+            maxTags: 10,
+            maxMediaFiles: 10,
+            maxImageSize: 10 * 1024 * 1024,
+            maxVideoSize: 100 * 1024 * 1024,
+            currentUserId: {{ auth()->id() }},
+            clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}',
+            joinClubModalId: 'selectClubModal',
     };
 </script>
 @vite(['resources/js/forum-create.js', 'resources/js/media-lightbox.js'])

@@ -1,3 +1,4 @@
+<!-- Author: Tang Lit Xuan -->
 <!-- API Token Management -->
 @if(session('api_token'))
 <script>
@@ -27,7 +28,7 @@
 <script>
     // Clear token from localStorage when logout
     localStorage.removeItem('api_token');
-</script>
+  </script>
 @endif
 
 <script>
