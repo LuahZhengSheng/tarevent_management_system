@@ -17,6 +17,14 @@ use App\Http\Controllers\Api\AuthTokenController;
 */
 
 // Club API Routes (requires Bearer token authentication)
+// Public route: Get single club (guest can access)
+Route::prefix('clubs')->group(function () {
+    Route::prefix('{club}')->group(function () {
+        // Get single club with membership status (guest can access)
+        Route::get('/', [ClubApiController::class, 'show']);
+    });
+});
+
 // Using 'auth:sanctum' for Bearer token authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('clubs')->group(function () {
@@ -28,8 +36,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Club-specific routes
         Route::prefix('{club}')->group(function () {
-            // Get single club with membership status (must be before other routes)
-            Route::get('/', [ClubApiController::class, 'show']);
 
             // Update club
             Route::put('/', [ClubApiController::class, 'update']);
