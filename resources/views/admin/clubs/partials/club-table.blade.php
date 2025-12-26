@@ -17,11 +17,11 @@
         <tr>
             <td>
                 <div class="club-logo-cell">
-                    <img 
-                        src="{{ $club->logo ? '/storage/' . $club->logo : asset('images/default-club-avatar.png') }}" 
+                    <img
+                        src="{{ $club->logo ? '/storage/' . $club->logo : asset('images/default-club-avatar.png') }}"
                         alt="{{ $club->name }}"
                         class="club-logo"
-                        onerror="this.src='{{ asset('images/default-club-avatar.png') }}'"
+                        onerror="this.src='{{ asset('images/avatar/default-club-avatar.png') }}'"
                     >
                     <div class="club-info">
                         <div class="club-name">{{ $club->name }}</div>
@@ -53,22 +53,22 @@
             </td>
             <td>
                 <div class="action-buttons justify-content-end">
-                    <a 
-                        href="{{ route('admin.clubs.show', $club) }}" 
+                    <a
+                        href="{{ route('admin.clubs.show', $club) }}"
                         class="btn-action"
                         title="View Details"
                     >
                         <i class="bi bi-eye"></i>
                     </a>
-                    <a 
-                        href="{{ route('admin.clubs.logs', $club) }}" 
+                    <a
+                        href="{{ route('admin.clubs.logs', $club) }}"
                         class="btn-action"
                         title="View Logs"
                     >
                         <i class="bi bi-clock-history"></i>
                     </a>
                     @if($club->status === 'active')
-                    <button 
+                    <button
                         type="button"
                         class="btn-toggle-status btn-deactivate"
                         data-club-id="{{ $club->id }}"
@@ -78,7 +78,7 @@
                         <i class="bi bi-pause-circle me-1"></i>Deactivate
                     </button>
                     @elseif($club->status === 'inactive')
-                    <button 
+                    <button
                         type="button"
                         class="btn-toggle-status btn-activate"
                         data-club-id="{{ $club->id }}"

@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * Unified ClubController
- * 
+ *
  * Handles both Admin and Club-side operations:
  * - Admin operations: index, create, store, show, activate, deactivate, logs
  * - Club-side operations: show (own club), members, member management, join requests
@@ -96,7 +96,7 @@ class ClubController extends Controller
         ]);
 
         $email = $request->input('email');
-        
+
         // Check if email exists in users table
         // We use User model directly to check without modifying UserService
         $exists = User::where('email', $email)->exists();
@@ -144,7 +144,7 @@ class ClubController extends Controller
     public function adminShow(Club $club): View
     {
         $club->load(['creator', 'clubUser', 'members']);
-        
+
         // Get club statistics
         $stats = [
             'total_members' => $club->members()->wherePivot('status', 'active')->count(),
@@ -698,7 +698,7 @@ class ClubController extends Controller
         // Handle image upload - MUST be done before validation data is passed to service
         // Remove 'image' from validated array to avoid passing file object
         unset($validated['image']);
-        
+
         if ($request->hasFile('image')) {
             $imageFile = $request->file('image');
             $imagePath = $imageFile->store('clubs/announcements', 'public');
@@ -756,7 +756,7 @@ class ClubController extends Controller
         // Handle image upload - MUST be done before validation data is passed to service
         // Remove 'image' from validated array to avoid passing file object
         unset($validated['image']);
-        
+
         if ($request->hasFile('image')) {
             // Delete old image if exists
             if ($announcement->image) {
@@ -1047,11 +1047,11 @@ class ClubController extends Controller
     {
         // Get categories for filter
         $categories = ['academic', 'sports', 'cultural', 'social', 'volunteer', 'professional', 'other'];
-        
+
         // Get search and filter parameters
         $search = $request->input('search', '');
         $category = $request->input('category', '');
-        
+
         // This will be populated by JavaScript via API
         // We just prepare the view with filters
         return view('clubs.index', compact('categories', 'search', 'category'));

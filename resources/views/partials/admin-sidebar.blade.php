@@ -37,7 +37,7 @@
                 </li>
 
                 <!-- Event Management -->
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     <div class="nav-section-title">Event Management</div>
                 </li>
                 <li class="nav-item">
@@ -54,7 +54,7 @@
                         <span>Pending Approval</span>
                         <span class="badge bg-warning text-dark ms-auto">3</span>
                     </a>
-                </li>
+                </li> -->
 
                 <!-- User Management -->
                 <li class="nav-item">
