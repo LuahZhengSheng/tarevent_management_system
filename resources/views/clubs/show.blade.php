@@ -477,8 +477,8 @@
                 </div>
                 @endif
 
-                <!-- Announcements Section -->
-                @if($recentAnnouncements->count() > 0)
+                <!-- Announcements Section - Only visible to members -->
+                @if($isMember && $recentAnnouncements->count() > 0)
                 <div class="content-section">
                     <h2 class="section-title">
                         <i class="bi bi-megaphone"></i>
@@ -565,6 +565,29 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Leadership Members Section -->
+                    @if($leadershipMembers->count() > 0)
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e9ecef;">
+                        <h3 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">
+                            <i class="bi bi-people"></i>
+                            Leadership
+                        </h3>
+                        <div class="leadership-list">
+                            @foreach($leadershipMembers as $leader)
+                            <div class="leadership-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0;">
+                                <div class="leadership-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light, #eef2ff); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bi bi-person" style="color: var(--primary, #4f46e5);"></i>
+                                </div>
+                                <div class="leadership-info" style="flex: 1;">
+                                    <div style="font-weight: 600; color: #212529;">{{ $leader['name'] }}</div>
+                                    <div style="font-size: 0.875rem; color: #6c757d;">{{ $leader['role_display'] }}</div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
 
                 <!-- Action Buttons -->
@@ -574,6 +597,23 @@
                             <i class="bi bi-speedometer2"></i>
                             Go to Dashboard
                         </a>
+                    @elseif($joinStatus && $joinStatus['status'] === 'pending')
+                        <button class="btn-secondary-lg" disabled>
+                            <i class="bi bi-clock"></i>
+                            Request Pending
+                        </button>
+                    @elseif($joinStatus && in_array($joinStatus['status'], ['rejected', 'removed']))
+                        @if($joinStatus['cooldown_remaining_days'] && $joinStatus['cooldown_remaining_days'] > 0)
+                        <button class="btn-secondary-lg" disabled>
+                            <i class="bi bi-x-circle"></i>
+                            Cooldown: {{ $joinStatus['cooldown_remaining_days'] }} day(s) left
+                        </button>
+                        @else
+                        <button onclick="openJoinModal({{ $club->id }})" class="btn-primary-lg">
+                            <i class="bi bi-person-plus"></i>
+                            Join Club
+                        </button>
+                        @endif
                     @else
                         <button onclick="openJoinModal({{ $club->id }})" class="btn-primary-lg">
                             <i class="bi bi-person-plus"></i>

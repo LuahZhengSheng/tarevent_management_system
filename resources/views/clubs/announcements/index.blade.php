@@ -52,9 +52,9 @@
                     <div class="announcements-grid">
                         @foreach($publishedAnnouncements as $announcement)
                         <div class="announcement-card">
-                            @if($announcement->image)
+                            @if($announcement->image && $announcement->image_url)
                             <div class="announcement-image">
-                                <img src="{{ asset('storage/' . $announcement->image) }}" alt="{{ $announcement->title }}">
+                                <img src="{{ $announcement->image_url }}" alt="{{ $announcement->title }}">
                             </div>
                             @endif
                             <div class="announcement-content">
@@ -114,9 +114,9 @@
                     <div class="announcements-grid">
                         @foreach($draftAnnouncements as $announcement)
                         <div class="announcement-card">
-                            @if($announcement->image)
+                            @if($announcement->image && $announcement->image_url)
                             <div class="announcement-image">
-                                <img src="{{ asset('storage/' . $announcement->image) }}" alt="{{ $announcement->title }}">
+                                <img src="{{ $announcement->image_url }}" alt="{{ $announcement->title }}">
                             </div>
                             @endif
                             <div class="announcement-content">
@@ -323,7 +323,19 @@
 <script>
 $(document).ready(function() {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
+    const apiToken = localStorage.getItem('api_token') || '';
     const clubId = {{ $club->id }};
+
+    // Generate timestamp for IFA standard
+    function generateTimestamp() {
+        const now = new Date();
+        return now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' + 
+            String(now.getHours()).padStart(2, '0') + ':' + 
+            String(now.getMinutes()).padStart(2, '0') + ':' + 
+            String(now.getSeconds()).padStart(2, '0');
+    }
 
     // Publish announcement
     $('.btn-publish-announcement').on('click', function() {
@@ -337,14 +349,20 @@ $(document).ready(function() {
             url: `/api/clubs/${clubId}/announcements/${announcementId}/publish`,
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
             },
-            data: {
-                timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-            },
+            data: JSON.stringify({
+                timestamp: generateTimestamp()
+            }),
             success: function(response) {
-                location.reload();
+                if (response.status === 'S' || response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to publish announcement.');
+                }
             },
             error: function(xhr) {
                 const error = xhr.responseJSON?.message || 'Failed to publish announcement.';
@@ -365,14 +383,20 @@ $(document).ready(function() {
             url: `/api/clubs/${clubId}/announcements/${announcementId}/unpublish`,
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
             },
-            data: {
-                timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-            },
+            data: JSON.stringify({
+                timestamp: generateTimestamp()
+            }),
             success: function(response) {
-                location.reload();
+                if (response.status === 'S' || response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to unpublish announcement.');
+                }
             },
             error: function(xhr) {
                 const error = xhr.responseJSON?.message || 'Failed to unpublish announcement.';
@@ -394,14 +418,20 @@ $(document).ready(function() {
             url: `/api/clubs/${clubId}/announcements/${announcementId}`,
             method: 'DELETE',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
             },
-            data: {
-                timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-            },
+            data: JSON.stringify({
+                timestamp: generateTimestamp()
+            }),
             success: function(response) {
-                location.reload();
+                if (response.status === 'S' || response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to delete announcement.');
+                }
             },
             error: function(xhr) {
                 const error = xhr.responseJSON?.message || 'Failed to delete announcement.';

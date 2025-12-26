@@ -552,10 +552,12 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
 
     // Club Members Management
     Route::prefix('members')->name('members.')->group(function () {
-        Route::get('/', [ClubController::class, 'membersIndex'])->name('index');
+        // Put more specific routes first to avoid route conflicts
         Route::put('/{user}/role', [ClubController::class, 'updateMemberRole'])->name('updateRole');
         Route::delete('/{user}', [ClubController::class, 'removeMember'])->name('remove');
         Route::post('/{user}/blacklist', [ClubController::class, 'addToBlacklist'])->name('blacklist');
+        // Put index route last
+        Route::get('/', [ClubController::class, 'membersIndex'])->name('index');
     });
 
     // Club Announcements Management
@@ -566,6 +568,8 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
         Route::get('/{announcement}/edit', [ClubController::class, 'editAnnouncement'])->name('edit');
         Route::put('/{announcement}', [ClubController::class, 'updateAnnouncement'])->name('update');
         Route::delete('/{announcement}', [ClubController::class, 'deleteAnnouncement'])->name('delete');
+        Route::post('/{announcement}/publish', [ClubController::class, 'publishAnnouncement'])->name('publish');
+        Route::post('/{announcement}/unpublish', [ClubController::class, 'unpublishAnnouncement'])->name('unpublish');
     });
 
     // Join Requests Management
@@ -573,6 +577,7 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
         Route::get('/', [ClubController::class, 'joinRequestsIndex'])->name('index');
         Route::post('/{user}/approve', [ClubController::class, 'approveJoin'])->name('approve');
         Route::post('/{user}/reject', [ClubController::class, 'rejectJoin'])->name('reject');
+        Route::post('/{user}/clear-cooldown', [ClubController::class, 'clearMemberCooldown'])->name('clearCooldown');
     });
 
     // Blacklist Management (handled in members page)

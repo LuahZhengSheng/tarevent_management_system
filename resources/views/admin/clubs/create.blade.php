@@ -14,10 +14,10 @@
             <div class="row align-items-center">
                 <div class="col-lg-12">
                     <div class="hero-content">
-                        <div class="hero-badge">
+                        <!-- <div class="hero-badge">
                             <i class="bi bi-shield-check me-2"></i>
                             <span>Admin Only - Testing/Admin Use</span>
-                        </div>
+                        </div> -->
                         <h1 class="hero-title">Create New Club</h1>
                         <p class="hero-description">
                             Create a club and club account. This page is for testing/admin use only.
@@ -643,11 +643,14 @@
                 clubFormData.append('logo', logoFile);
             }
 
+            const token = localStorage.getItem('api_token') || '';
+            
             const clubResponse = await fetch('/api/clubs', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'same-origin',
                 body: clubFormData,
@@ -778,12 +781,15 @@
                 club_user_id: accountData.data.id,
             };
 
+            const token = localStorage.getItem('api_token') || '';
+            
             const updateResponse = await fetch(`/api/clubs/${clubId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify(updateClubData),

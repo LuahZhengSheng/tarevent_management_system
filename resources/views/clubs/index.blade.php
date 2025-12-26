@@ -238,6 +238,43 @@
     margin: 0;
 }
 
+.status-filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-tab {
+    padding: 0.625rem 1.25rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: white;
+    color: #6c757d;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-tab:hover {
+    border-color: var(--primary, #4f46e5);
+    color: var(--primary, #4f46e5);
+    background: var(--primary-light, #eef2ff);
+}
+
+.status-tab.active {
+    background: var(--primary, #4f46e5);
+    color: white;
+    border-color: var(--primary, #4f46e5);
+}
+
+.status-tab i {
+    font-size: 1rem;
+}
+
 .clubs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -576,6 +613,21 @@
                 </h2>
                 <p class="text-muted mb-0" id="resultsCount"></p>
             </div>
+            <!-- Status Filter Tabs -->
+            <div class="status-filter-tabs" id="statusFilterTabs">
+                <button class="status-tab active" data-status="all" onclick="filterByStatus('all')">
+                    <i class="bi bi-grid"></i> All
+                </button>
+                <button class="status-tab" data-status="joined" onclick="filterByStatus('joined')">
+                    <i class="bi bi-check-circle"></i> Joined
+                </button>
+                <button class="status-tab" data-status="available" onclick="filterByStatus('available')">
+                    <i class="bi bi-plus-circle"></i> Available
+                </button>
+                <button class="status-tab" data-status="pending" onclick="filterByStatus('pending')">
+                    <i class="bi bi-clock"></i> Request Pending
+                </button>
+            </div>
         </div>
 
         <!-- Loading State -->
@@ -608,12 +660,52 @@
 
 @push('scripts')
 <script>
+// Define openJoinModal in global scope immediately so buttons can access it
+window.openJoinModal = function(clubId) {
+    console.log('openJoinModal called with clubId:', clubId);
+    
+    // Check if join modal is available
+    if (typeof window.openJoinClubModal === 'function') {
+        console.log('Calling window.openJoinClubModal');
+        window.openJoinClubModal(clubId, function(joinedClubId) {
+            console.log('Join modal callback triggered for club:', joinedClubId);
+            // Reload clubs data to refresh button status
+            if (typeof window.loadClubs === 'function') {
+                window.loadClubs();
+            } else {
+                // Fallback: reload page
+                window.location.reload();
+            }
+        });
+    } else {
+        console.warn('window.openJoinClubModal not available, waiting...');
+        // Wait a bit for modal to initialize, then try again
+        setTimeout(function() {
+            if (typeof window.openJoinClubModal === 'function') {
+                window.openJoinClubModal(clubId, function(joinedClubId) {
+                    console.log('Join modal callback triggered for club:', joinedClubId);
+                    if (typeof window.loadClubs === 'function') {
+                        window.loadClubs();
+                    } else {
+                        window.location.reload();
+                    }
+                });
+            } else {
+                console.error('Join modal still not available, redirecting...');
+                // Fallback: redirect to club detail page
+                window.location.href = `/clubs/${clubId}`;
+            }
+        }, 500);
+    }
+};
+
 (function() {
     'use strict';
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let allClubs = [];
     let filteredClubs = [];
+    let currentStatusFilter = 'all'; // 'all', 'joined', 'available', 'pending'
 
     // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
     function generateTimestamp() {
@@ -643,11 +735,15 @@
         const categoryFilter = document.getElementById('categoryFilter')?.value || '';
         const url = `/api/clubs/available?timestamp=${encodeURIComponent(timestamp)}${categoryFilter ? `&category=${encodeURIComponent(categoryFilter)}` : ''}`;
 
+        // Get Bearer token from localStorage
+        const token = localStorage.getItem('api_token') || '';
+
         fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${token}`
             },
             credentials: 'same-origin',
         })
@@ -655,6 +751,10 @@
             const data = await response.json();
             
             if (!response.ok) {
+                // Handle authentication errors
+                if (response.status === 401) {
+                    throw new Error('Please login to view clubs. Your session may have expired.');
+                }
                 throw new Error(data.message || 'Failed to load clubs');
             }
 
@@ -670,19 +770,43 @@
             console.error('Error loading clubs:', error);
             loadingState.style.display = 'none';
             errorState.style.display = 'block';
-            document.getElementById('errorMessage').textContent = error.message;
+            let errorMessage = error.message;
+            
+            // Provide more helpful error messages
+            if (errorMessage.includes('Unauthenticated') || errorMessage.includes('login')) {
+                errorMessage = 'Please login to view clubs. If you are already logged in, please refresh the page.';
+            }
+            
+            document.getElementById('errorMessage').textContent = errorMessage;
         });
     }
 
-    // Filter clubs based on search
+    // Filter clubs based on search and status
     function filterAndRenderClubs() {
         const searchInput = document.getElementById('searchInput');
         const searchTerm = (searchInput?.value || '').toLowerCase().trim();
         
         filteredClubs = allClubs.filter(club => {
-            if (!searchTerm) return true;
-            return club.name.toLowerCase().includes(searchTerm) ||
-                   (club.description && club.description.toLowerCase().includes(searchTerm));
+            // Apply status filter
+            if (currentStatusFilter !== 'all') {
+                if (currentStatusFilter === 'joined' && club.join_status !== 'member') {
+                    return false;
+                }
+                if (currentStatusFilter === 'available' && club.join_status !== 'available') {
+                    return false;
+                }
+                if (currentStatusFilter === 'pending' && club.join_status !== 'pending') {
+                    return false;
+                }
+            }
+            
+            // Apply search filter
+            if (searchTerm) {
+                return club.name.toLowerCase().includes(searchTerm) ||
+                       (club.description && club.description.toLowerCase().includes(searchTerm));
+            }
+            
+            return true;
         });
 
         // Sort: Put member clubs first, then others
@@ -697,6 +821,22 @@
         });
 
         renderClubs();
+    }
+
+    // Filter by status
+    function filterByStatus(status) {
+        currentStatusFilter = status;
+        
+        // Update active tab
+        document.querySelectorAll('.status-tab').forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.status === status) {
+                tab.classList.add('active');
+            }
+        });
+        
+        // Re-filter and render
+        filterAndRenderClubs();
     }
 
     // Render clubs grid
@@ -730,9 +870,18 @@
         };
 
         clubsGrid.innerHTML = filteredClubs.map(club => {
-            const logoUrl = club.logo 
-                ? (club.logo.startsWith('http') ? club.logo : `/storage/${club.logo}`)
-                : null;
+            // Handle logo URL - API already returns /storage/ prefix
+            let logoUrl = null;
+            if (club.logo) {
+                // If logo starts with http/https, use as is
+                // If logo starts with /storage/, use as is (API already includes it)
+                // Otherwise, prepend /storage/
+                if (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/')) {
+                    logoUrl = club.logo;
+                } else {
+                    logoUrl = `/storage/${club.logo}`;
+                }
+            }
 
             const logoHtml = logoUrl
                 ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
@@ -816,22 +965,60 @@
         document.getElementById('totalClubsBadge').textContent = `${totalClubs} Clubs Available`;
     }
 
-    // Open join modal
-    function openJoinModal(clubId) {
-        if (typeof window.openJoinClubModal === 'function') {
-            window.openJoinClubModal(clubId, function(joinedClubId) {
-                // Reload clubs after successful join
-                loadClubs();
-            });
+    // Update a single club's status in the list
+    function updateClubStatus(clubId, newStatus) {
+        console.log('Updating club status:', clubId, newStatus);
+        // Find the club in allClubs array
+        const club = allClubs.find(c => c.id === clubId);
+        if (club) {
+            console.log('Found club, updating status from', club.join_status, 'to', newStatus);
+            // Update the club's join_status
+            club.join_status = newStatus;
+            // Re-render the clubs grid immediately
+            filterAndRenderClubs();
+            console.log('Club status updated and rendered');
         } else {
-            // Fallback: redirect to club detail page
-            window.location.href = `/clubs/${clubId}`;
+            console.warn('Club not found in allClubs:', clubId);
         }
     }
 
-    // Make loadClubs available globally
+    // Open join modal - Make sure it's available globally immediately
+    window.openJoinModal = function(clubId) {
+        console.log('openJoinModal called with clubId:', clubId);
+        
+        // Check if join modal is available
+        if (typeof window.openJoinClubModal === 'function') {
+            console.log('Calling window.openJoinClubModal');
+            window.openJoinClubModal(clubId, function(joinedClubId) {
+                console.log('Join modal callback triggered for club:', joinedClubId);
+                // Reload clubs data to refresh button status
+                loadClubs();
+            });
+        } else {
+            console.warn('window.openJoinClubModal not available, waiting...');
+            // Wait a bit for modal to initialize, then try again
+            setTimeout(function() {
+                        if (typeof window.openJoinClubModal === 'function') {
+                            window.openJoinClubModal(clubId, function(joinedClubId) {
+                                console.log('Join modal callback triggered for club:', joinedClubId);
+                                if (typeof window.loadClubs === 'function') {
+                                    window.loadClubs();
+                                } else {
+                                    window.location.reload();
+                                }
+                            });
+                } else {
+                    console.error('Join modal still not available, redirecting...');
+                    // Fallback: redirect to club detail page
+                    window.location.href = `/clubs/${clubId}`;
+                }
+            }, 500);
+        }
+    };
+
+    // Make other functions available globally
     window.loadClubs = loadClubs;
-    window.openJoinModal = openJoinModal;
+    window.filterByStatus = filterByStatus;
 
     // Escape HTML
     function escapeHtml(text) {

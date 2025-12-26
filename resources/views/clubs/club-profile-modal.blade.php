@@ -625,12 +625,14 @@
             showLoading();
 
             const requestId = generateRequestId();
+            const token = localStorage.getItem('api_token') || '';
 
             fetch(`/api/clubs/${clubId}?requestID=${requestId}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'same-origin'
             })

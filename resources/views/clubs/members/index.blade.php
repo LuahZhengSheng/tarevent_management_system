@@ -147,6 +147,12 @@
                                 </thead>
                                 <tbody id="removedMembersTableBody">
                                     @foreach($removedMembers as $member)
+                                    @php
+                                        $removedAt = $member->pivot->updated_at;
+                                        // Use absolute value to handle both past and future dates correctly
+                                        $daysSinceRemoval = abs(\Carbon\Carbon::now()->diffInDays($removedAt, false));
+                                        $cooldownDays = $daysSinceRemoval < 3 ? (int) ceil(3 - $daysSinceRemoval) : 0;
+                                    @endphp
                                     <tr data-member-id="{{ $member->id }}" data-member-name="{{ $member->name }}">
                                         <td>
                                             <div class="member-info">
@@ -157,6 +163,12 @@
                                                 <div>
                                                     <div class="member-name">{{ $member->name }}</div>
                                                     <div class="member-email">{{ $member->email }}</div>
+                                                    @if($cooldownDays > 0)
+                                                    <div class="text-warning small">
+                                                        <i class="bi bi-clock me-1"></i>
+                                                        Cooldown: {{ $cooldownDays }} day(s) remaining
+                                                    </div>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </td>
@@ -164,7 +176,18 @@
                                             <span class="badge bg-secondary">{{ \App\Models\ClubMemberRole::displayName($member->pivot->role) }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-muted">{{ $member->pivot->created_at ? $member->pivot->created_at->format('M d, Y') : 'N/A' }}</span>
+                                            <span class="text-muted">{{ $removedAt ? $removedAt->format('M d, Y') : 'N/A' }}</span>
+                                        </td>
+                                        <td>
+                                            @if($cooldownDays > 0)
+                                            <button class="btn btn-sm btn-outline-primary btn-clear-cooldown" 
+                                                    data-member-id="{{ $member->id }}" 
+                                                    data-member-name="{{ $member->name }}">
+                                                <i class="bi bi-arrow-clockwise me-1"></i> Clear Cooldown
+                                            </button>
+                                            @else
+                                            <span class="text-muted small">Cooldown expired</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     @endforeach
@@ -395,6 +418,8 @@
 <script>
 $(document).ready(function() {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
+    const apiToken = localStorage.getItem('api_token') || '';
+    const clubId = {{ $club->id }};
 
     // Search functionality
     $('#searchActiveMembers').on('keyup', function() {
@@ -434,24 +459,48 @@ $(document).ready(function() {
             return;
         }
 
+        // Use API endpoint
+        const updateUrl = `/api/clubs/${clubId}/members/${memberId}/role`;
+        
+        console.log('Updating role for member:', memberId, 'to role:', newRole);
+        console.log('URL:', updateUrl);
+
+        // Generate timestamp for IFA standard
+        const now = new Date();
+        const timestamp = now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' + 
+            String(now.getHours()).padStart(2, '0') + ':' + 
+            String(now.getMinutes()).padStart(2, '0') + ':' + 
+            String(now.getSeconds()).padStart(2, '0');
+
         $.ajax({
-            url: `/club/members/${memberId}/role`,
+            url: updateUrl,
             method: 'PUT',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
             },
-            data: {
+            data: JSON.stringify({
                 role: newRole,
-            },
+                timestamp: timestamp
+            }),
             success: function(response) {
-                select.data('current-role', newRole);
-                // Show success message
-                alert('Member role updated successfully.');
+                // Handle IFA standard response
+                if (response.status === 'S' || response.success) {
+                    select.data('current-role', newRole);
+                    alert(response.message || 'Member role updated successfully.');
+                } else {
+                    select.val(currentRole);
+                    alert(response.message || 'Failed to update member role.');
+                }
             },
             error: function(xhr) {
                 select.val(currentRole);
-                const error = xhr.responseJSON?.message || 'Failed to update member role.';
+                console.error('Error updating role:', xhr);
+                const error = xhr.responseJSON?.message || xhr.responseText || 'Failed to update member role.';
                 alert(error);
             }
         });
@@ -466,15 +515,36 @@ $(document).ready(function() {
             return;
         }
 
+        // Use API endpoint
+        const removeUrl = `/api/clubs/${clubId}/members/${memberId}`;
+        
+        // Generate timestamp for IFA standard
+        const now = new Date();
+        const timestamp = now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' + 
+            String(now.getHours()).padStart(2, '0') + ':' + 
+            String(now.getMinutes()).padStart(2, '0') + ':' + 
+            String(now.getSeconds()).padStart(2, '0');
+
         $.ajax({
-            url: `/club/members/${memberId}`,
+            url: removeUrl,
             method: 'DELETE',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
             },
+            data: JSON.stringify({
+                timestamp: timestamp
+            }),
             success: function(response) {
-                location.reload();
+                if (response.status === 'S' || response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to remove member.');
+                }
             },
             error: function(xhr) {
                 const error = xhr.responseJSON?.message || 'Failed to remove member.';
@@ -498,19 +568,38 @@ $(document).ready(function() {
         const memberId = $(this).data('member-id');
         const reason = $('#blacklistReason').val();
 
+        // Use API endpoint
+        const blacklistUrl = `/api/clubs/${clubId}/blacklist/${memberId}`;
+        
+        // Generate timestamp for IFA standard
+        const now = new Date();
+        const timestamp = now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' + 
+            String(now.getHours()).padStart(2, '0') + ':' + 
+            String(now.getMinutes()).padStart(2, '0') + ':' + 
+            String(now.getSeconds()).padStart(2, '0');
+
         $.ajax({
-            url: `/club/members/${memberId}/blacklist`,
+            url: blacklistUrl,
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
             },
-            data: {
+            data: JSON.stringify({
                 reason: reason,
-            },
+                timestamp: timestamp
+            }),
             success: function(response) {
-                $('#blacklistModal').modal('hide');
-                location.reload();
+                if (response.status === 'S' || response.success) {
+                    $('#blacklistModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to add member to blacklist.');
+                }
             },
             error: function(xhr) {
                 const error = xhr.responseJSON?.message || 'Failed to add member to blacklist.';
@@ -528,18 +617,73 @@ $(document).ready(function() {
             return;
         }
 
+        // Use API endpoint
+        const unblacklistUrl = `/api/clubs/${clubId}/blacklist/${memberId}`;
+        
+        // Generate timestamp for IFA standard
+        const now = new Date();
+        const timestamp = now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' + 
+            String(now.getHours()).padStart(2, '0') + ':' + 
+            String(now.getMinutes()).padStart(2, '0') + ':' + 
+            String(now.getSeconds()).padStart(2, '0');
+
         $.ajax({
-            url: `/club/blacklist/${memberId}`,
+            url: unblacklistUrl,
             method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${apiToken}`
+            },
+            data: JSON.stringify({
+                timestamp: timestamp
+            }),
+            success: function(response) {
+                if (response.status === 'S' || response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to remove member from blacklist.');
+                }
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.message || 'Failed to remove member from blacklist.';
+                alert(error);
+            }
+        });
+    });
+
+    // Clear member cooldown
+    $(document).on('click', '.btn-clear-cooldown', function() {
+        const memberId = $(this).data('member-id');
+        const memberName = $(this).data('member-name');
+
+        if (!confirm(`Are you sure you want to clear the cooldown period for ${memberName}? This will allow them to immediately request to join again.`)) {
+            return;
+        }
+
+        // Use web route (not API, as this is a club-side operation)
+        const clearCooldownUrl = `{{ route('club.join-requests.clearCooldown', ['user' => '__USER_ID__']) }}`.replace('__USER_ID__', memberId);
+
+        $.ajax({
+            url: clearCooldownUrl,
+            method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
             },
             success: function(response) {
-                location.reload();
+                if (response.success) {
+                    alert(response.message || 'Cooldown cleared successfully.');
+                    location.reload();
+                } else {
+                    alert(response.message || 'Failed to clear cooldown.');
+                }
             },
             error: function(xhr) {
-                const error = xhr.responseJSON?.message || 'Failed to remove member from blacklist.';
+                const error = xhr.responseJSON?.message || 'Failed to clear cooldown.';
                 alert(error);
             }
         });
