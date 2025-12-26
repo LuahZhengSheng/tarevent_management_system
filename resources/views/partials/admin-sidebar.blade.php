@@ -5,8 +5,8 @@
         <div class="sidebar-user-info">
             <a href="{{ route('admin.profile.edit') }}" class="user-info-link">
                 <div class="user-avatar-container">
-                    <img src="{{ auth()->user()->profile_photo_url }}" 
-                         alt="{{ auth()->user()->name }}" 
+                    <img src="{{ auth()->user()->profile_photo_url }}"
+                         alt="{{ auth()->user()->name }}"
                          class="user-avatar"
                          onerror="this.onerror=null; this.src='{{ asset('images/avatar/default-student-avatar.png') }}';">
                     <div class="online-indicator"></div>
@@ -29,7 +29,7 @@
             <ul class="nav flex-column">
                 <!-- Dashboard -->
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"
                        href="{{ route('admin.dashboard') }}">
                         <i class="bi bi-speedometer2"></i>
                         <span>Dashboard</span>
@@ -41,14 +41,14 @@
                     <div class="nav-section-title">Event Management</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.events.index') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.events.index') ? 'active' : '' }}"
                        href="{{ route('admin.events.index') }}">
                         <i class="bi bi-calendar-event"></i>
                         <span>All Events</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.events.pending') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.events.pending') ? 'active' : '' }}"
                        href="{{ route('admin.events.index', ['status' => 'pending']) }}">
                         <i class="bi bi-hourglass-split"></i>
                         <span>Pending Approval</span>
@@ -61,14 +61,14 @@
                     <div class="nav-section-title">User Management</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"
                        href="{{ route('admin.users.index') }}">
                         <i class="bi bi-people"></i>
                         <span>All Users</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.administrators.*') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.administrators.*') ? 'active' : '' }}"
                        href="{{ route('admin.administrators.index') }}">
                         <i class="bi bi-shield-check"></i>
                         <span>Administrators</span>
@@ -81,7 +81,7 @@
                     <div class="nav-section-title">Permission Management</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.permissions.*') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.permissions.*') ? 'active' : '' }}"
                        href="{{ route('admin.permissions.index') }}">
                         <i class="bi bi-key"></i>
                         <span>Manage Permissions</span>
@@ -115,14 +115,14 @@
                     <div class="nav-section-title">Club Management</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.clubs.index') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.clubs.index') ? 'active' : '' }}"
                        href="{{ route('admin.clubs.index') }}">
                         <i class="bi bi-building"></i>
                         <span>All Clubs</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.clubs.create') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.clubs.create') ? 'active' : '' }}"
                        href="{{ route('admin.clubs.create') }}">
                         <i class="bi bi-plus-circle"></i>
                         <span>Create Club</span>
@@ -134,21 +134,21 @@
                     <div class="nav-section-title">Reports & Analytics</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.reports.events') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.reports.events') ? 'active' : '' }}"
                        href="{{ route('home') }}">
                         <i class="bi bi-graph-up"></i>
                         <span>Event Reports</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.reports.registrations') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.reports.registrations') ? 'active' : '' }}"
                        href="{{ route('home') }}">
                         <i class="bi bi-person-check"></i>
                         <span>Registration Reports</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.reports.payments') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.reports.payments') ? 'active' : '' }}"
                        href="{{ route('home') }}">
                         <i class="bi bi-cash-coin"></i>
                         <span>Payment Reports</span>
@@ -160,7 +160,7 @@
                     <div class="nav-section-title">Account</div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admin.profile.*') ? 'active' : '' }}" 
+                    <a class="nav-link {{ request()->routeIs('admin.profile.*') ? 'active' : '' }}"
                        href="{{ route('admin.profile.edit') }}">
                         <i class="bi bi-person"></i>
                         <span>My Profile</span>
@@ -897,5 +897,5 @@
     /* Dark Mode */
     [data-theme="dark"] .admin-sidebar {
         background-color: var(--bg-secondary);
-    }
+    }}
 </style>
