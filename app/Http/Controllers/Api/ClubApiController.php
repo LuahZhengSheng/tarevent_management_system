@@ -468,15 +468,13 @@ class ClubApiController extends Controller
         // Extract requestID for logging (prefer requestID over timestamp)
         $requestId = $request->input('requestID') ?? $request->input('timestamp');
 
+        // Allow guest access - user can be null
         $user = auth()->user();
         
-        if (!$user) {
-            return $this->failResponse('Unauthenticated.', [], 401);
-        }
-
-        // Check if user is a member (only for student role)
+        // Check if user is a member (only for authenticated student role)
+        // If user is not logged in, isMember will be false
         $isMember = false;
-        if ($user->role === 'student') {
+        if ($user && $user->role === 'student') {
             $isMember = $facade->hasMember($club, $user);
         }
 
