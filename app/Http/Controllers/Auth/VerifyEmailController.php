@@ -9,11 +9,12 @@ use App\Models\User;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class VerifyEmailController extends Controller
 {
     /**
-     * Mark the authenticated user's email address as verified.
+     * Mark the user's email address as verified.
      * Supports both authenticated and unauthenticated users.
      */
     public function __invoke(Request $request, $id, $hash): RedirectResponse
@@ -28,20 +29,38 @@ class VerifyEmailController extends Controller
 
         // Check if email is already verified
         if ($user->hasVerifiedEmail()) {
-            // If user is not logged in, redirect to login with success message
-            if (!auth()->check() || auth()->id() !== $user->id) {
-                return redirect()->route('login')
-                    ->with('status', 'Your email has already been verified. Please log in to continue.');
+            // If user is logged in, redirect based on role
+            if (auth()->check() && auth()->id() === $user->id) {
+                if ($user->isAdmin() || $user->isSuperAdmin()) {
+                    return redirect()->route('admin.dashboard')
+                        ->with('status', 'Your email is already verified.');
+                }
+                if ($user->isClub()) {
+                    return redirect()->route('club.dashboard')
+                        ->with('status', 'Your email is already verified.');
+                }
+                return redirect()->route('home')
+                    ->with('status', 'Your email is already verified.');
             }
             
-            // User is logged in and already verified
+            // If not logged in, auto-login and redirect
+            Auth::login($user);
+            $request->session()->regenerate();
+            
+            // Generate Bearer Token
+            $token = $user->createToken('web-login')->plainTextToken;
+            $request->session()->put('api_token', $token);
+            
             if ($user->isAdmin() || $user->isSuperAdmin()) {
-                return redirect()->intended(route('admin.dashboard', absolute: false).'?verified=1');
+                return redirect()->route('admin.dashboard')
+                    ->with('status', 'Your email is already verified. Welcome back!');
             }
             if ($user->isClub()) {
-                return redirect()->intended(route('club.dashboard', absolute: false).'?verified=1');
+                return redirect()->route('club.dashboard')
+                    ->with('status', 'Your email is already verified. Welcome back!');
             }
-            return redirect()->intended(route('home', absolute: false).'?verified=1');
+            return redirect()->route('home')
+                ->with('status', 'Your email is already verified. Welcome back!');
         }
 
         // Mark email as verified
@@ -49,19 +68,44 @@ class VerifyEmailController extends Controller
             event(new Verified($user));
         }
 
-        // If user is not logged in, redirect to login with success message
-        if (!auth()->check() || auth()->id() !== $user->id) {
-            return redirect()->route('login')
-                ->with('status', 'Your email has been verified successfully! Please log in to continue.');
+        // If user is logged in, redirect based on role
+        if (auth()->check() && auth()->id() === $user->id) {
+            // Generate Bearer Token if not already in session
+            if (!$request->session()->has('api_token')) {
+                $token = $user->createToken('web-login')->plainTextToken;
+                $request->session()->put('api_token', $token);
+            }
+            
+            if ($user->isAdmin() || $user->isSuperAdmin()) {
+                return redirect()->route('admin.dashboard')
+                    ->with('status', 'Your email has been verified successfully!');
+            }
+            if ($user->isClub()) {
+                return redirect()->route('club.dashboard')
+                    ->with('status', 'Your email has been verified successfully!');
+            }
+            return redirect()->route('home')
+                ->with('status', 'Your email has been verified successfully!');
         }
 
-        // User is logged in, redirect based on role
+        // If not logged in, auto-login the user
+        Auth::login($user);
+        $request->session()->regenerate();
+        
+        // Generate Bearer Token
+        $token = $user->createToken('web-login')->plainTextToken;
+        $request->session()->put('api_token', $token);
+        
+        // Redirect based on role
         if ($user->isAdmin() || $user->isSuperAdmin()) {
-            return redirect()->intended(route('admin.dashboard', absolute: false).'?verified=1');
+            return redirect()->route('admin.dashboard')
+                ->with('status', 'Email verified successfully! You have been automatically logged in.');
         }
         if ($user->isClub()) {
-            return redirect()->intended(route('club.dashboard', absolute: false).'?verified=1');
+            return redirect()->route('club.dashboard')
+                ->with('status', 'Email verified successfully! You have been automatically logged in.');
         }
-        return redirect()->intended(route('home', absolute: false).'?verified=1');
+        return redirect()->route('home')
+            ->with('status', 'Email verified successfully! You have been automatically logged in.');
     }
 }
