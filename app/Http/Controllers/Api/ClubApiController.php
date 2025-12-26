@@ -546,7 +546,17 @@ class ClubApiController extends Controller
 
         // Get all active clubs with optional category filter
         $query = \App\Models\Club::where('status', 'active')
-            ->with(['creator', 'clubUser']);
+            ->with(['creator', 'clubUser'])
+            ->withCount([
+                'members' => function ($query) {
+                    // Only count active members (status = 'active' in pivot table)
+                    $query->where('club_user.status', 'active');
+                },
+                'events' => function ($query) {
+                    // Only count published events
+                    $query->where('status', 'published');
+                }
+            ]);
         
         // Apply category filter if provided
         if ($request->filled('category')) {
@@ -578,6 +588,8 @@ class ClubApiController extends Controller
                 'cooldown_remaining_days' => $joinStatus['cooldown_remaining_days'],
                 'pending_request_id' => $joinStatus['pending_request_id'],
                 'blacklist_reason' => $joinStatus['blacklist_reason'] ?? null,
+                'members_count' => $club->members_count ?? 0,
+                'events_count' => $club->events_count ?? 0,
                 'creator' => $club->creator ? [
                     'id' => $club->creator->id,
                     'name' => $club->creator->name,
@@ -705,6 +717,9 @@ class ClubApiController extends Controller
             ]);
 
             // Handle image file upload if present
+            // Remove 'image' from validated array to avoid passing file object
+            unset($validated['image']);
+            
             if ($request->hasFile('image')) {
                 $imageFile = $request->file('image');
                 $imagePath = $imageFile->store('clubs/announcements', 'public');

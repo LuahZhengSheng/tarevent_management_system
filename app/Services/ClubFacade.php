@@ -238,7 +238,8 @@ class ClubFacade
         $joinStatus = $this->membershipService->getClubJoinStatus($club, $user);
         
         if ($joinStatus['status'] === 'removed') {
-            throw new \Exception("You were removed from this club. Please wait {$joinStatus['cooldown_remaining_days']} more day(s) before requesting to join again.");
+            $cooldownDays = (int) ceil($joinStatus['cooldown_remaining_days']);
+            throw new \Exception("You were removed from this club. Please wait {$cooldownDays} more day(s) before requesting to join again.");
         }
 
         // Delegate membership check
@@ -534,12 +535,26 @@ class ClubFacade
      */
     public function addToBlacklist(Club $club, User $user, ?string $reason = null, ?User $blacklistedBy = null): \App\Models\ClubBlacklist
     {
-        // Delegate to membership service
-        $blacklist = $this->membershipService->addToBlacklist($club, $user, $reason, $blacklistedBy);
+        $actor = $blacklistedBy ?? auth()->user() ?? $club->creator;
+        
+        // Check if user is a member before blacklisting (for audit logging)
+        $wasMember = $this->membershipService->hasMember($club, $user);
+        
+        // Delegate to membership service (this will remove member if they are one)
+        $blacklist = $this->membershipService->addToBlacklist($club, $user, $reason, $actor);
 
         // Delegate audit logging
-        $actor = $blacklistedBy ?? auth()->user() ?? $club->creator;
-        $this->auditService->log($club, 'add_to_blacklist', $actor, $user, ['reason' => $reason]);
+        $this->auditService->log($club, 'add_to_blacklist', $actor, $user, [
+            'reason' => $reason,
+            'was_member' => $wasMember,
+        ]);
+        
+        // If user was a member, also log the removal
+        if ($wasMember) {
+            $this->auditService->log($club, 'remove_member', $actor, $user, [
+                'reason' => 'Removed due to blacklisting',
+            ]);
+        }
 
         return $blacklist;
     }
@@ -559,6 +574,27 @@ class ClubFacade
         // Delegate audit logging
         $actor = auth()->user() ?? $club->creator;
         $this->auditService->log($club, 'remove_from_blacklist', $actor, $user);
+
+        return true;
+    }
+
+    /**
+     * Clear cooldown period for a removed member.
+     * This allows the user to immediately request to join again.
+     * 
+     * @param Club $club The club
+     * @param User $user The user whose cooldown to clear
+     * @param User|null $clearedBy The user clearing the cooldown
+     * @return bool True if cooldown was cleared
+     */
+    public function clearMemberCooldown(Club $club, User $user, ?User $clearedBy = null): bool
+    {
+        // Delegate to membership service
+        $this->membershipService->clearMemberCooldown($club, $user);
+
+        // Delegate audit logging
+        $actor = $clearedBy ?? auth()->user() ?? $club->creator;
+        $this->auditService->log($club, 'clear_member_cooldown', $actor, $user);
 
         return true;
     }

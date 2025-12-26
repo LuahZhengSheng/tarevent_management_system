@@ -81,7 +81,8 @@ class ClubJoinRequest extends Model
             return null; // Cooldown expired
         }
 
-        return 3 - $daysSinceRejection;
+        // Use ceil to round up to nearest integer
+        return (int) ceil(3 - $daysSinceRejection);
     }
 }
 

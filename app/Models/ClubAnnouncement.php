@@ -74,4 +74,29 @@ class ClubAnnouncement extends Model
             'published_at' => null,
         ]);
     }
+
+    /**
+     * Get the image URL attribute.
+     * Handles both correct storage paths and incorrect temporary file paths.
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        if (!$this->image) {
+            return null;
+        }
+
+        // If image path contains backslashes or starts with C:\, it's an invalid path
+        // This happens when temporary file paths were incorrectly saved
+        if (strpos($this->image, '\\') !== false || strpos($this->image, 'C:') === 0) {
+            return null; // Return null for invalid paths
+        }
+
+        // Check if path already starts with storage/ or /storage/
+        if (strpos($this->image, 'storage/') === 0 || strpos($this->image, '/storage/') === 0) {
+            return asset($this->image);
+        }
+
+        // Normal storage path
+        return asset('storage/' . $this->image);
+    }
 }

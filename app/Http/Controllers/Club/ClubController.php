@@ -309,11 +309,11 @@ class ClubController extends Controller
             ->orderBy('club_user.created_at', 'desc')
             ->get();
 
-        // Get removed members
+        // Get removed members (include updated_at for cooldown calculation)
         $removedMembers = $club->members()
             ->wherePivot('status', 'removed')
-            ->withPivot('role', 'status', 'created_at')
-            ->orderBy('club_user.created_at', 'desc')
+            ->withPivot('role', 'status', 'created_at', 'updated_at')
+            ->orderBy('club_user.updated_at', 'desc')
             ->get();
 
         // Get blacklisted users
@@ -339,23 +339,167 @@ class ClubController extends Controller
     /**
      * Update a member's role in a club.
      */
-    public function updateMemberRole(Request $request, Club $club, User $user): RedirectResponse
+    public function updateMemberRole(Request $request, User $user)
     {
-        $this->clubFacade->updateMemberRole($club, $user, $request->input('role'), auth()->user());
+        // Get club from current club account (not from route parameter)
+        $club = $this->clubFacade->getClubForAccount(auth()->user());
 
-        return redirect()->back()
-            ->with('success', 'Member role updated successfully.');
+        if (!$club) {
+            abort(404, 'Club not found for this account.');
+        }
+
+        try {
+            $this->clubFacade->updateMemberRole($club, $user, $request->input('role'), auth()->user());
+
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Member role updated successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->back()
+                ->with('success', 'Member role updated successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
     }
 
     /**
      * Remove a member from a club.
      */
-    public function removeMember(Club $club, User $user): RedirectResponse
+    public function removeMember(Request $request, User $user)
     {
-        $this->clubFacade->removeMember($club, $user, auth()->user());
+        // Get club from current club account (not from route parameter)
+        $club = $this->clubFacade->getClubForAccount(auth()->user());
 
-        return redirect()->back()
-            ->with('success', 'Member removed successfully.');
+        if (!$club) {
+            abort(404, 'Club not found for this account.');
+        }
+
+        try {
+            $this->clubFacade->removeMember($club, $user, auth()->user());
+
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Member removed successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->back()
+                ->with('success', 'Member removed successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Add a user to blacklist (Club-side).
+     */
+    public function addToBlacklist(Request $request, User $user)
+    {
+        // Get club from current club account (not from route parameter)
+        $club = $this->clubFacade->getClubForAccount(auth()->user());
+
+        if (!$club) {
+            abort(404, 'Club not found for this account.');
+        }
+
+        try {
+            $reason = $request->input('reason');
+
+            $this->clubFacade->addToBlacklist($club, $user, $reason, auth()->user());
+
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'User added to blacklist successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->back()
+                ->with('success', 'User added to blacklist successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove a user from blacklist (Club-side).
+     */
+    public function removeFromBlacklist(Request $request, User $user)
+    {
+        // Get club from current club account (not from route parameter)
+        $club = $this->clubFacade->getClubForAccount(auth()->user());
+
+        if (!$club) {
+            abort(404, 'Club not found for this account.');
+        }
+
+        try {
+            $this->clubFacade->removeFromBlacklist($club, $user);
+
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'User removed from blacklist successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->back()
+                ->with('success', 'User removed from blacklist successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
     }
 
     /**
@@ -455,6 +599,46 @@ class ClubController extends Controller
     }
 
     /**
+     * Clear cooldown period for a removed member (Club-side).
+     */
+    public function clearMemberCooldown(Request $request, User $user)
+    {
+        $club = $this->clubFacade->getClubForAccount(auth()->user());
+
+        if (!$club) {
+            abort(404, 'Club not found for this account.');
+        }
+
+        try {
+            $this->clubFacade->clearMemberCooldown($club, $user, auth()->user());
+
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Member cooldown cleared successfully. User can now request to join again.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->back()
+                ->with('success', 'Member cooldown cleared successfully. User can now request to join again.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
      * List announcements (Club-side).
      */
     public function announcementsIndex(): View
@@ -511,6 +695,16 @@ class ClubController extends Controller
             'status' => ['nullable', 'string', 'in:draft,published'],
         ]);
 
+        // Handle image upload - MUST be done before validation data is passed to service
+        // Remove 'image' from validated array to avoid passing file object
+        unset($validated['image']);
+        
+        if ($request->hasFile('image')) {
+            $imageFile = $request->file('image');
+            $imagePath = $imageFile->store('clubs/announcements', 'public');
+            $validated['image'] = $imagePath;
+        }
+
         $this->clubFacade->createAnnouncement($club, $validated, auth()->user());
 
         return redirect()->route('club.announcements.index')
@@ -559,6 +753,26 @@ class ClubController extends Controller
             'status' => ['nullable', 'string', 'in:draft,published'],
         ]);
 
+        // Handle image upload - MUST be done before validation data is passed to service
+        // Remove 'image' from validated array to avoid passing file object
+        unset($validated['image']);
+        
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($announcement->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+            }
+            $imageFile = $request->file('image');
+            $imagePath = $imageFile->store('clubs/announcements', 'public');
+            $validated['image'] = $imagePath;
+        } elseif ($request->has('remove_image') && $request->input('remove_image') === '1') {
+            // Remove image if requested
+            if ($announcement->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+            }
+            $validated['image'] = null;
+        }
+
         $this->clubFacade->updateAnnouncement($club, $announcement, $validated, auth()->user());
 
         return redirect()->route('club.announcements.index')
@@ -568,7 +782,7 @@ class ClubController extends Controller
     /**
      * Delete an announcement (Club-side).
      */
-    public function deleteAnnouncement(\App\Models\ClubAnnouncement $announcement): RedirectResponse
+    public function deleteAnnouncement(Request $request, \App\Models\ClubAnnouncement $announcement)
     {
         $club = $this->clubFacade->getClubForAccount(auth()->user());
 
@@ -581,16 +795,39 @@ class ClubController extends Controller
             abort(403, 'Unauthorized access to this announcement.');
         }
 
-        $this->clubFacade->deleteAnnouncement($announcement, auth()->user());
+        try {
+            $this->clubFacade->deleteAnnouncement($club, $announcement, auth()->user());
 
-        return redirect()->route('club.announcements.index')
-            ->with('success', 'Announcement deleted successfully.');
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Announcement deleted successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->route('club.announcements.index')
+                ->with('success', 'Announcement deleted successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
     }
 
     /**
      * Publish an announcement (Club-side).
      */
-    public function publishAnnouncement(\App\Models\ClubAnnouncement $announcement): RedirectResponse
+    public function publishAnnouncement(Request $request, \App\Models\ClubAnnouncement $announcement)
     {
         $club = $this->clubFacade->getClubForAccount(auth()->user());
 
@@ -603,16 +840,39 @@ class ClubController extends Controller
             abort(403, 'Unauthorized access to this announcement.');
         }
 
-        $this->clubFacade->publishAnnouncement($club, $announcement, auth()->user());
+        try {
+            $this->clubFacade->publishAnnouncement($club, $announcement, auth()->user());
 
-        return redirect()->route('club.announcements.index')
-            ->with('success', 'Announcement published successfully.');
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Announcement published successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->route('club.announcements.index')
+                ->with('success', 'Announcement published successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
     }
 
     /**
      * Unpublish an announcement (Club-side).
      */
-    public function unpublishAnnouncement(\App\Models\ClubAnnouncement $announcement): RedirectResponse
+    public function unpublishAnnouncement(Request $request, \App\Models\ClubAnnouncement $announcement)
     {
         $club = $this->clubFacade->getClubForAccount(auth()->user());
 
@@ -625,10 +885,33 @@ class ClubController extends Controller
             abort(403, 'Unauthorized access to this announcement.');
         }
 
-        $this->clubFacade->unpublishAnnouncement($club, $announcement, auth()->user());
+        try {
+            $this->clubFacade->unpublishAnnouncement($club, $announcement, auth()->user());
 
-        return redirect()->route('club.announcements.index')
-            ->with('success', 'Announcement unpublished successfully.');
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Announcement unpublished successfully.',
+                ]);
+            }
+
+            // Return redirect for regular form submissions
+            return redirect()->route('club.announcements.index')
+                ->with('success', 'Announcement unpublished successfully.');
+        } catch (\Exception $e) {
+            // Return JSON error response for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            // Return redirect with error for regular form submissions
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
     }
 
     /**
@@ -784,15 +1067,38 @@ class ClubController extends Controller
             abort(404, 'Club not found.');
         }
 
-        // Get membership status if user is authenticated
+        // Get membership status and join status if user is authenticated
         $isMember = false;
         $memberRole = null;
+        $joinStatus = null;
         if (auth()->check()) {
-            $isMember = $this->clubFacade->hasMember($club, auth()->user());
+            $user = auth()->user();
+            $isMember = $this->clubFacade->hasMember($club, $user);
             if ($isMember) {
-                $memberRole = $this->clubFacade->getMemberRole($club, auth()->user());
+                $memberRole = $this->clubFacade->getMemberRole($club, $user);
+            } else {
+                // Get join status for non-members (pending, rejected, etc.)
+                $membershipService = app(\App\Services\Club\MembershipService::class);
+                $joinStatus = $membershipService->getClubJoinStatus($club, $user);
             }
         }
+
+        // Get club members with roles (excluding regular 'member' role)
+        // Show leadership roles: president, vice_president, secretary, treasurer, officer, committee_member
+        $leadershipMembers = $club->members()
+            ->wherePivot('status', 'active')
+            ->wherePivotIn('role', ['president', 'vice_president', 'secretary', 'treasurer', 'officer', 'committee_member'])
+            ->orderByRaw("FIELD(club_user.role, 'president', 'vice_president', 'secretary', 'treasurer', 'officer', 'committee_member')")
+            ->get()
+            ->map(function ($member) {
+                return [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'email' => $member->email,
+                    'role' => $member->pivot->role,
+                    'role_display' => ucfirst(str_replace('_', ' ', $member->pivot->role)),
+                ];
+            });
 
         // Get statistics
         $stats = [
@@ -801,13 +1107,16 @@ class ClubController extends Controller
             'events_count' => 0, // Reserved for Event Module
         ];
 
-        // Get recent announcements (last 5)
-        $recentAnnouncements = $club->announcements()
-            ->published()
-            ->orderBy('published_at', 'desc')
-            ->limit(5)
-            ->get();
+        // Get recent announcements (last 5) - only if user is a member
+        $recentAnnouncements = collect();
+        if ($isMember) {
+            $recentAnnouncements = $club->announcements()
+                ->published()
+                ->orderBy('published_at', 'desc')
+                ->limit(5)
+                ->get();
+        }
 
-        return view('clubs.show', compact('club', 'isMember', 'memberRole', 'stats', 'recentAnnouncements'));
+        return view('clubs.show', compact('club', 'isMember', 'memberRole', 'joinStatus', 'leadershipMembers', 'stats', 'recentAnnouncements'));
     }
 }

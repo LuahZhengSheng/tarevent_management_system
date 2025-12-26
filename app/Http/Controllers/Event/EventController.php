@@ -289,6 +289,13 @@ class EventController extends Controller {
             ]);
 
             // RESTful API：只返回 JSON
+            // Determine redirect URL based on user role
+            $showUrl = route('events.show', $event);
+            if (auth()->check() && auth()->user()->hasRole('club')) {
+                // If club user, redirect to club events index
+                $showUrl = route('club.events.index');
+            }
+
             return response()->json([
                         'success' => true,
                         'message' => $request->status === 'published' ? 'Event published successfully!' : 'Event saved as draft.',
@@ -297,7 +304,7 @@ class EventController extends Controller {
                             'title' => $event->title,
                             'slug' => $event->slug ?? $event->id,
                             'status' => $event->status,
-                            'show_url' => route('events.show', $event),
+                            'show_url' => $showUrl,
                         ],
                             ], 201);
         } catch (\Exception $e) {

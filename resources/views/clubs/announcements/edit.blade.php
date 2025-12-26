@@ -66,13 +66,13 @@
                         </div>
 
                         <!-- Current Image -->
-                        @if($announcement->image)
+                        @if($announcement->image && $announcement->image_url)
                         <div class="mb-4">
                             <label class="form-label">
                                 <i class="bi bi-image me-2"></i>Current Image
                             </label>
                             <div class="current-image-container">
-                                <img src="{{ asset('storage/' . $announcement->image) }}" alt="Current image" class="current-image">
+                                <img src="{{ $announcement->image_url }}" alt="Current image" class="current-image">
                                 <div class="image-actions mt-2">
                                     <button type="button" class="btn btn-sm btn-danger" id="removeImageBtn">
                                         <i class="bi bi-trash me-1"></i>Remove Image

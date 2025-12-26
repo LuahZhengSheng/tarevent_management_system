@@ -212,20 +212,27 @@ class MembershipService
      */
     public function createJoinRequest(Club $club, User $user, ?string $description = null): ClubJoinRequest
     {
-        // Check for existing pending request
-        $existingRequest = $this->findPendingJoinRequest($club, $user);
+        // Check for existing request (any status) to avoid unique constraint violation
+        $existingRequest = ClubJoinRequest::where('club_id', $club->id)
+            ->where('user_id', $user->id)
+            ->first();
 
-        if ($existingRequest) {
-            throw new \Exception("A pending join request already exists for this user.");
-        }
-
-        return DB::transaction(function () use ($club, $user, $description) {
-            return ClubJoinRequest::create([
-                'club_id' => $club->id,
-                'user_id' => $user->id,
-                'status' => 'pending',
-                'description' => $description,
-            ]);
+        return DB::transaction(function () use ($club, $user, $description, $existingRequest) {
+            if ($existingRequest) {
+                // If request exists, update it to pending status with new description
+                $existingRequest->status = 'pending';
+                $existingRequest->description = $description;
+                $existingRequest->save();
+                return $existingRequest;
+            } else {
+                // Create new request if none exists
+                return ClubJoinRequest::create([
+                    'club_id' => $club->id,
+                    'user_id' => $user->id,
+                    'status' => 'pending',
+                    'description' => $description,
+                ]);
+            }
         });
     }
 
@@ -357,11 +364,12 @@ class MembershipService
 
         if ($removedMember) {
             $removedAt = $removedMember->pivot->updated_at;
-            $daysSinceRemoval = Carbon::now()->diffInDays($removedAt, false);
+            // Use absolute value to handle both past and future dates correctly
+            $daysSinceRemoval = abs(Carbon::now()->diffInDays($removedAt, false));
 
             if ($daysSinceRemoval < 3) {
-                // Still in cooldown
-                $cooldownDays = 3 - $daysSinceRemoval;
+                // Still in cooldown - use ceil to round up to nearest integer
+                $cooldownDays = (int) ceil(3 - $daysSinceRemoval);
                 return [
                     'status' => 'removed',
                     'rejected_at' => null,
@@ -443,14 +451,17 @@ class MembershipService
             // Check if user was removed after approval
             if ($removedMember) {
                 $removedAt = $removedMember->pivot->updated_at;
-                $daysSinceRemoval = Carbon::now()->diffInDays($removedAt, false);
+                // Use absolute value to handle both past and future dates correctly
+                $daysSinceRemoval = abs(Carbon::now()->diffInDays($removedAt, false));
                 
                 if ($daysSinceRemoval < 3) {
+                    // Use ceil to round up to nearest integer
+                    $cooldownDays = (int) ceil(3 - $daysSinceRemoval);
                     return [
                         'status' => 'removed',
                         'rejected_at' => null,
                         'removed_at' => $removedAt,
-                        'cooldown_remaining_days' => 3 - $daysSinceRemoval,
+                        'cooldown_remaining_days' => $cooldownDays,
                         'pending_request_id' => null,
                         'blacklist_reason' => null,
                     ];
@@ -493,6 +504,7 @@ class MembershipService
 
     /**
      * Add a user to club blacklist.
+     * If the user is currently a member, they will be removed from the club first.
      * 
      * @param Club $club The club
      * @param User $user The user to blacklist
@@ -513,6 +525,15 @@ class MembershipService
         }
 
         return DB::transaction(function () use ($club, $user, $reason, $blacklistedBy) {
+            // If user is currently a member, remove them from the club first
+            if ($this->hasMember($club, $user)) {
+                // Update status to 'removed' instead of detaching
+                $club->members()->updateExistingPivot($user->id, [
+                    'status' => 'removed',
+                ]);
+            }
+
+            // Create blacklist entry
             return ClubBlacklist::create([
                 'club_id' => $club->id,
                 'user_id' => $user->id,
@@ -556,6 +577,40 @@ class MembershipService
         return ClubBlacklist::where('club_id', $club->id)
             ->where('user_id', $user->id)
             ->exists();
+    }
+
+    /**
+     * Clear cooldown period for a removed member.
+     * This allows the user to immediately request to join again.
+     * 
+     * @param Club $club The club
+     * @param User $user The user whose cooldown to clear
+     * @return bool True if cooldown was cleared
+     * @throws \Exception If user is not in cooldown period
+     */
+    public function clearMemberCooldown(Club $club, User $user): bool
+    {
+        // Check if user has a removed status
+        $removedMember = $club->members()
+            ->where('users.id', $user->id)
+            ->wherePivot('status', 'removed')
+            ->first();
+
+        if (!$removedMember) {
+            throw new \Exception("User is not in cooldown period (not removed from this club).");
+        }
+
+        return DB::transaction(function () use ($club, $user) {
+            // Delete the club_user record to completely remove the cooldown
+            // This allows the user to immediately request to join again
+            DB::table('club_user')
+                ->where('club_id', $club->id)
+                ->where('user_id', $user->id)
+                ->where('status', 'removed')
+                ->delete();
+
+            return true;
+        });
     }
 }
 
