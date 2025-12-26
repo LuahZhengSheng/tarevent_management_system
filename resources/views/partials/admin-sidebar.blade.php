@@ -882,20 +882,5 @@
     .admin-sidebar::-webkit-scrollbar-thumb:hover {
         background: var(--admin-primary);
     }
-
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
-        .admin-sidebar {
-            width: 100%;
-            position: relative;
-            top: 0;
-            border-right: none;
-            border-bottom: 1px solid var(--border-color);
-        }
-    }
-
-    /* Dark Mode */
-    [data-theme="dark"] .admin-sidebar {
-        background-color: var(--bg-secondary);
-    }
+}
 </style>
