@@ -14,10 +14,10 @@
             <div class="row align-items-center">
                 <div class="col-lg-12">
                     <div class="hero-content">
-                        <!-- <div class="hero-badge">
+                        <div class="hero-badge">
                             <i class="bi bi-shield-check me-2"></i>
                             <span>Admin Only - Testing/Admin Use</span>
-                        </div> -->
+                        </div>
                         <h1 class="hero-title">Create New Club</h1>
                         <p class="hero-description">
                             Create a club and club account. This page is for testing/admin use only.
@@ -38,7 +38,7 @@
                         Create Club & Club Account
                     </h3>
                     
-                    <form id="createClubForm" enctype="multipart/form-data">
+                    <form id="createClubForm" method="POST" action="#" enctype="multipart/form-data" onsubmit="return false;">
                         <!-- Club Information Section -->
                         <div class="form-subsection mb-4">
                             <h4 class="form-subsection-title">
@@ -345,8 +345,43 @@
 
 @push('scripts')
 <script>
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
     // Get CSRF token from meta tag
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
+    // Helper function to get API token (from localStorage or try to get from session)
+    function getApiToken() {
+        let token = localStorage.getItem('api_token');
+        console.log('getApiToken - localStorage token:', token ? 'Found' : 'Not found');
+        
+        if (!token) {
+            // Try to get from session if available (via meta tag or hidden input)
+            const sessionToken = document.querySelector('meta[name="api-token"]')?.getAttribute('content');
+            console.log('getApiToken - session token:', sessionToken ? 'Found' : 'Not found');
+            
+            if (sessionToken) {
+                localStorage.setItem('api_token', sessionToken);
+                token = sessionToken;
+                console.log('getApiToken - Token saved to localStorage from session');
+            } else {
+                // Check if we're authenticated but token is missing
+                console.warn('getApiToken - No token found in localStorage or session. User may need to refresh page or log in again.');
+            }
+        }
+        
+        return token || '';
+    }
+    
+    // Check token on page load
+    window.addEventListener('load', function() {
+        const token = getApiToken();
+        if (!token) {
+            console.warn('No API token found on page load. If you just logged in, please refresh the page.');
+        } else {
+            console.log('API token found on page load');
+        }
+    });
     
     // Store club ID after creation
     let clubId = null;
@@ -615,8 +650,15 @@
     }
 
     // Combined Form Handler
-    document.getElementById('createClubForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    const form = document.getElementById('createClubForm');
+    if (!form) {
+        console.error('Form not found: createClubForm');
+    } else {
+        console.log('Form found, attaching submit handler');
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Form submit triggered');
         
         // Clear all previous errors
         clearAllFieldErrors();
@@ -625,6 +667,33 @@
         responseDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i><strong>Creating club and account...</strong><br>Please wait while we process your request.</div>';
 
         try {
+            // Get Bearer token first
+            const apiToken = getApiToken();
+            console.log('API Token:', apiToken ? 'Found' : 'Not found');
+            
+            if (!apiToken) {
+                responseDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.75rem;">
+                            <i class="bi bi-x-circle me-2" style="font-size: 1.25rem;"></i>
+                            <strong>Authentication Error</strong>
+                        </div>
+                        <p style="margin-top: 0.5rem; margin-bottom: 0.5rem;">No API token found. Please try one of the following:</p>
+                        <ol style="margin-left: 1.5rem; margin-bottom: 0.5rem;">
+                            <li>Refresh the page (F5) to reload token from session</li>
+                            <li><a href="{{ route('login') }}">Log in again</a> to generate a new token</li>
+                            <li>If you have a token, open browser Console (F12) and run:<br>
+                                <code style="background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">localStorage.setItem('api_token', 'YOUR_TOKEN_HERE');</code>
+                            </li>
+                        </ol>
+                        <p style="margin-top: 0.5rem; margin-bottom: 0; font-size: 0.9em; color: #666;">
+                            Current user: {{ auth()->user()->name ?? 'Not logged in' }} (ID: {{ auth()->id() ?? 'N/A' }})
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
             // Step 1: Create Club
             const clubFormData = new FormData();
             // Add timestamp for IFA standard
@@ -642,15 +711,13 @@
             if (logoFile) {
                 clubFormData.append('logo', logoFile);
             }
-
-            const token = localStorage.getItem('api_token') || '';
             
             const clubResponse = await fetch('/api/clubs', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${apiToken}`
                 },
                 credentials: 'same-origin',
                 body: clubFormData,
@@ -722,12 +789,16 @@
                 timestamp: timestamp, // IFA standard format: YYYY-MM-DD HH:MM:SS
             };
 
+            // Get Bearer token (reuse token from earlier)
+            const accountToken = getApiToken();
+            
             const accountResponse = await fetch('/api/v1/club-users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'Authorization': `Bearer ${accountToken}`
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify(accountFormData),
@@ -781,15 +852,16 @@
                 club_user_id: accountData.data.id,
             };
 
-            const token = localStorage.getItem('api_token') || '';
-            
+            // Get Bearer token (reuse apiToken from earlier)
+            const updateToken = getApiToken();
+
             const updateResponse = await fetch(`/api/clubs/${clubId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${updateToken}`
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify(updateClubData),
@@ -838,7 +910,9 @@
                 </div>
             `;
         }
-    });
+        }); // Close form.addEventListener
+    } // Close else block
+    }); // Close DOMContentLoaded
 </script>
 @endpush
 
