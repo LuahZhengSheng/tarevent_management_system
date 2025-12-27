@@ -1,10 +1,41 @@
 <!-- Author: Tang Lit Xuan -->
-@extends('layouts.app')
-
-@section('title', 'Verify Email - TAREvent')
-
-@push('styles')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - TAREvent</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
     <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: rgba(99, 102, 241, 0.1);
+            --success: #10b981;
+            --success-light: rgba(16, 185, 129, 0.1);
+            --info: #3b82f6;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-secondary);
+            margin: 0;
+            padding: 0;
+        }
         .auth-page {
             min-height: calc(100vh - 80px);
             display: flex;
@@ -260,9 +291,11 @@
             }
         }
     </style>
-@endpush
-
-@section('content')
+</head>
+<body>
+    <!-- Include API Token Handler -->
+    @include('partials.api-token-handler')
+    
     <div class="auth-page">
         <div class="auth-container">
             <div class="auth-card">
@@ -318,4 +351,8 @@
             </div>
         </div>
     </div>
-@endsection
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
