@@ -3,383 +3,383 @@
 @section('title', $club->name . ' - Club Details')
 
 @push('styles')
-@include('clubs.join-modal')
+@include('clubs.join_modal')
 @if($isMember)
-<!--@vite([
-'resources/css/forums/forum.css',
-'resources/css/forums/forum-media-gallery.css',
-'resources/css/forums/media-lightbox.css'
-])-->
+@vite([
+    'resources/css/forums/forum.css',
+    'resources/css/forums/forum-media-gallery.css',
+    'resources/css/forums/media-lightbox.css'
+])
 @endif
 <style>
-    .club-detail-page {
-        min-height: 100vh;
-        background: var(--bg-primary, #f8f9fa);
-    }
+.club-detail-page {
+    min-height: 100vh;
+    background: var(--bg-primary, #f8f9fa);
+}
 
-    .club-hero {
-        position: relative;
-        min-height: 400px;
-        display: flex;
-        align-items: flex-end;
-        padding: 3rem 0;
-        background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
-        color: white;
-        overflow: hidden;
-    }
+.club-hero {
+    position: relative;
+    min-height: 400px;
+    display: flex;
+    align-items: flex-end;
+    padding: 3rem 0;
+    background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
+    color: white;
+    overflow: hidden;
+}
 
-    .club-hero-background {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 0;
-        object-fit: cover;
-        width: 100%;
-        height: 100%;
-        opacity: 0.3;
-    }
+.club-hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+}
 
-    .club-hero-placeholder {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 0;
-    }
+.club-hero-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 0;
+}
 
-    .club-hero-placeholder i {
-        font-size: 8rem;
-        opacity: 0.3;
-    }
+.club-hero-placeholder i {
+    font-size: 8rem;
+    opacity: 0.3;
+}
 
-    .club-hero-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 100%);
-        z-index: 1;
-    }
+.club-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 100%);
+    z-index: 1;
+}
 
-    .club-hero-content {
-        position: relative;
-        z-index: 2;
-        width: 100%;
-    }
+.club-hero-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+}
 
-    .breadcrumb-custom {
-        display: flex;
-        list-style: none;
-        padding: 0;
-        margin: 0 0 1.5rem 0;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
+.breadcrumb-custom {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 
-    .breadcrumb-custom li {
-        display: flex;
-        align-items: center;
-    }
+.breadcrumb-custom li {
+    display: flex;
+    align-items: center;
+}
 
-    .breadcrumb-custom li:not(:last-child)::after {
-        content: '/';
-        margin-left: 0.5rem;
-        opacity: 0.7;
-    }
+.breadcrumb-custom li:not(:last-child)::after {
+    content: '/';
+    margin-left: 0.5rem;
+    opacity: 0.7;
+}
 
-    .breadcrumb-custom a {
-        color: rgba(255, 255, 255, 0.9);
-        text-decoration: none;
-        transition: color 0.2s;
-    }
+.breadcrumb-custom a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    transition: color 0.2s;
+}
 
-    .breadcrumb-custom a:hover {
-        color: white;
-    }
+.breadcrumb-custom a:hover {
+    color: white;
+}
 
-    .breadcrumb-custom li:last-child {
-        color: white;
-        font-weight: 600;
-    }
+.breadcrumb-custom li:last-child {
+    color: white;
+    font-weight: 600;
+}
 
-    .club-hero-main {
-        display: flex;
-        align-items: flex-end;
-        gap: 2rem;
-        flex-wrap: wrap;
-    }
+.club-hero-main {
+    display: flex;
+    align-items: flex-end;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
 
-    .club-logo-large {
-        width: 150px;
-        height: 150px;
-        border-radius: 20px;
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-        flex-shrink: 0;
-    }
+.club-logo-large {
+    width: 150px;
+    height: 150px;
+    border-radius: 20px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+}
 
-    .club-logo-large img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+.club-logo-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 
-    .club-logo-large i {
-        font-size: 4rem;
-        color: var(--primary, #4f46e5);
-    }
+.club-logo-large i {
+    font-size: 4rem;
+    color: var(--primary, #4f46e5);
+}
 
-    .club-hero-info {
-        flex: 1;
-        min-width: 300px;
-    }
+.club-hero-info {
+    flex: 1;
+    min-width: 300px;
+}
 
-    .club-meta-tags {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-bottom: 1rem;
-    }
+.club-meta-tags {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
 
-    .meta-tag {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.5rem 1rem;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        backdrop-filter: blur(10px);
-    }
+.meta-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+}
 
+.club-title-hero {
+    font-size: 3rem;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+    line-height: 1.2;
+}
+
+.club-stats-row {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+}
+
+.club-stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.club-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.club-stat-label {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    margin-top: 0.5rem;
+}
+
+.club-content-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 3rem 1rem;
+}
+
+.content-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-title i {
+    color: var(--primary, #4f46e5);
+}
+
+.club-description-text {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: #495057;
+    white-space: pre-wrap;
+}
+
+.club-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 1.125rem;
+    color: #212529;
+    font-weight: 500;
+}
+
+.announcements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.announcement-card {
+    padding: 1.5rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.announcement-card:hover {
+    border-color: var(--primary, #4f46e5);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+}
+
+.announcement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.announcement-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.announcement-date {
+    font-size: 0.875rem;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.announcement-content {
+    color: #495057;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+
+.announcement-image {
+    margin-top: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.announcement-image img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.btn-primary-lg, .btn-secondary-lg {
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary-lg {
+    background: var(--primary, #4f46e5);
+    color: white;
+}
+
+.btn-primary-lg:hover {
+    background: var(--primary-hover, #6366f1);
+    color: white;
+}
+
+.btn-secondary-lg {
+    background: white;
+    color: var(--primary, #4f46e5);
+    border: 2px solid var(--primary, #4f46e5);
+}
+
+.btn-secondary-lg:hover {
+    background: var(--primary-light, #eef2ff);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+@media (max-width: 768px) {
     .club-title-hero {
-        font-size: 3rem;
-        font-weight: 800;
-        margin: 0 0 1rem 0;
-        line-height: 1.2;
-    }
-
-    .club-stats-row {
-        display: flex;
-        gap: 2rem;
-        flex-wrap: wrap;
-        margin-top: 1.5rem;
-    }
-
-    .club-stat-item {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .club-stat-value {
         font-size: 2rem;
-        font-weight: 700;
-        line-height: 1;
     }
-
-    .club-stat-label {
-        font-size: 0.875rem;
-        opacity: 0.9;
-        margin-top: 0.5rem;
-    }
-
-    .club-content-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 3rem 1rem;
-    }
-
-    .content-section {
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    .section-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin-bottom: 1.5rem;
-        color: #212529;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .section-title i {
-        color: var(--primary, #4f46e5);
-    }
-
-    .club-description-text {
-        font-size: 1.125rem;
-        line-height: 1.8;
-        color: #495057;
-        white-space: pre-wrap;
-    }
-
-    .club-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .info-item {
-        display: flex;
+    
+    .club-hero-main {
         flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .info-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .info-value {
-        font-size: 1.125rem;
-        color: #212529;
-        font-weight: 500;
-    }
-
-    .announcements-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .announcement-card {
-        padding: 1.5rem;
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        transition: all 0.2s;
-    }
-
-    .announcement-card:hover {
-        border-color: var(--primary, #4f46e5);
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
-    }
-
-    .announcement-header {
-        display: flex;
-        justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 0.75rem;
-        gap: 1rem;
     }
-
-    .announcement-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #212529;
-        margin: 0;
+    
+    .club-logo-large {
+        width: 120px;
+        height: 120px;
     }
-
-    .announcement-date {
-        font-size: 0.875rem;
-        color: #6c757d;
-        white-space: nowrap;
-    }
-
-    .announcement-content {
-        color: #495057;
-        line-height: 1.6;
-        margin-bottom: 0.75rem;
-    }
-
-    .announcement-image {
-        margin-top: 1rem;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .announcement-image img {
-        width: 100%;
-        max-height: 300px;
-        object-fit: cover;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
-        flex-wrap: wrap;
-    }
-
-    .btn-primary-lg, .btn-secondary-lg {
-        padding: 1rem 2rem;
-        border-radius: 8px;
-        font-weight: 600;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-    }
-
-    .btn-primary-lg {
-        background: var(--primary, #4f46e5);
-        color: white;
-    }
-
-    .btn-primary-lg:hover {
-        background: var(--primary-hover, #6366f1);
-        color: white;
-    }
-
-    .btn-secondary-lg {
-        background: white;
-        color: var(--primary, #4f46e5);
-        border: 2px solid var(--primary, #4f46e5);
-    }
-
-    .btn-secondary-lg:hover {
-        background: var(--primary-light, #eef2ff);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 2rem;
-        color: #6c757d;
-    }
-
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-
-    @media (max-width: 768px) {
-        .club-title-hero {
-            font-size: 2rem;
-        }
-
-        .club-hero-main {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .club-logo-large {
-            width: 120px;
-            height: 120px;
-        }
-    }
+}
 </style>
 @endpush
 
@@ -397,7 +397,7 @@
         </div>
         @endif
         <div class="club-hero-overlay"></div>
-
+        
         <div class="container club-hero-content">
             <!-- Breadcrumb -->
             <nav aria-label="breadcrumb">
@@ -412,9 +412,9 @@
                 <!-- Club Logo -->
                 <div class="club-logo-large">
                     @if($club->logo)
-                    <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->name }}">
+                        <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->name }}">
                     @else
-                    <i class="bi bi-people"></i>
+                        <i class="bi bi-people"></i>
                     @endif
                 </div>
 
@@ -575,23 +575,8 @@
                 </div>
                 @endif
 
-            <!-- Forum Posts Section -->
-            @if($isMember)
-            <div class="content-section">
-                <h2 class="section-title"><i class="bi bi-chat-dots"></i> Club Forum</h2>
-
-                @include('forums.partials.club_post_feed', [
-                'club' => $club,
-                'bearerToken' => $bearerToken ?? null,
-                ])
-            </div>
-            @endif
-        </div>
-
-        <div class="row g-4">
-            <!-- Sidebar -->
-            <div class="col-lg-4">
-                <!-- Club Info -->
+                <!-- Forum Posts Section -->
+                @if($isMember)
                 <div class="content-section">
                     <h2 class="section-title">
                         <i class="bi bi-chat-dots"></i>
@@ -630,10 +615,10 @@
                         </button>
                         @endif
                     @else
-                    <button onclick="openJoinModal({{ $club->id }})" class="btn-primary-lg">
-                        <i class="bi bi-person-plus"></i>
-                        Join Club
-                    </button>
+                        <button onclick="openJoinModal({{ $club->id }})" class="btn-primary-lg">
+                            <i class="bi bi-person-plus"></i>
+                            Join Club
+                        </button>
                     @endif
                     </div>
                 </div>
@@ -646,23 +631,22 @@
 @push('scripts')
 @if($isMember)
 @vite([
-'resources/js/forum.js',
-'resources/js/post-feed.js',
-'resources/js/media-lightbox.js'
+    'resources/js/forum.js',
+    'resources/js/post-feed.js',
+    'resources/js/media-lightbox.js'
 ])
 @endif
 
 <script>
-    function openJoinModal(clubId) {
+function openJoinModal(clubId) {
     if (typeof window.openJoinClubModal === 'function') {
-    window.openJoinClubModal(clubId, function(joinedClubId) {
-    // Reload page after successful join to update status
-    window.location.reload();
-    });
+        window.openJoinClubModal(clubId, function(joinedClubId) {
+            // Reload page after successful join to update status
+            window.location.reload();
+        });
     } else {
-    alert('Join functionality is being loaded. Please try again in a moment.');
+        alert('Join functionality is being loaded. Please try again in a moment.');
     }
-    }
+}
 </script>
 @endpush
-

@@ -33,8 +33,8 @@
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="merged">Merged</option>
+<!--                    <option value="inactive">Inactive</option>
+                    <option value="merged">Merged</option>-->
                 </select>
             </div>
 

@@ -57,7 +57,7 @@
                                 data-slug="{{ $tag->slug }}">Reject</button>
                     @endif
 
-                    @if($tag->status === 'active')
+<!--                    @if($tag->status === 'active')
                         {{-- 修改这里：data-id 改为 data-slug --}}
                         <button type="button" class="btn btn-sm btn-outline-danger btn-tag-disable" 
                                 data-slug="{{ $tag->slug }}">Disable</button>
@@ -65,7 +65,7 @@
                         {{-- 修改这里：data-id 改为 data-slug --}}
                         <button type="button" class="btn btn-sm btn-outline-success btn-tag-enable" 
                                 data-slug="{{ $tag->slug }}">Enable</button>
-                    @endif
+                    @endif-->
                 </div>
             </td>
         </tr>

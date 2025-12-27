@@ -89,15 +89,24 @@ class AdminForumTagController extends Controller {
         if ($tag->status !== 'pending') {
             return response()->json([
                         'success' => false,
-                        'message' => 'Only pending tags can be rejected.',
+                        'message' => 'Only pending tags can be deleted.',
                             ], 422);
         }
 
-        $tag->reject();
+        // 检查是否有关联的 posts
+        if ($tag->posts()->exists()) {
+            return response()->json([
+                        'success' => false,
+                        'message' => "Cannot delete tag \"{$tag->name}\" because it is being used by posts. Consider banning it instead.",
+                            ], 422);
+        }
+
+        $tagName = $tag->name;
+        $tag->delete();
 
         return response()->json([
                     'success' => true,
-                    'message' => "Tag \"{$tag->name}\" rejected (banned) successfully.",
+                    'message' => "Tag \"{$tagName}\" deleted successfully.",
         ]);
     }
 
