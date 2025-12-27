@@ -437,11 +437,21 @@ document.addEventListener('DOMContentLoaded', function () {
             // 也可以用 timestamp（二选一即可）：
             // url.searchParams.set('timestamp', new Date().toISOString());
 
+            // Get Bearer token from localStorage
+            const token = localStorage.getItem('api_token') || '';
+            
+            const headers = {
+                'Accept': 'application/json',
+            };
+            
+            // Add Authorization header if token is available
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch(url.toString(), {
                 method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                },
+                headers: headers,
                 credentials: 'same-origin',
             });
 
