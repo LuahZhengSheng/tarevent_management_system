@@ -12,8 +12,6 @@ use App\Http\Controllers\Club\ClubEventsController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\AdminForumPostController;
-use App\Http\Controllers\Admin\AdminForumTagController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Forum\ForumMessageController;
