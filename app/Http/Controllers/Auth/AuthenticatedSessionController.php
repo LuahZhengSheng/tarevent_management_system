@@ -30,20 +30,31 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+
+        // Check email verification for students and clubs
+        // If not verified, redirect to verification page (but keep them logged in)
+        if (in_array($user->role, ['student', 'club']) && !$user->hasVerifiedEmail()) {
+            // Store token in session for API use
+            $token = $user->createToken('web-login')->plainTextToken;
+            $request->session()->put('api_token', $token);
+            
+            return redirect()->route('verification.notice')
+                ->with('status', 'Please verify your email address to access all features.');
+        }
+
         // Update last login timestamp
         if (Auth::check()) {
-            Auth::user()->updateLastLogin();
+            $user->updateLastLogin();
         }
 
         // Generate Bearer Token for API authentication
-        $user = Auth::user();
         $token = $user->createToken('web-login')->plainTextToken;
         
         // Store token in session temporarily (will be picked up by frontend JavaScript)
         $request->session()->put('api_token', $token);
 
         // Redirect based on user role
-        // Email verification check is already done in LoginRequest::authenticate()
         if ($user->isAdmin() || $user->isSuperAdmin()) {
             return redirect()->intended(route('admin.dashboard', absolute: false));
         }

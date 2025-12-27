@@ -14,13 +14,10 @@
             <div class="row align-items-center">
                 <div class="col-lg-12">
                     <div class="hero-content">
-                        <div class="hero-badge">
-                            <i class="bi bi-shield-check me-2"></i>
-                            <span>Admin Only - Testing/Admin Use</span>
-                        </div>
+                        
                         <h1 class="hero-title">Create New Club</h1>
                         <p class="hero-description">
-                            Create a club and club account. This page is for testing/admin use only.
+                            Create a club and club account. This page is for admin use only.
                         </p>
                     </div>
                 </div>

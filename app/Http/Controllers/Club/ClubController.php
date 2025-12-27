@@ -1097,6 +1097,7 @@ class ClubController extends Controller
                     'email' => $member->email,
                     'role' => $member->pivot->role,
                     'role_display' => ucfirst(str_replace('_', ' ', $member->pivot->role)),
+                    'profile_photo_url' => $member->profile_photo_url,
                 ];
             });
 

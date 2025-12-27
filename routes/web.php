@@ -17,6 +17,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Forum\ForumMessageController;
 use App\Http\Controllers\Forum\PostSaveController;
 use App\Http\Controllers\Forum\PostReportController;
+use App\Http\Controllers\Admin\AdminForumPostController;
+use App\Http\Controllers\Admin\AdminForumTagController;
+
 //use App\Http\Controllers\Forum\ForumController;
 //use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Forum\PostController;
@@ -264,7 +267,7 @@ Route::post('/webhook/paypal', [PayPalWebhookController::class, 'handle'])
  */
 
 // Notification Routes
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // Notification management
     Route::prefix('notifications')->name('notifications.')->group(function () {
@@ -309,7 +312,7 @@ Route::middleware(['auth'])->group(function () {
   | User Routes
   |--------------------------------------------------------------------------
  */
-Route::middleware(['auth', 'user'])->group(function () {
+Route::middleware(['auth', 'user', 'verified'])->group(function () {
 
     // ==========================================
     // 1. Event Registration
@@ -410,19 +413,19 @@ Route::prefix('forums')->name('forums.')->group(function () {
     Route::get('/', [PostController::class, 'index'])->name('index');
     Route::get('/posts/{post:slug}', [PostController::class, 'show'])->name('posts.show');
     Route::get('/posts/{post:slug}/media/{index}', [PostMediaController::class, 'show'])
-            ->middleware('auth')   // 私密媒体强制 auth
+            ->middleware(['auth', 'verified'])   // 私密媒体强制 auth + verified
             ->name('posts.media.show');
 
     // Tags: search public, request auth
     Route::prefix('tags')->name('tags.')->group(function () {
         Route::get('/search', [PostController::class, 'searchTags'])->name('search');
         Route::post('/request', [PostController::class, 'requestTag'])
-                ->middleware('auth')
+                ->middleware(['auth', 'verified'])
                 ->name('request');
     });
 
     // Auth required
-    Route::middleware(['auth', 'check.active.user'])->group(function () {
+    Route::middleware(['auth', 'check.active.user', 'verified'])->group(function () {
 
         Route::prefix('posts')->name('posts.')->group(function () {
             Route::get('/{post:slug}/edit', [PostController::class, 'edit'])->name('edit');
@@ -484,6 +487,9 @@ Route::middleware(['auth', 'admin'])
         ->name('admin.forums.')
         ->group(function () {
             Route::get('/', [AdminForumController::class, 'index'])->name('index');
+            // Route::get('/', function () {
+            //     return redirect()->route('admin.forums.posts.index');
+            // })->name('index');
 
             Route::get('/posts', [AdminForumPostController::class, 'index'])->name('posts.index');
 
@@ -606,18 +612,18 @@ Route::middleware(['auth', 'club'])->prefix('club')->name('club.')->group(functi
 });
 
 // Club Management Routes
-Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/admin/clubs/create', function () {
-        return view('admin.clubs.create');
-    })->name('admin.clubs.create');
+// Route::middleware(['auth', 'admin'])->group(function () {
+//     Route::get('/admin/clubs/create', function () {
+//         return view('admin.clubs.create');
+//     })->name('admin.clubs.create');
 
-    Route::post('/clubs', [ClubController::class, 'store'])
-            ->name('clubs.store');
+//     Route::post('/clubs', [ClubController::class, 'store'])
+//             ->name('clubs.store');
 
-    // Check if user email exists (for real-time validation)
-    Route::get('/admin/clubs/check-email', [ClubController::class, 'checkUserEmail'])
-            ->name('admin.clubs.check-email');
-});
+//     // Check if user email exists (for real-time validation)
+//     Route::get('/admin/clubs/check-email', [ClubController::class, 'checkUserEmail'])
+//             ->name('admin.clubs.check-email');
+// });
 
 Route::middleware(['auth', 'club'])->group(function () {
     Route::put(
