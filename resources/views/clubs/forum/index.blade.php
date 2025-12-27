@@ -23,14 +23,29 @@
                         <span>Forum</span>
                     </div>
                     <h1 class="page-title">Club Forum</h1>
-                    <p class="page-description">View and manage forum posts for {{ $club->name }}</p>
+                    <p class="page-description">
+                        @if($club)
+                            View and manage forum posts for {{ $club->name }}
+                        @else
+                            View and manage forum posts
+                        @endif
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="container py-4">
-        @if(config('app.debug') && Route::has('api.v1.clubs.posts'))
+        @if(!$club)
+        <div class="forum-placeholder">
+            <div class="empty-state">
+                <i class="bi bi-exclamation-triangle empty-icon"></i>
+                <h3>Club Not Found</h3>
+                <p class="empty-text">Your account is not associated with any club.</p>
+                <p class="text-muted small">Please contact an administrator to associate your account with a club.</p>
+            </div>
+        </div>
+        @elseif(config('app.debug') && Route::has('api.v1.clubs.posts'))
         <x-post-feed
             api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
             :initial-posts="null"
