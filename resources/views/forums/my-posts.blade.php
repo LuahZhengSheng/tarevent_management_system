@@ -23,7 +23,7 @@
                 <div class="user-profile">
                     <div class="user-avatar-wrapper">
                         <img
-                            src="{{ $user->profile_photo ? Storage::url($user->profile_photo) : asset('images/default-avatar.png') }}"
+                            src="{{ $user->profile_photo ? Storage::url($user->profile_photo) : asset('images/avatar/default-student-avatar.png') }}"
                             alt="{{ $user->name }}"
                             class="user-avatar-img"
                             >
