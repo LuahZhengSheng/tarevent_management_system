@@ -401,6 +401,17 @@ class ClubApiController extends Controller
             return $this->failResponse('Either timestamp or requestID must be provided.', [], 400);
         }
 
+        // Check authorization: user can only view their own clubs, unless they are super_admin
+        $currentUser = auth()->user();
+        if (!$currentUser) {
+            return $this->failResponse('Unauthenticated.', [], 401);
+        }
+
+        // Allow access if: user is viewing their own clubs OR user is super_admin
+        if ($currentUser->id !== $user->id && !$currentUser->isSuperAdmin()) {
+            return $this->failResponse('You do not have permission to view this user\'s clubs.', [], 403);
+        }
+
         // Extract requestID for logging (prefer requestID over timestamp)
         $requestId = $request->input('requestID') ?? $request->input('timestamp');
 

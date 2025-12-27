@@ -978,12 +978,23 @@
         }
 
         const timestamp = generateTimestamp();
+        
+        // Get API token from localStorage
+        const token = getApiToken();
+        if (!token) {
+            $loadingState.hide();
+            $('#clubErrorMessage').text('Authentication required. Please refresh the page.');
+            $errorState.show();
+            return;
+        }
+        
         $.ajax({
             url: `/api/users/${userId}/clubs?timestamp=${encodeURIComponent(timestamp)}`,
             type: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Authorization': 'Bearer ' + token
             },
             success: function(response) {
                 $loadingState.hide();
