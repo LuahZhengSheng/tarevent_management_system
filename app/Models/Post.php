@@ -114,7 +114,6 @@ class Post extends Model {
      * - local(private): url must be built in view/controller (needs media index + auth)
      */
     public function getMediaAttribute() {
-        // 兼容：有些代码叫 mediapaths，有些叫 media_paths
         $paths = $this->mediapaths ?? $this->media_paths ?? null;
 
         if (!$paths || !is_array($paths)) {
@@ -681,18 +680,20 @@ class Post extends Model {
     }
 
     // =============================
-    // Boot
-    // =============================
+// Boot
+// =============================
 
     protected static function boot() {
         parent::boot();
 
-        // Auto-generate slug when creating
+        // ============================================
+        // Creating Event: Auto-generate slug
+        // ============================================
         static::creating(function ($post) {
             if (empty($post->slug)) {
                 $post->slug = Str::slug($post->title);
 
-                // Ensure uniqueness
+                // Ensure slug uniqueness
                 $originalSlug = $post->slug;
                 $count = 1;
                 while (static::where('slug', $post->slug)->exists()) {
@@ -701,13 +702,15 @@ class Post extends Model {
                 }
             }
 
-            // Set published_at if publishing
+            // Set published_at timestamp if publishing
             if ($post->status === 'published' && !$post->published_at) {
                 $post->published_at = now();
             }
         });
 
-        // Update slug if title changed
+        // ============================================
+        // Updating Event: Handle status changes
+        // ============================================
         static::updating(function ($post) {
             // Set published_at when publishing
             if ($post->isDirty('status') && $post->status === 'published' && !$post->published_at) {
@@ -720,38 +723,27 @@ class Post extends Model {
             }
         });
 
-        // Handle post creation
+        // ============================================
+        // Created Event: Increment category count
+        // ============================================
         static::created(function ($post) {
-            // Increment category count if published
+            // Increment category post count if published
             if ($post->status === 'published' && $post->category) {
-                $post->category->incrementPostCount();
+                $post->category->increment('post_count');
             }
         });
 
-        // Handle post deletion
-        static::deleting(function ($post) {
-            // Delete media files
-            $post->deleteMediaFiles();
-
-            // Update category count
-            if ($post->status === 'published' && $post->category) {
-                $post->category->decrementPostCount();
-            }
-
-            // Update tag usage counts and detach
-            $tagIds = $post->tags()->pluck('tags.id')->toArray();
-            if (!empty($tagIds)) {
-                Tag::whereIn('id', $tagIds)->each(function ($tag) {
-                    $tag->decrementUsage();
-                });
-                $post->tags()->detach();
-            }
-
-            // Delete related comments and likes (cascade should handle this)
-            // But just in case soft delete doesn't trigger cascade:
-            $post->comments()->delete();
-            $post->likes()->delete();
-        });
+        // ============================================
+        // Deleting Event: REMOVED AUTO-CLEANUP
+        // ============================================
+        // IMPORTANT: Deletion logic is now handled in PostController::destroy()
+        // This allows for different behavior based on post status (draft vs published)
+        // 
+        // Deletion Rules (handled in controller):
+        // 1. DRAFT: Only delete media files NOT used by published posts
+        // 2. PUBLISHED: Delete all media, but KEEP likes/saves/comments
+        //
+        // DO NOT add auto-deletion logic here as it will bypass the controller logic
     }
 
     public function savedByUsers() {

@@ -467,20 +467,88 @@ class PostController extends Controller {
             /**
              * CASE B:
              * 编辑的是 draft（post.status=draft）
-             * - 如果 draft 还是 draft：只更新 draft
-             * - 如果 draft 要 publish：把 draft 内容覆盖到 original post，然后删除 draft
+             * - draft -> draft：只更新 draft
+             * - draft -> publish：
+             *   - 若有 original_post_id：覆盖 original post，然后删除 draft（原逻辑）
+             *   - 若无 original_post_id：把当前 draft 直接转成 published，并重新计算 slug（新逻辑）
              */
             if ($post->status === 'draft') {
-                // draft -> publish：覆盖 original
+
                 if ($incomingStatus === 'published') {
-                    // 必须有 original_post_id
+
+                    // ===== 没有 original_post_id 的“新建草稿”也允许直接发布 =====
                     if (empty($post->original_post_id)) {
-                        throw new \Exception('Draft has no original_post_id. Cannot publish draft.');
+
+                        // 1) 组装更新数据：以 processedData 为准
+                        $updateDraft = $processedData;
+
+                        // 2) 强制发布字段
+                        $updateDraft['status'] = 'published';
+                        $updateDraft['published_at'] = $post->published_at ?? now();
+
+                        // 3) 重新计算 slug（用 title 生成正式 slug，并确保唯一）
+                        $titleForSlug = $updateDraft['title'] ?? $post->title ?? null;
+
+                        $baseSlug = $titleForSlug ? Str::slug($titleForSlug) : null;
+
+                        // 如果 title 是纯中文等导致 slug 为空，兜底用 post-{id}
+                        if (empty($baseSlug)) {
+                            $baseSlug = 'post-' . $post->id;
+                        }
+
+                        $slug = $baseSlug;
+                        $i = 1;
+                        while (Post::where('slug', $slug)->where('id', '!=', $post->id)->exists()) {
+                            $slug = $baseSlug . '-' . $i++;
+                        }
+                        $updateDraft['slug'] = $slug;
+
+                        // 4) 发布后不需要 original_post_id（保持 null）
+                        $updateDraft['original_post_id'] = null;
+
+                        // 5) 直接把 draft 更新成 published
+                        $post->update($updateDraft);
+
+                        // 6) tags：用本次提交 tagIds；没传就沿用现有（不动）
+                        if (!empty($tagIds)) {
+                            $post->syncTagsWithCount($tagIds, auth()->id());
+                        }
+
+                        // 7) clubs：按 visibility 处理
+                        $visibility = $processedData['visibility'] ?? $post->visibility;
+                        if ($visibility === 'club_only' && $request->filled('club_ids')) {
+                            $clubIds = $request->input('club_ids');
+
+                            $pivotData = collect($clubIds)
+                                    ->unique()
+                                    ->mapWithKeys(function ($id) {
+                                        return [$id => ['pinned' => false, 'status' => 'active']];
+                                    })
+                                    ->toArray();
+
+                            $post->clubs()->sync($pivotData);
+                        } else {
+                            $post->clubs()->detach();
+                        }
+
+                        DB::commit();
+
+                        $redirectUrl = route('forums.posts.show', $post->slug);
+
+                        if ($request->expectsJson()) {
+                            return response()->json([
+                                        'success' => true,
+                                        'message' => 'Draft published successfully!',
+                                        'redirect' => $redirectUrl,
+                            ]);
+                        }
+
+                        return redirect($redirectUrl)->with('success', 'Draft published successfully!');
                     }
 
+                    // ===== 原逻辑：有 original_post_id => 覆盖 original 并删除 draft =====
                     $original = Post::findOrFail($post->original_post_id);
 
-                    // 把 draft 的内容覆盖 original（你可以按需增减字段）
                     $fieldsToCopy = [
                         'title',
                         'content',
@@ -494,19 +562,15 @@ class PostController extends Controller {
                         if (array_key_exists($f, $processedData)) {
                             $updateOriginal[$f] = $processedData[$f];
                         } else {
-                            // 若这次请求没传该字段，用 draft 自己的当前值覆盖
                             $updateOriginal[$f] = $post->{$f};
                         }
                     }
 
-                    // 原文发布信息
                     $updateOriginal['status'] = 'published';
                     $updateOriginal['published_at'] = $original->published_at ?? now();
 
-                    // 先按你现有逻辑处理 media 合并/迁移等：这里简单用 draft 的最终 media_paths 覆盖
                     $original->update($updateOriginal);
 
-                    // tags 覆盖 original（按本次提交 tagIds；若没传则用 draft 当前 tags）
                     if (!empty($tagIds)) {
                         $original->syncTagsWithCount($tagIds, auth()->id());
                     } else {
@@ -518,7 +582,6 @@ class PostController extends Controller {
                         }
                     }
 
-                    // clubs 覆盖 original
                     if (($processedData['visibility'] ?? $post->visibility) === 'club_only' && $request->filled('club_ids')) {
                         $clubIds = $request->input('club_ids');
 
@@ -534,7 +597,6 @@ class PostController extends Controller {
                         $original->clubs()->detach();
                     }
 
-                    // 发布后删除 draft
                     $post->delete();
 
                     DB::commit();
@@ -554,6 +616,7 @@ class PostController extends Controller {
 
                 // draft -> draft：走下面的“正常 update”，更新 draft 自己
             }
+
 
             /**
              * CASE C:
@@ -741,6 +804,19 @@ class PostController extends Controller {
 
     /**
      * Remove the specified post
+     * 
+     * Deletion Rules:
+     * 1. DRAFT deletion:
+     *    - Only delete media files that are EXCLUSIVELY used by this draft
+     *    - Keep media files that are also used by published posts
+     *    - Detach tags and clubs
+     *    - Soft delete the draft
+     * 
+     * 2. PUBLISHED post deletion:
+     *    - Delete all media files (published posts own their media)
+     *    - Detach tags and clubs
+     *    - KEEP likes, saves, comments, replies (preserve user engagement history)
+     *    - Soft delete the post
      */
     public function destroy(Post $post) {
         // Authorization check
@@ -751,30 +827,242 @@ class PostController extends Controller {
         try {
             DB::beginTransaction();
 
-            // Delete will trigger model events to clean up media, tags, etc.
-            $post->delete();
+            $postStatus = $post->status;
+            $postId = $post->id;
+            $hasMedia = $post->hasMedia();
+            $userId = auth()->id();
+
+            Log::info('Post deletion started', [
+                'post_id' => $postId,
+                'status' => $postStatus,
+                'user_id' => $userId,
+                'has_media' => $hasMedia,
+            ]);
+
+            // ============================================
+            // Step 1: Handle Tags (for both draft and published)
+            // ============================================
+            if ($post->tags()->exists()) {
+                $tagIds = $post->tags()->pluck('tags.id')->toArray();
+
+                // Decrease usage count for each tag
+                foreach ($tagIds as $tagId) {
+                    DB::table('tags')
+                            ->where('id', $tagId)
+                            ->where('usage_count', '>', 0)
+                            ->decrement('usage_count');
+                }
+
+                // Detach all tags
+                $post->tags()->detach();
+
+                Log::info('Tags detached and usage counts updated', [
+                    'post_id' => $postId,
+                    'tag_count' => count($tagIds),
+                ]);
+            }
+
+            // ============================================
+            // Step 2: Handle Clubs (for both draft and published)
+            // ============================================
+            if ($post->clubs()->exists()) {
+                $clubCount = $post->clubs()->count();
+                $post->clubs()->detach();
+
+                Log::info('Clubs detached', [
+                    'post_id' => $postId,
+                    'club_count' => $clubCount,
+                ]);
+            }
+
+            // ============================================
+            // Step 3: Handle Category Count (for published posts only)
+            // ============================================
+            if ($postStatus === 'published' && $post->category) {
+                $post->category->decrement('post_count');
+
+                Log::info('Category post count decremented', [
+                    'post_id' => $postId,
+                    'category_id' => $post->category_id,
+                ]);
+            }
+
+            // ============================================
+            // Step 4: Handle Media Files
+            // ============================================
+            if ($hasMedia) {
+                $mediaPaths = $post->media_paths ?? [];
+
+                // === CASE A: Deleting a DRAFT ===
+                if ($postStatus === 'draft') {
+                    $mediaToDelete = [];
+                    $mediaToKeep = [];
+
+                    // Check each media file to see if it's used by published posts
+                    foreach ($mediaPaths as $media) {
+                        $mediaPath = is_array($media) ? ($media['path'] ?? null) : null;
+
+                        if (!$mediaPath) {
+                            continue;
+                        }
+
+                        // Query: Is this media file used by ANY published post?
+                        $isUsedByPublished = Post::where('status', 'published')
+                                ->where('id', '!=', $postId)
+                                ->whereNotNull('media_paths')
+                                ->where(function ($query) use ($mediaPath) {
+                                    // Check if media_paths JSON contains this path
+                                    $query->whereRaw("JSON_SEARCH(media_paths, 'one', ?) IS NOT NULL", [$mediaPath])
+                                    ->orWhereRaw("JSON_CONTAINS(media_paths, JSON_QUOTE(?), '$[*].path')", [$mediaPath]);
+                                })
+                                ->exists();
+
+                        if ($isUsedByPublished) {
+                            // This media is shared with a published post - KEEP IT
+                            $mediaToKeep[] = $mediaPath;
+                        } else {
+                            // This media is ONLY used by this draft - DELETE IT
+                            $mediaToDelete[] = $media;
+                        }
+                    }
+
+                    // Delete draft-exclusive media files
+                    if (!empty($mediaToDelete)) {
+                        try {
+                            foreach ($mediaToDelete as $media) {
+                                $disk = is_array($media) ? ($media['disk'] ?? 'public') : 'public';
+                                $path = is_array($media) ? ($media['path'] ?? null) : null;
+
+                                if ($path && Storage::disk($disk)->exists($path)) {
+                                    Storage::disk($disk)->delete($path);
+                                }
+                            }
+
+                            Log::info('Draft-exclusive media deleted', [
+                                'draft_id' => $postId,
+                                'deleted_count' => count($mediaToDelete),
+                                'kept_count' => count($mediaToKeep),
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to delete draft media files', [
+                                'post_id' => $postId,
+                                'error' => $e->getMessage(),
+                            ]);
+                            // Don't fail the whole deletion if media cleanup fails
+                        }
+                    }
+
+                    if (!empty($mediaToKeep)) {
+                        Log::info('Shared media preserved', [
+                            'draft_id' => $postId,
+                            'preserved_paths' => $mediaToKeep,
+                        ]);
+                    }
+                }
+                // === CASE B: Deleting a PUBLISHED post ===
+                else {
+                    try {
+                        // Delete all media files (published posts own their media)
+                        foreach ($mediaPaths as $media) {
+                            $disk = is_array($media) ? ($media['disk'] ?? 'public') : 'public';
+                            $path = is_array($media) ? ($media['path'] ?? null) : null;
+
+                            if ($path && Storage::disk($disk)->exists($path)) {
+                                Storage::disk($disk)->delete($path);
+                            }
+                        }
+
+                        Log::info('Published post media deleted', [
+                            'post_id' => $postId,
+                            'media_count' => count($mediaPaths),
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to delete published post media', [
+                            'post_id' => $postId,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Don't fail the whole deletion if media cleanup fails
+                    }
+                }
+            }
+
+            // ============================================
+            // Step 5: Soft Delete the Post
+            // ============================================
+            // IMPORTANT: For published posts, we DON'T delete:
+            // - likes (post_likes table)
+            // - saves (post_saves table)
+            // - comments (post_comments table)
+            // These will remain in the database with the soft-deleted post_id
+            // This preserves user engagement history
+
+            $post->delete(); // Soft delete
 
             DB::commit();
 
-            Log::info('Post deleted successfully', [
-                'post_id' => $post->id,
-                'user_id' => auth()->id(),
+            Log::info('Post deletion completed successfully', [
+                'post_id' => $postId,
+                'status' => $postStatus,
+                'user_id' => $userId,
             ]);
 
-            return redirect()
-                            ->route('forums.index')
+            // Redirect based on post status
+            $redirectUrl = $postStatus === 'draft' ? route('forums.my-posts', ['tab' => 'drafts']) : route('forums.my-posts', ['tab' => 'posts']);
+
+            return redirect($redirectUrl)
                             ->with('success', 'Post deleted successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
 
             Log::error('Post deletion failed', [
                 'error' => $e->getMessage(),
-                'post_id' => $post->id,
+                'trace' => $e->getTraceAsString(),
+                'post_id' => $post->id ?? null,
+                'user_id' => auth()->id(),
             ]);
 
-            return back()->withErrors(['error' => 'Failed to delete post: ' . $e->getMessage()]);
+            return back()->withErrors([
+                        'error' => 'Failed to delete post. Please try again.'
+            ]);
         }
     }
+
+    /**
+     * Remove the specified post
+     */
+//    public function destroy(Post $post) {
+//        // Authorization check
+//        if (!$post->canBeEditedBy(auth()->user())) {
+//            abort(403, 'You do not have permission to delete this post.');
+//        }
+//
+//        try {
+//            DB::beginTransaction();
+//
+//            // Delete will trigger model events to clean up media, tags, etc.
+//            $post->delete();
+//
+//            DB::commit();
+//
+//            Log::info('Post deleted successfully', [
+//                'post_id' => $post->id,
+//                'user_id' => auth()->id(),
+//            ]);
+//
+//            return redirect()
+//                            ->route('forums.index')
+//                            ->with('success', 'Post deleted successfully!');
+//        } catch (\Exception $e) {
+//            DB::rollBack();
+//
+//            Log::error('Post deletion failed', [
+//                'error' => $e->getMessage(),
+//                'post_id' => $post->id,
+//            ]);
+//
+//            return back()->withErrors(['error' => 'Failed to delete post: ' . $e->getMessage()]);
+//        }
+//    }
 
     /**
      * Get tags for autocomplete (AJAX)

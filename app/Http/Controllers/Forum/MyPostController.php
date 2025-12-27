@@ -17,13 +17,13 @@ class MyPostController extends Controller {
     }
 
     /**
-     * 我的帖子首页（GET）
+     * My Posts Index Page (GET)
      */
     public function index(Request $request) {
         $user = $request->user();
         $activeTab = $request->get('tab', 'posts');
 
-        // 搜索 / 筛选 / 排序参数（和 Blade 对应）
+        // Search / Filter / Sort parameters
         $search = [
             'q' => $request->get('q', ''),
         ];
@@ -37,11 +37,11 @@ class MyPostController extends Controller {
             'order' => $request->get('sort', 'latest'),
         ];
 
-        // 构建 tabs 数据
+        // Build tabs data
         $tabs = $this->buildTabsData($user, $activeTab, $search, $filters, $sort);
         $stats = $this->getUserStats($user);
 
-        // AJAX 请求给 my-posts.js 使用
+        // AJAX request for my-posts.js
         if ($request->ajax() || $request->get('ajax')) {
             return $this->ajaxResponse($tabs, $activeTab);
         }
@@ -58,7 +58,7 @@ class MyPostController extends Controller {
     }
 
     /**
-     * 快速删除帖子（POST）
+     * Quick Delete Post (POST)
      */
     public function quickDelete(Request $request) {
         if (!$request->isMethod('post')) {
@@ -76,19 +76,19 @@ class MyPostController extends Controller {
             $post->delete();
 
             return response()->json([
-                        'success' => true,
-                        'message' => 'Post deleted successfully.',
+                'success' => true,
+                'message' => 'Post deleted successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to delete post.',
-                            ], 500);
+                'success' => false,
+                'message' => 'Failed to delete post.',
+            ], 500);
         }
     }
 
     /**
-     * 构建 Tabs 数据
+     * Build Tabs Data
      */
     protected function buildTabsData($user, $activeTab, $search, $filters, $sort) {
         $tabs = [
@@ -119,7 +119,7 @@ class MyPostController extends Controller {
             ],
         ];
 
-        // 当前 tab 的数据
+        // Load current tab data
         switch ($activeTab) {
             case 'posts':
                 $tabs['posts'] = $this->getPostsData($user, $search, $filters, $sort);
@@ -138,7 +138,7 @@ class MyPostController extends Controller {
                 break;
         }
 
-        // 各 tab 计数
+        // Update all tab counts
         $tabs['posts']['count'] = $this->getPostsCount($user);
         $tabs['drafts']['count'] = $this->getDraftsCount($user);
         $tabs['likes']['count'] = $this->getLikesCount($user);
@@ -149,30 +149,30 @@ class MyPostController extends Controller {
     }
 
     /**
-     * Posts tab 数据
+     * Posts Tab Data
      */
     protected function getPostsData($user, $search, $filters, $sort) {
         $query = $user->posts()->where('status', 'published');
 
-        // 搜索
+        // Search
         if (!empty($search['q'])) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', '%' . $search['q'] . '%')
-                        ->orWhere('content', 'like', '%' . $search['q'] . '%');
+                    ->orWhere('content', 'like', '%' . $search['q'] . '%');
             });
         }
 
-        // 状态筛选
+        // Status filter
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        // 可见性筛选
+        // Visibility filter
         if (!empty($filters['visibility'])) {
             $query->where('visibility', $filters['visibility']);
         }
 
-        // 排序
+        // Sorting
         switch ($sort['order'] ?? 'latest') {
             case 'oldest':
                 $query->orderBy('created_at', 'asc');
@@ -189,7 +189,6 @@ class MyPostController extends Controller {
                 break;
         }
 
-        // 这里把 with(['media', ...]) 改成只 preload 真正的关系
         $posts = $query->with(['category', 'clubs'])->get();
 
         return [
@@ -197,32 +196,30 @@ class MyPostController extends Controller {
             'count' => $posts->count(),
             'items' => $posts->map(function (Post $post) {
                 return [
-            'post' => $post,
-            'excerpt' => \Illuminate\Support\Str::limit(strip_tags($post->content), 150),
-            // 这里直接用访问器属性 media（来自 getMediaAttribute）
-            'media' => $post->media->map(function ($m) {
-                $type = is_object($m) ? ($m->type ?? 'image') : ($m['type'] ?? 'image');
-                $url = is_object($m) ? ($m->url ?? '') : ($m['url'] ?? '');
+                    'post' => $post,
+                    'excerpt' => Str::limit(strip_tags($post->content), 150),
+                    'media' => $post->media->map(function ($m) {
+                        $type = is_object($m) ? ($m->type ?? 'image') : ($m['type'] ?? 'image');
+                        $url = is_object($m) ? ($m->url ?? '') : ($m['url'] ?? '');
 
-                return [
-            'mediatype' => $type,
-            'mediaurl' => $url,
-            'thumbnailurl' => $url, // 先用同一个，至少图片/视频封面能显示
-                ];
-            })->filter(function ($m) {
-                return !empty($m['mediaurl']);
-            })->values()->toArray(),
-            // 这些关系在 Post 模型里是真实关系：comments / likes / saves
-            'comments_count' => $post->comments()->count(),
-            'likes_count' => $post->likes()->count(),
-            'saves_count' => $post->saves()->count(),
+                        return [
+                            'mediatype' => $type,
+                            'mediaurl' => $url,
+                            'thumbnailurl' => $url,
+                        ];
+                    })->filter(function ($m) {
+                        return !empty($m['mediaurl']);
+                    })->values()->toArray(),
+                    'comments_count' => $post->comments()->count(),
+                    'likes_count' => $post->likes()->count(),
+                    'saves_count' => $post->saves()->count(),
                 ];
             }),
         ];
     }
 
     /**
-     * Drafts tab
+     * Drafts Tab Data
      */
     protected function getDraftsData($user, $search, $sort) {
         $query = $user->posts()->where('status', 'draft');
@@ -230,7 +227,7 @@ class MyPostController extends Controller {
         if (!empty($search['q'])) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', '%' . $search['q'] . '%')
-                        ->orWhere('content', 'like', '%' . $search['q'] . '%');
+                    ->orWhere('content', 'like', '%' . $search['q'] . '%');
             });
         }
 
@@ -243,23 +240,27 @@ class MyPostController extends Controller {
             'count' => $drafts->count(),
             'items' => $drafts->map(function (Post $post) {
                 return [
-            'post' => $post,
-            'excerpt' => Str::limit(strip_tags($post->content), 150),
+                    'post' => $post,
+                    'excerpt' => Str::limit(strip_tags($post->content), 150),
                 ];
             }),
         ];
     }
 
     /**
-     * Likes tab
+     * Likes Tab Data
+     * FIXED: Handle soft-deleted posts
      */
     protected function getLikesData($user, $search, $sort) {
-        // User.php 里是 postLikes()
-        $query = $user->postLikes()->with('post');
+        // Include soft-deleted posts using withTrashed()
+        $query = $user->postLikes()->with(['post' => function($q) {
+            $q->withTrashed(); // Include soft-deleted posts
+        }]);
 
         if (!empty($search['q'])) {
             $query->whereHas('post', function ($q) use ($search) {
-                $q->where('title', 'like', '%' . $search['q'] . '%');
+                $q->withTrashed() // Search in soft-deleted posts too
+                  ->where('title', 'like', '%' . $search['q'] . '%');
             });
         }
 
@@ -270,28 +271,38 @@ class MyPostController extends Controller {
         return [
             'label' => 'Likes',
             'count' => $likes->count(),
-            'items' => $likes->map(function (PostLike $like) {
+            'items' => $likes->filter(function (PostLike $like) {
+                // Filter out likes where post is completely missing (hard deleted)
+                return $like->post !== null;
+            })->map(function (PostLike $like) {
                 $post = $like->post;
+                
                 return [
-            'post' => $post,
-            'excerpt' => Str::limit(strip_tags($post->content), 150),
-            'comments_count' => $post->comments()->count(),
-            'likes_count' => $post->likes()->count(),
-            'created_at' => $like->created_at,
+                    'post' => $post,
+                    'excerpt' => Str::limit(strip_tags($post->content), 150),
+                    'comments_count' => $post->comments()->count(),
+                    'likes_count' => $post->likes()->count(),
+                    'created_at' => $like->created_at,
+                    'is_deleted' => $post->trashed(), // Flag for UI display
                 ];
-            }),
+            })->values(), // Re-index array after filter
         ];
     }
 
     /**
-     * Saves tab
+     * Saves Tab Data
+     * FIXED: Handle soft-deleted posts
      */
     protected function getSavesData($user, $search, $sort) {
-        $query = $user->postSaves()->with('post');
+        // Include soft-deleted posts
+        $query = $user->postSaves()->with(['post' => function($q) {
+            $q->withTrashed();
+        }]);
 
         if (!empty($search['q'])) {
             $query->whereHas('post', function ($q) use ($search) {
-                $q->where('title', 'like', '%' . $search['q'] . '%');
+                $q->withTrashed()
+                  ->where('title', 'like', '%' . $search['q'] . '%');
             });
         }
 
@@ -302,29 +313,38 @@ class MyPostController extends Controller {
         return [
             'label' => 'Saves',
             'count' => $saves->count(),
-            'items' => $saves->map(function (PostSave $save) {
+            'items' => $saves->filter(function (PostSave $save) {
+                // Filter out saves where post is completely missing
+                return $save->post !== null;
+            })->map(function (PostSave $save) {
                 $post = $save->post;
+                
                 return [
-            'post' => $post,
-            'excerpt' => Str::limit(strip_tags($post->content), 150),
-            'comments_count' => $post->comments()->count(),
-            'likes_count' => $post->likes()->count(),
-            'created_at' => $save->created_at,
+                    'post' => $post,
+                    'excerpt' => Str::limit(strip_tags($post->content), 150),
+                    'comments_count' => $post->comments()->count(),
+                    'likes_count' => $post->likes()->count(),
+                    'created_at' => $save->created_at,
+                    'is_deleted' => $post->trashed(), // Flag for UI display
                 ];
-            }),
+            })->values(),
         ];
     }
 
     /**
-     * Comments tab
+     * Comments Tab Data
+     * FIXED: Handle soft-deleted posts
      */
     protected function getCommentsData($user, $search, $sort) {
-        // User.php 里是 postComments()
-        $query = $user->postComments()->with('post');
+        // Include soft-deleted posts
+        $query = $user->postComments()->with(['post' => function($q) {
+            $q->withTrashed();
+        }]);
 
         if (!empty($search['q'])) {
             $query->whereHas('post', function ($q) use ($search) {
-                $q->where('title', 'like', '%' . $search['q'] . '%');
+                $q->withTrashed()
+                  ->where('title', 'like', '%' . $search['q'] . '%');
             });
         }
 
@@ -335,52 +355,59 @@ class MyPostController extends Controller {
         return [
             'label' => 'Comments',
             'count' => $comments->count(),
-            'items' => $comments->map(function (PostComment $comment) {
+            'items' => $comments->filter(function (PostComment $comment) {
+                // Filter out comments where post is completely missing
+                return $comment->post !== null;
+            })->map(function (PostComment $comment) {
                 return [
-            'comment' => $comment,
-            'post' => $comment->post,
+                    'comment' => $comment,
+                    'post' => $comment->post,
+                    'is_deleted' => $comment->post->trashed(), // Flag for UI display
                 ];
-            }),
+            })->values(),
         ];
     }
 
     /**
-     * AJAX response（my-posts.js 用）
+     * AJAX Response (for my-posts.js)
      */
     protected function ajaxResponse($tabs, $activeTab) {
         $html = view('forums.partials.my-posts-tab', [
             'tabs' => $tabs,
             'activeTab' => $activeTab,
-                ])->render();
+        ])->render();
 
         return response()->json([
-                    'success' => true,
-                    'html' => $html,
-                    'content' => $html,
-                    'tabs' => array_map(fn($tab) => ['count' => $tab['count']], $tabs),
+            'success' => true,
+            'html' => $html,
+            'content' => $html,
+            'tabs' => array_map(fn($tab) => ['count' => $tab['count']], $tabs),
         ]);
     }
 
     /**
-     * 顶部统计数据
+     * User Stats (for header)
      */
     protected function getUserStats($user) {
         return [
             'total_posts' => $user->posts()->where('status', 'published')->count(),
             'total_drafts' => $user->posts()->where('status', 'draft')->count(),
             'total_likes_received' => $user->posts()
-                    ->withCount('likes')
-                    ->get()
-                    ->sum('likes_count'),
+                ->withCount('likes')
+                ->get()
+                ->sum('likes_count'),
             'total_saves_received' => $user->posts()
-                    ->withCount('saves')
-                    ->get()
-                    ->sum('saves_count'),
+                ->withCount('saves')
+                ->get()
+                ->sum('saves_count'),
             'unread_notifications' => $user->unreadNotifications()->count(),
         ];
     }
 
-    // count helpers
+    // =====================================================
+    // Count Helpers
+    // =====================================================
+    
     protected function getPostsCount($user) {
         return $user->posts()->where('status', 'published')->count();
     }
@@ -389,15 +416,36 @@ class MyPostController extends Controller {
         return $user->posts()->where('status', 'draft')->count();
     }
 
+    /**
+     * FIXED: Count likes even if posts are soft-deleted
+     */
     protected function getLikesCount($user) {
-        return $user->postLikes()->count();
+        return $user->postLikes()
+            ->whereHas('post', function($q) {
+                $q->withTrashed(); // Count likes on soft-deleted posts too
+            })
+            ->count();
     }
 
+    /**
+     * FIXED: Count saves even if posts are soft-deleted
+     */
     protected function getSavesCount($user) {
-        return $user->postSaves()->count();
+        return $user->postSaves()
+            ->whereHas('post', function($q) {
+                $q->withTrashed();
+            })
+            ->count();
     }
 
+    /**
+     * FIXED: Count comments even if posts are soft-deleted
+     */
     protected function getCommentsCount($user) {
-        return $user->postComments()->count();
+        return $user->postComments()
+            ->whereHas('post', function($q) {
+                $q->withTrashed();
+            })
+            ->count();
     }
 }
