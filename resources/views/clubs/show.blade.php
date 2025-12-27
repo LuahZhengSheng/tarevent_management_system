@@ -465,17 +465,84 @@
     <div class="container club-content-container">
         <div class="row g-4">
             <!-- Main Content -->
-            <div class="col-lg-9">
+            <div class="col-lg-12">
                 <!-- About Section -->
-                @if($club->description)
                 <div class="content-section">
                     <h2 class="section-title">
                         <i class="bi bi-info-circle"></i>
                         About
                     </h2>
+                    @if($club->description)
                     <div class="club-description-text">{{ $club->description }}</div>
+                    @endif
+
+                    <!-- Club Information -->
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e9ecef;">
+                        <h3 class="section-title" style="font-size: 1.25rem; margin-bottom: 1.5rem;">
+                            <i class="bi bi-info-square"></i>
+                            Club Information
+                        </h3>
+                        <div class="club-info-grid">
+                            @if($club->email)
+                            <div class="info-item">
+                                <div class="info-label">Email</div>
+                                <div class="info-value">
+                                    <a href="mailto:{{ $club->email }}">{{ $club->email }}</a>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($club->phone)
+                            <div class="info-item">
+                                <div class="info-label">Phone</div>
+                                <div class="info-value">{{ $club->phone }}</div>
+                            </div>
+                            @endif
+
+                            @if($club->category)
+                            <div class="info-item">
+                                <div class="info-label">Category</div>
+                                <div class="info-value">{{ ucfirst($club->category) }}</div>
+                            </div>
+                            @endif
+
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leadership Members Section -->
+                        @if($leadershipMembers->count() > 0)
+                        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e9ecef;">
+                            <h3 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">
+                                <i class="bi bi-people"></i>
+                                Leadership
+                            </h3>
+                            <div class="leadership-list">
+                                @foreach($leadershipMembers as $leader)
+                                <div class="leadership-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <div class="leadership-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light, #eef2ff); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative;">
+                                        @if(!empty($leader['profile_photo_url']))
+                                            <img src="{{ $leader['profile_photo_url'] }}" alt="{{ $leader['name'] }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                            <i class="bi bi-person" style="color: var(--primary, #4f46e5); display: none;"></i>
+                                        @else
+                                            <i class="bi bi-person" style="color: var(--primary, #4f46e5);"></i>
+                                        @endif
+                                    </div>
+                                    <div class="leadership-info" style="flex: 1;">
+                                        <div style="font-weight: 600; color: #212529;">{{ $leader['name'] }}</div>
+                                        <div style="font-size: 0.875rem; color: #6c757d;">{{ $leader['role_display'] }}</div>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+                    </div>
                 </div>
-                @endif
 
                 <!-- Announcements Section - Only visible to members -->
                 @if($isMember && $recentAnnouncements->count() > 0)
@@ -524,78 +591,13 @@
                 @endif
             </div>
 
-            <!-- Sidebar -->
-            <div class="col-lg-3">
-                <!-- Club Info -->
+            <!-- Action Buttons -->
+            <div class="col-lg-12">
                 <div class="content-section">
-                    <h2 class="section-title">
-                        <i class="bi bi-info-square"></i>
-                        Club Information
-                    </h2>
-                    <div class="club-info-grid">
-                        @if($club->email)
-                        <div class="info-item">
-                            <div class="info-label">Email</div>
-                            <div class="info-value">
-                                <a href="mailto:{{ $club->email }}">{{ $club->email }}</a>
-                            </div>
-                        </div>
-                        @endif
-
-                        @if($club->phone)
-                        <div class="info-item">
-                            <div class="info-label">Phone</div>
-                            <div class="info-value">{{ $club->phone }}</div>
-                        </div>
-                        @endif
-
-                        @if($club->category)
-                        <div class="info-item">
-                            <div class="info-label">Category</div>
-                            <div class="info-value">{{ ucfirst($club->category) }}</div>
-                        </div>
-                        @endif
-
-                        <div class="info-item">
-                            <div class="info-label">Status</div>
-                            <div class="info-value">
-                                <span class="badge bg-success">Active</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Leadership Members Section -->
-                    @if($leadershipMembers->count() > 0)
-                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e9ecef;">
-                        <h3 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">
-                            <i class="bi bi-people"></i>
-                            Leadership
-                        </h3>
-                        <div class="leadership-list">
-                            @foreach($leadershipMembers as $leader)
-                            <div class="leadership-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0;">
-                                <div class="leadership-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light, #eef2ff); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative;">
-                                    @if(!empty($leader['profile_photo_url']))
-                                        <img src="{{ $leader['profile_photo_url'] }}" alt="{{ $leader['name'] }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <i class="bi bi-person" style="color: var(--primary, #4f46e5); display: none;"></i>
-                                    @else
-                                        <i class="bi bi-person" style="color: var(--primary, #4f46e5);"></i>
-                                    @endif
-                                </div>
-                                <div class="leadership-info" style="flex: 1;">
-                                    <div style="font-weight: 600; color: #212529;">{{ $leader['name'] }}</div>
-                                    <div style="font-size: 0.875rem; color: #6c757d;">{{ $leader['role_display'] }}</div>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons">
-                    @if($joinStatus && $joinStatus['status'] === 'pending')
+                    <div class="action-buttons">
+                    @if($isMember)
+                        {{-- User is already a member, no action button needed --}}
+                    @elseif($joinStatus && $joinStatus['status'] === 'pending')
                         <button class="btn-secondary-lg" disabled>
                             <i class="bi bi-clock"></i>
                             Request Pending
@@ -618,6 +620,7 @@
                             Join Club
                         </button>
                     @endif
+                    </div>
                 </div>
             </div>
         </div>
