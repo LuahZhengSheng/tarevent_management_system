@@ -28,13 +28,13 @@
                    accept="image/*,video/*"
                    hidden>
 
-            <button type="button"
+<!--            <button type="button"
                     class="reply-tool-btn reply-camera-btn"
                     data-reply-camera-for="{{ $comment->id }}"
                     data-requires-auth="true"
                     title="Photo / Video">
                 <i class="bi bi-camera"></i>
-            </button>
+            </button>-->
 
 <!--            <button type="button"
                     class="reply-cancel-btn cancel-reply-btn"

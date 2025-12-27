@@ -107,13 +107,13 @@
         </div>
 
         <div class="post-actions">
-            <a href="{{ route('forums.posts.edit', $post) }}" class="action-link">
+            <a href="{{ route('forums.posts.edit', $post->slug) }}" class="action-link action-primary">
                 <i class="bi bi-pencil"></i>
                 Edit
             </a>
             <button
                 class="action-link action-delete js-delete-post"
-                data-delete-url="{{ route('forums.posts.destroy', $post) }}"
+                data-delete-url="{{ route('forums.posts.destroy', $post->slug) }}"
                 data-post-title="{{ $post->title }}"
                 >
                 <i class="bi bi-trash"></i>
@@ -151,7 +151,7 @@
     </div>
 
     <h2 class="post-title">
-        <a href="{{ route('forums.posts.edit', $post) }}">
+        <a href="{{ route('forums.posts.edit', $post->slug) }}">
             {{ $post->title }}
         </a>
     </h2>
@@ -160,12 +160,21 @@
 
     <div class="post-footer">
         <div class="post-actions">
-            <a href="{{ route('forums.posts.edit', $post) }}" class="action-link action-primary">
+            <a href="{{ route('forums.posts.edit', $post->slug) }}" class="action-link action-primary">
                 <i class="bi bi-pencil"></i>
                 Continue Editing
             </a>
         </div>
     </div>
+
+    <button
+        class="action-link action-delete js-delete-post"
+        data-delete-url="{{ route('forums.posts.destroy', $post->slug) }}"
+        data-post-title="{{ $post->title }}"
+        >
+        <i class="bi bi-trash"></i>
+        Delete
+    </button>
 </article>
 @empty
 <div class="empty-state">

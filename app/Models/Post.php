@@ -17,6 +17,7 @@ class Post extends Model {
         SoftDeletes;
 
     protected $fillable = [
+        'original_post_id',
         'user_id',
         'category_id',
         'title',
@@ -144,7 +145,7 @@ class Post extends Model {
                         if ($disk === 'local') {
                             // 受保护媒体：必须走 controller + auth + authorization
                             $url = route('forums.posts.media.show', [
-                                'post' => $this, 
+                                'post' => $this,
                                 'index' => $index,
                             ]);
                         } else {
@@ -761,5 +762,13 @@ class Post extends Model {
 
     public function saves() {
         return $this->hasMany(\App\Models\PostSave::class, 'post_id');
+    }
+
+    public function originalPost() {
+        return $this->belongsTo(Post::class, 'original_post_id');
+    }
+
+    public function draftVersion() {
+        return $this->hasOne(Post::class, 'original_post_id')->where('status', 'draft');
     }
 }

@@ -314,7 +314,7 @@
                                         @guest disabled @endguest
                                         />
 
-                                    <button
+<!--                                    <button
                                         type="button"
                                         class="comment-tool-btn"
                                         id="commentCameraBtn"
@@ -322,7 +322,7 @@
                                         title="Photo/Video"
                                         >
                                         <i class="bi bi-camera"></i>
-                                    </button>
+                                    </button>-->
 
                                     <button
                                         type="button"

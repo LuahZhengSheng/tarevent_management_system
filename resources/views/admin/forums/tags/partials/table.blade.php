@@ -19,7 +19,8 @@
                     <div class="user-email text-muted">{{ $tag->slug }}</div>
                 </div>
 
-                <form class="tag-rename-form mt-2" data-id="{{ $tag->id }}">
+                {{-- 修改这里：data-id 改为 data-slug --}}
+                <form class="tag-rename-form mt-2" data-slug="{{ $tag->slug }}">
                     <div class="d-flex gap-2">
                         <input class="admin-search-input" style="height: 42px;"
                                name="name" value="{{ $tag->name }}">
@@ -49,14 +50,21 @@
             <td class="text-end">
                 <div class="action-buttons justify-content-end">
                     @if($tag->status === 'pending')
-                        <button type="button" class="btn btn-sm btn-outline-success btn-tag-approve" data-id="{{ $tag->id }}">Approve</button>
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-tag-reject" data-id="{{ $tag->id }}">Reject</button>
+                        {{-- 修改这里：data-id 改为 data-slug --}}
+                        <button type="button" class="btn btn-sm btn-outline-success btn-tag-approve" 
+                                data-slug="{{ $tag->slug }}">Approve</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-tag-reject" 
+                                data-slug="{{ $tag->slug }}">Reject</button>
                     @endif
 
                     @if($tag->status === 'active')
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-tag-disable" data-id="{{ $tag->id }}">Disable</button>
+                        {{-- 修改这里：data-id 改为 data-slug --}}
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-tag-disable" 
+                                data-slug="{{ $tag->slug }}">Disable</button>
                     @elseif($tag->status === 'inactive')
-                        <button type="button" class="btn btn-sm btn-outline-success btn-tag-enable" data-id="{{ $tag->id }}">Enable</button>
+                        {{-- 修改这里：data-id 改为 data-slug --}}
+                        <button type="button" class="btn btn-sm btn-outline-success btn-tag-enable" 
+                                data-slug="{{ $tag->slug }}">Enable</button>
                     @endif
                 </div>
             </td>

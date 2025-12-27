@@ -12,6 +12,8 @@ use App\Http\Controllers\Club\ClubEventsController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminForumPostController;
+use App\Http\Controllers\Admin\AdminForumTagController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Forum\ForumMessageController;
@@ -467,8 +469,8 @@ Route::prefix('forums')->name('forums.')->group(function () {
         Route::post('/', [PostController::class, 'store'])->name('store');
 
         // My posts
-        Route::get('/my-posts', [MyPostController::class, 'index'])->name('my-posts');
-        Route::post('/my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
+        Route::get('my-posts', [MyPostController::class, 'index'])->name('my-posts');
+        Route::post('my-posts/quick-delete', [MyPostController::class, 'quickDelete'])->name('my-posts.quick-delete');
 
         // Messages (forum_notifications)
         Route::get('messages', [ForumMessageController::class, 'index'])->name('messages.index');
@@ -483,11 +485,12 @@ Route::middleware(['auth', 'admin'])
         ->prefix('admin/forums')
         ->name('admin.forums.')
         ->group(function () {
-            Route::get('/', [AdminForumController::class, 'index'])->name('index');
+            // AdminForumController（不存在），改成重定向到 posts
+            Route::get('/', function () {
+                return redirect()->route('admin.forums.posts.index');
+            })->name('index');
 
             Route::get('/posts', [AdminForumPostController::class, 'index'])->name('posts.index');
-
-            // admin.forums.posts.show
             Route::get('/posts/{post}', [AdminForumPostController::class, 'show'])->name('posts.show');
 
             Route::get('/tags', [AdminForumTagController::class, 'index'])->name('tags.index');
@@ -516,8 +519,7 @@ Route::middleware('auth')->post('/club/select', function (Request $request) {
     // 跳去真实 show
     return redirect()->route('clubs.show', $club);
 })->name('club.select');
-        
-        
+
 Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(function () {
 //Route::prefix('events')->name('events.')->group(function () {
     // Event Management (Create, Edit, Delete)
@@ -709,21 +711,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{event}/reject', [EventController::class, 'reject'])->name('reject');
     });
 
-    // ===== Admin Forum Moderation =====
-    Route::prefix('forums')->name('forums.')->group(function () {
-        Route::get('/posts', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'index'])->name('posts.index');
-        Route::get('/posts/{post}', [\App\Http\Controllers\Admin\AdminForumPostController::class, 'show'])->name('posts.show'); // JSON for modal
-        // Tags admin page (separate page)
-        Route::get('/tags', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'index'])->name('tags.index');
 
-        // AJAX table partial
-        Route::get('/tags/table', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'table'])->name('tags.table');
-
-        // Tag actions (AJAX)
-        Route::patch('/tags/{tag}/approve', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'approve'])->name('tags.approve');
-        Route::patch('/tags/{tag}/reject', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'reject'])->name('tags.reject');
-        Route::patch('/tags/{tag}', [\App\Http\Controllers\Admin\AdminForumTagController::class, 'update'])->name('tags.update'); // rename, status
-    });
 
     // Club Management
 //    Route::prefix('clubs')->name('clubs.')->group(function () {
