@@ -957,12 +957,13 @@ window.openJoinModal = function(clubId) {
                         </div>
                         ${statusBadge}
                     </div>
+
                     <div class="club-card-footer" onclick="event.stopPropagation();">
-                        ${actionButton || `<a href="/clubs/${club.id}" class="btn-club-secondary">View Details</a>`}
+                        ${footerHtml}
                     </div>
                 </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
     }
 
     // Update statistics
@@ -971,12 +972,10 @@ window.openJoinModal = function(clubId) {
         const availableClubs = allClubs.filter(c => c.join_status === 'available').length;
         const memberClubs = allClubs.filter(c => c.join_status === 'member').length;
 
-        <div class="club-card-footer" onclick="event.stopPropagation();">
-          ${footerHtml}
-        </div>
-      </div>
-                `;
-            }).join('');
+        document.getElementById('totalClubsStat').textContent = totalClubs;
+        document.getElementById('availableClubsStat').textContent = availableClubs;
+        document.getElementById('memberClubsStat').textContent = memberClubs;
+        document.getElementById('totalClubsBadge').textContent = `${totalClubs} Clubs Available`;
     }
 
     // Update a single club's status in the list
