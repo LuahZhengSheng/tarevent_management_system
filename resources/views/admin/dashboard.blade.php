@@ -174,12 +174,12 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <img 
-                                            src="{{ $club->logo ? '/storage/' . $club->logo : asset('images/default-club-avatar.png') }}" 
+                                        <img
+                                            src="{{ $club->logo ? '/storage/' . $club->logo : asset('images/avatar/default-club-avatar.png') }}"
                                             alt="{{ $club->name }}"
                                             class="rounded"
                                             style="width: 32px; height: 32px; object-fit: cover;"
-                                            onerror="this.src='{{ asset('images/default-club-avatar.png') }}'"
+                                            onerror="this.src='{{ asset('images/avatar/default-club-avatar.png') }}'"
                                         >
                                         <div>
                                             <div class="fw-semibold">{{ $club->name }}</div>
