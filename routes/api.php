@@ -16,11 +16,13 @@ use App\Http\Controllers\Api\AuthTokenController;
 |--------------------------------------------------------------------------
 */
 
-// Club API Routes (requires Bearer token authentication)
-// Public route: Get single club (guest can access)
+// Public Club API Routes (guest can access)
 Route::prefix('clubs')->group(function () {
+    // Get all available clubs with join status (guest can access)
+    Route::get('/available', [ClubApiController::class, 'getAvailableClubs']);
+    
+    // Get single club with membership status (guest can access)
     Route::prefix('{club}')->group(function () {
-        // Get single club with membership status (guest can access)
         Route::get('/', [ClubApiController::class, 'show']);
     });
 });
@@ -28,8 +30,6 @@ Route::prefix('clubs')->group(function () {
 // Using 'auth:sanctum' for Bearer token authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('clubs')->group(function () {
-        // Get all available clubs with join status
-        Route::get('/available', [ClubApiController::class, 'getAvailableClubs']);
 
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);

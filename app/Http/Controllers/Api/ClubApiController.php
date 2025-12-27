@@ -547,11 +547,9 @@ class ClubApiController extends Controller
         // Extract requestID for logging (prefer requestID over timestamp)
         $requestId = $request->input('requestID') ?? $request->input('timestamp');
 
-        $user = auth()->user();
-        
-        if (!$user) {
-            return $this->failResponse('Unauthenticated.', [], 401);
-        }
+        // Allow guest access - try to get user from Sanctum if Bearer token is provided
+        // If no token or invalid token, user will be null (guest access)
+        $user = auth('sanctum')->user();
 
         // Get all active clubs with optional category filter
         $query = \App\Models\Club::where('status', 'active')
@@ -574,11 +572,23 @@ class ClubApiController extends Controller
         
         $clubs = $query->get();
 
-        // Get membership service to check join status
-        $membershipService = app(\App\Services\Club\MembershipService::class);
+        // Get membership service to check join status (only if user is authenticated)
+        $membershipService = $user ? app(\App\Services\Club\MembershipService::class) : null;
 
         $clubsWithStatus = $clubs->map(function ($club) use ($user, $membershipService) {
-            $joinStatus = $membershipService->getClubJoinStatus($club, $user);
+            // If user is not authenticated (guest), return 'available' status
+            if (!$user || !$membershipService) {
+                $joinStatus = [
+                    'status' => 'available',
+                    'rejected_at' => null,
+                    'removed_at' => null,
+                    'cooldown_remaining_days' => null,
+                    'pending_request_id' => null,
+                    'blacklist_reason' => null,
+                ];
+            } else {
+                $joinStatus = $membershipService->getClubJoinStatus($club, $user);
+            }
 
             return [
                 'id' => $club->id,
