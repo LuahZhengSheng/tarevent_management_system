@@ -1251,129 +1251,31 @@ window.openJoinModal = function(clubId) {
             return;
         }
 
-        // Load clubs from API
-        function loadClubs() {
-            const loadingState = document.getElementById('loadingState');
-            const errorState = document.getElementById('errorState');
-            const emptyState = document.getElementById('emptyState');
-            const clubsGrid = document.getElementById('clubsGrid');
+        emptyState.style.display = 'none';
+        resultsCount.textContent = `${filteredClubs.length} club${filteredClubs.length !== 1 ? 's' : ''} found`;
 
-            loadingState.style.display = 'block';
-            errorState.style.display = 'none';
-            emptyState.style.display = 'none';
-            clubsGrid.innerHTML = '';
+        const categoryLabels = {
+            'academic': 'Academic',
+            'sports': 'Sports',
+            'cultural': 'Cultural',
+            'social': 'Social',
+            'volunteer': 'Volunteer',
+            'professional': 'Professional',
+            'other': 'Other'
+        };
 
-        clubsGrid.innerHTML = filteredClubs.map(club => {
-            // Handle logo URL - API already returns /storage/ prefix
-            let logoUrl = null;
-            if (club.logo) {
-                // If logo starts with http/https, use as is
-                // If logo starts with /storage/, use as is (API already includes it)
-                // Otherwise, prepend /storage/
-                if (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/')) {
-                    logoUrl = club.logo;
-                } else {
-                    logoUrl = `/storage/${club.logo}`;
-                }
-            }
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                credentials: 'same-origin',
-            })
-                    .then(async response => {
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(data.message || 'Failed to load clubs');
-                        }
-
-                        if (data.success && data.data && data.data.clubs) {
-                            allClubs = data.data.clubs;
-                            filterAndRenderClubs();
-                            updateStats();
-                        } else {
-                            throw new Error('Invalid response format');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading clubs:', error);
-                        loadingState.style.display = 'none';
-                        errorState.style.display = 'block';
-                        document.getElementById('errorMessage').textContent = error.message;
-                    });
-        }
-
-        // Filter clubs based on search
-        function filterAndRenderClubs() {
-            const searchInput = document.getElementById('searchInput');
-            const searchTerm = (searchInput?.value || '').toLowerCase().trim();
-
-            filteredClubs = allClubs.filter(club => {
-                if (!searchTerm)
-                    return true;
-                return club.name.toLowerCase().includes(searchTerm) ||
-                        (club.description && club.description.toLowerCase().includes(searchTerm));
-            });
-
-            // Sort: Put member clubs first, then others
-            filteredClubs.sort((a, b) => {
-                // If both are members or both are not members, maintain original order
-                const aIsMember = a.join_status === 'member';
-                const bIsMember = b.join_status === 'member';
-
-                if (aIsMember && !bIsMember)
-                    return -1; // a comes first
-                if (!aIsMember && bIsMember)
-                    return 1;  // b comes first
-                return 0; // maintain order for others
-            });
-
-            renderClubs();
-        }
-
-        // Render clubs grid
-        function renderClubs() {
-            const clubsGrid = document.getElementById('clubsGrid');
-            const loadingState = document.getElementById('loadingState');
-            const emptyState = document.getElementById('emptyState');
-            const resultsCount = document.getElementById('resultsCount');
-
-            loadingState.style.display = 'none';
-
-            if (!filteredClubs || filteredClubs.length === 0) {
-                clubsGrid.innerHTML = '';
-                emptyState.style.display = 'block';
-                resultsCount.textContent = '0 clubs found';
-                return;
-            }
-
-            emptyState.style.display = 'none';
-            resultsCount.textContent = `${filteredClubs.length} club${filteredClubs.length !== 1 ? 's' : ''} found`;
-
-            const categoryLabels = {
-                academic: 'Academic',
-                sports: 'Sports',
-                cultural: 'Cultural',
-                social: 'Social',
-                volunteer: 'Volunteer',
-                professional: 'Professional',
-                other: 'Other',
-            };
-
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-            clubsGrid.innerHTML = filteredClubs.map((club) => {
+        clubsGrid.innerHTML = filteredClubs.map((club) => {
+                // API already returns logo with /storage/ prefix
                 const logoUrl = club.logo
-                        ? (club.logo.startsWith('http') ? club.logo : `/storage/${club.logo}`)
+                        ? (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/') 
+                           ? club.logo 
+                           : `/storage/${club.logo}`)
                         : null;
 
                 const logoHtml = logoUrl
-                        ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+                        ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
                         : '';
 
                 const categoryBadge = club.category
@@ -1398,7 +1300,9 @@ window.openJoinModal = function(clubId) {
                         break;
                     case 'rejected':
                     {
-                        const cooldownText = club.cooldownremainingdays != null ? ` (${club.cooldownremainingdays} days left)` : '';
+                        const cooldownText = (club.cooldown_remaining_days != null || club.cooldownremainingdays != null) 
+                            ? ` (${(club.cooldown_remaining_days || club.cooldownremainingdays)} days left)` 
+                            : '';
                         statusBadge = `<span class="club-status-badge club-status-rejected">Rejected${cooldownText}</span>`;
                         actionButton = '';
                         break;
@@ -1450,10 +1354,12 @@ window.openJoinModal = function(clubId) {
           ${statusBadge}
         </div>
 
-        document.getElementById('totalClubsStat').textContent = totalClubs;
-        document.getElementById('availableClubsStat').textContent = availableClubs;
-        document.getElementById('memberClubsStat').textContent = memberClubs;
-        document.getElementById('totalClubsBadge').textContent = `${totalClubs} Clubs Available`;
+        <div class="club-card-footer" onclick="event.stopPropagation();">
+          ${footerHtml}
+        </div>
+      </div>
+                `;
+            }).join('');
     }
 
     // Update a single club's status in the list
@@ -1471,6 +1377,7 @@ window.openJoinModal = function(clubId) {
         } else {
             console.warn('Club not found in allClubs:', clubId);
         }
+    }
 
     // Open join modal - Make sure it's available globally immediately
     window.openJoinModal = function(clubId) {

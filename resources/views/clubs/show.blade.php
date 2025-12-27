@@ -587,27 +587,12 @@
             </div>
             @endif
         </div>
+    </div>
 
+    <!-- Action Buttons Sidebar -->
+    <div class="container club-content-container">
         <div class="row g-4">
-            <!-- Sidebar -->
-            <div class="col-lg-4">
-                <!-- Club Info -->
-                <div class="content-section">
-                    <h2 class="section-title">
-                        <i class="bi bi-chat-dots"></i>
-                        Club Forum
-                    </h2>
-                    <x-post-feed
-                        api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
-                        :initial-posts="null"
-                        :show-filters="true"
-                    />
-                </div>
-                @endif
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="col-lg-12">
+            <div class="col-lg-3">
                 <div class="content-section">
                     <div class="action-buttons">
                     @if($isMember)
