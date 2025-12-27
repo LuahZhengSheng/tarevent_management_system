@@ -727,6 +727,7 @@
 
             // Add timestamp for IFA standard
             const timestamp = generateTimestamp();
+            const token = localStorage.getItem('api_token') || '';
             const url = `/api/clubs/available?timestamp=${encodeURIComponent(timestamp)}`;
 
             fetch(url, {
@@ -734,6 +735,7 @@
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'same-origin',
             })
@@ -993,6 +995,7 @@
 
             // Add timestamp for IFA standard
             const timestamp = generateTimestamp();
+            const token = localStorage.getItem('api_token') || '';
 
             fetch(`/api/clubs/${selectedClubId}/join`, {
                 method: 'POST',
@@ -1000,6 +1003,7 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({

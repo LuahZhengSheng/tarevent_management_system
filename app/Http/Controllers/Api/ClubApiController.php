@@ -401,6 +401,17 @@ class ClubApiController extends Controller
             return $this->failResponse('Either timestamp or requestID must be provided.', [], 400);
         }
 
+        // Check authorization: user can only view their own clubs, unless they are super_admin
+        $currentUser = auth()->user();
+        if (!$currentUser) {
+            return $this->failResponse('Unauthenticated.', [], 401);
+        }
+
+        // Allow access if: user is viewing their own clubs OR user is super_admin
+        if ($currentUser->id !== $user->id && !$currentUser->isSuperAdmin()) {
+            return $this->failResponse('You do not have permission to view this user\'s clubs.', [], 403);
+        }
+
         // Extract requestID for logging (prefer requestID over timestamp)
         $requestId = $request->input('requestID') ?? $request->input('timestamp');
 
@@ -468,15 +479,13 @@ class ClubApiController extends Controller
         // Extract requestID for logging (prefer requestID over timestamp)
         $requestId = $request->input('requestID') ?? $request->input('timestamp');
 
+        // Allow guest access - user can be null
         $user = auth()->user();
         
-        if (!$user) {
-            return $this->failResponse('Unauthenticated.', [], 401);
-        }
-
-        // Check if user is a member (only for student role)
+        // Check if user is a member (only for authenticated student role)
+        // If user is not logged in, isMember will be false
         $isMember = false;
-        if ($user->role === 'student') {
+        if ($user && $user->role === 'student') {
             $isMember = $facade->hasMember($club, $user);
         }
 
@@ -538,15 +547,23 @@ class ClubApiController extends Controller
         // Extract requestID for logging (prefer requestID over timestamp)
         $requestId = $request->input('requestID') ?? $request->input('timestamp');
 
-        $user = auth()->user();
-        
-        if (!$user) {
-            return $this->failResponse('Unauthenticated.', [], 401);
-        }
+        // Allow guest access - try to get user from Sanctum if Bearer token is provided
+        // If no token or invalid token, user will be null (guest access)
+        $user = auth('sanctum')->user();
 
         // Get all active clubs with optional category filter
         $query = \App\Models\Club::where('status', 'active')
-            ->with(['creator', 'clubUser']);
+            ->with(['creator', 'clubUser'])
+            ->withCount([
+                'members' => function ($query) {
+                    // Only count active members (status = 'active' in pivot table)
+                    $query->where('club_user.status', 'active');
+                },
+                'events' => function ($query) {
+                    // Only count published events
+                    $query->where('status', 'published');
+                }
+            ]);
         
         // Apply category filter if provided
         if ($request->filled('category')) {
@@ -555,11 +572,23 @@ class ClubApiController extends Controller
         
         $clubs = $query->get();
 
-        // Get membership service to check join status
-        $membershipService = app(\App\Services\Club\MembershipService::class);
+        // Get membership service to check join status (only if user is authenticated)
+        $membershipService = $user ? app(\App\Services\Club\MembershipService::class) : null;
 
         $clubsWithStatus = $clubs->map(function ($club) use ($user, $membershipService) {
-            $joinStatus = $membershipService->getClubJoinStatus($club, $user);
+            // If user is not authenticated (guest), return 'available' status
+            if (!$user || !$membershipService) {
+                $joinStatus = [
+                    'status' => 'available',
+                    'rejected_at' => null,
+                    'removed_at' => null,
+                    'cooldown_remaining_days' => null,
+                    'pending_request_id' => null,
+                    'blacklist_reason' => null,
+                ];
+            } else {
+                $joinStatus = $membershipService->getClubJoinStatus($club, $user);
+            }
 
             return [
                 'id' => $club->id,
@@ -578,6 +607,8 @@ class ClubApiController extends Controller
                 'cooldown_remaining_days' => $joinStatus['cooldown_remaining_days'],
                 'pending_request_id' => $joinStatus['pending_request_id'],
                 'blacklist_reason' => $joinStatus['blacklist_reason'] ?? null,
+                'members_count' => $club->members_count ?? 0,
+                'events_count' => $club->events_count ?? 0,
                 'creator' => $club->creator ? [
                     'id' => $club->creator->id,
                     'name' => $club->creator->name,
@@ -705,6 +736,9 @@ class ClubApiController extends Controller
             ]);
 
             // Handle image file upload if present
+            // Remove 'image' from validated array to avoid passing file object
+            unset($validated['image']);
+            
             if ($request->hasFile('image')) {
                 $imageFile = $request->file('image');
                 $imagePath = $imageFile->store('clubs/announcements', 'public');

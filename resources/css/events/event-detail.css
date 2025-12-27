@@ -972,6 +972,18 @@
     color: var(--info);
 }
 
+.action-refund:hover {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: var(--warning);
+    color: var(--warning);
+}
+
+.action-refund .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
+}
+
 /* Event Stats */
 .event-stats {
     padding: 1.25rem;
@@ -1346,6 +1358,15 @@
 
 [data-theme="dark"] #cancelRegistrationModal .modal-header {
     background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+}
+
+[data-theme="dark"] .action-refund:hover {
+    background: rgba(245, 158, 11, 0.15);
+}
+
+[data-theme="dark"] .action-refund .badge {
+    background-color: rgba(245, 158, 11, 0.3) !important;
+    color: #fbbf24 !important;
 }
 
 /* Loading state */

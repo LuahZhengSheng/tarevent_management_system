@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(auth()->check() && auth()->user()->hasRole('club') ? 'layouts.club' : 'layouts.app')
 
 @section('title', 'Campus Events')
 
@@ -16,7 +16,7 @@
                     <div class="hero-content">
                         <div class="hero-badge">
                             <i class="bi bi-stars me-2"></i>
-                            <span>{{ $events->total() }} Events Available</span>
+                            <span id="totalEventsCount">{{ $events->total() }} Events Available</span>
                         </div>
                         <h1 class="hero-title">Discover Campus Events</h1>
                         <p class="hero-description">
@@ -24,7 +24,7 @@
                         </p>
                         <div class="hero-stats">
                             <div class="stat-item">
-                                <div class="stat-value">{{ $events->total() }}</div>
+                                <div class="stat-value" id="heroTotalEvents">{{ $events->total() }}</div>
                                 <div class="stat-label">Total Events</div>
                             </div>
                             <div class="stat-divider"></div>
@@ -64,97 +64,94 @@
     </div>
 
     <div class="container-modern">
-        <!-- Search and Filter Section -->
+        <!-- Enhanced Filter Section (No form tag - using AJAX) -->
         <div class="filter-section">
-            <form action="{{ route('events.index') }}" method="GET" id="filterForm">
-                <div class="filter-container">
-                    <!-- Search Bar -->
-                    <div class="search-wrapper">
-                        <div class="search-input-group">
-                            <i class="bi bi-search search-icon"></i>
-                            <input type="text" 
-                                   class="search-input" 
-                                   name="search" 
-                                   placeholder="Search events by title or description..." 
-                                   value="{{ request('search') }}">
-                            @if(request('search'))
-                            <button type="button" class="clear-search">
-                                <i class="bi bi-x"></i>
-                            </button>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Filter Pills -->
-                    <div class="filter-pills">
-                        <!-- Category Filter -->
-                        <div class="filter-pill">
-                            <label class="filter-label">
-                                <i class="bi bi-bookmark me-2"></i>Category
-                            </label>
-                            <select class="filter-select" name="category">
-                                <option value="">All Categories</option>
-                                @foreach($categories as $cat)
-                                <option value="{{ $cat }}" {{ request('category') == $cat ? 'selected' : '' }}>
-                                    {{ $cat }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <!-- Fee Type Filter -->
-                        <div class="filter-pill">
-                            <label class="filter-label">
-                                <i class="bi bi-cash-coin me-2"></i>Price
-                            </label>
-                            <select class="filter-select" name="fee_type">
-                                <option value="">All Events</option>
-                                <option value="free" {{ request('fee_type') == 'free' ? 'selected' : '' }}>
-                                    Free Only
-                                </option>
-                                <option value="paid" {{ request('fee_type') == 'paid' ? 'selected' : '' }}>
-                                    Paid Only
-                                </option>
-                            </select>
-                        </div>
-
-                        <!-- Date Filter -->
-                        <div class="filter-pill">
-                            <label class="filter-label">
-                                <i class="bi bi-calendar-range me-2"></i>From Date
-                            </label>
-                            <input type="date" 
-                                   class="filter-date" 
-                                   name="start_date" 
-                                   value="{{ request('start_date') }}">
-                        </div>
-
-                        <!-- Clear Filters -->
-                        @if(request()->hasAny(['search', 'category', 'fee_type', 'start_date']))
-                        <a href="{{ route('events.index') }}" class="filter-clear">
-                            <i class="bi bi-x-circle me-2"></i>Clear All
-                        </a>
-                        @endif
+            <div class="filter-container">
+                <!-- Search Bar -->
+                <div class="search-wrapper">
+                    <div class="search-input-group">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" 
+                               id="searchInput"
+                               class="search-input" 
+                               placeholder="Search events by title or description..." 
+                               value="">
+                        <button type="button" class="clear-search" style="display: none;">
+                            <i class="bi bi-x"></i>
+                        </button>
                     </div>
                 </div>
-            </form>
+
+                <!-- Filter Pills -->
+                <div class="filter-pills">
+                    <!-- Category Filter -->
+                    <div class="filter-pill">
+                        <label class="filter-label">
+                            <i class="bi bi-bookmark me-2"></i>Category
+                        </label>
+                        <select class="filter-select" id="categoryFilter">
+                            <option value="all">All Categories</option>
+                            @foreach($categories as $cat)
+                            <option value="{{ $cat }}">{{ $cat }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Organizer (Club) Filter -->
+                    <div class="filter-pill">
+                        <label class="filter-label">
+                            <i class="bi bi-building me-2"></i>Organizer
+                        </label>
+                        <select class="filter-select" id="organizerFilter" style="min-width: 100px">
+                            <option value="all">All Clubs</option>
+                            @foreach($clubs as $clubId => $clubName)
+                            <option value="{{ $clubId }}">{{ $clubName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Visibility Filter -->
+                    <div class="filter-pill">
+                        <label class="filter-label">
+                            <i class="bi bi-eye me-2"></i>Visibility
+                        </label>
+                        <select class="filter-select" id="visibilityFilter">
+                            <option value="all">All Events</option>
+                            <option value="public">Public Only</option>
+                            <option value="private">Club Members Only</option>
+                        </select>
+                    </div>
+
+                    <!-- Fee Type Filter -->
+                    <div class="filter-pill">
+                        <label class="filter-label">
+                            <i class="bi bi-cash-coin me-2"></i>Price
+                        </label>
+                        <select class="filter-select" id="feeTypeFilter" style="min-width: 100px">
+                            <option value="all">All Events</option>
+                            <option value="free">Free Only</option>
+                            <option value="paid">Paid Only</option>
+                        </select>
+                    </div>
+
+                    <!-- Clear Filters -->
+                    <button type="button" class="filter-clear" id="clearAllFilters" style="display: none;">
+                        <i class="bi bi-x-circle me-2"></i>Clear All
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <!-- Results Header -->
+        <!-- Results Header with Sort -->
         <div class="results-header">
             <div class="results-info">
-                <h2 class="results-title">
-                    @if(request()->hasAny(['search', 'category', 'fee_type', 'start_date']))
-                    Filtered Results
-                    @else
-                    All Events
-                    @endif
-                </h2>
+                <h2 class="results-title" id="resultsTitle">All Events</h2>
                 <p class="results-count">
-                    Showing {{ $events->count() }} of {{ $events->total() }} {{ Str::plural('event', $events->total()) }}
+                    Showing <span id="resultsCount">{{ $events->count() }}</span> of <span id="totalCount">{{ $events->total() }}</span> events
                 </p>
             </div>
             <div class="view-controls">
+                <!-- View Toggle -->
                 <div class="view-toggle">
                     <button class="view-btn active" data-view="grid" title="Grid View">
                         <i class="bi bi-grid-3x3-gap"></i>
@@ -163,18 +160,28 @@
                         <i class="bi bi-list-ul"></i>
                     </button>
                 </div>
+                
+                <!-- Sort Select -->
                 <div class="sort-select">
-                    <select class="form-select-modern">
+                    <select class="form-select-modern" id="sortSelect">
                         <option value="date_asc">Date: Earliest First</option>
                         <option value="date_desc">Date: Latest First</option>
-                        <option value="title">Title: A-Z</option>
+                        <option value="title_asc">Title: A-Z</option>
+                        <option value="title_desc">Title: Z-A</option>
                     </select>
                 </div>
             </div>
         </div>
 
+        <!-- Active Filters Display -->
+        <div class="active-filters-display" id="activeFilters" style="display: none;">
+            <span class="filters-label">Active Filters:</span>
+            <div class="filter-tags" id="filterTags"></div>
+        </div>
+
         <!-- Events Grid -->
         <div id="eventsContainer" class="events-grid view-grid">
+            <!-- Initial server-rendered events -->
             @forelse($events as $event)
             <div class="event-card-wrapper">
                 <article class="event-card-modern">
@@ -187,14 +194,13 @@
                         @else
                         <div class="image-placeholder">
                             <i class="bi bi-calendar-event"></i>
-                            <span>{{ $event->category instanceof \App\Enums\EventCategory ? $event->category->value : $event->category }}</span>
+                            <span>{{ $event->category }}</span>
                         </div>
                         @endif
 
                         <!-- Image Overlay Tags -->
                         <div class="event-tags">
                             <span class="tag tag-category">{{ $event->category }}</span>
-                            {{-- Private Event Badge --}}
                             @if(!$event->is_public)
                             <span class="tag tag-private">
                                 <i class="bi bi-lock-fill me-1"></i>
@@ -220,7 +226,7 @@
                             <span>Open</span>
                         </div>
                         @elseif($event->registration_start_time > now())
-                        <div class="status-badge status-upcoming" style="background-color: #003366; color: white; border-color: #0dcaf0;">
+                        <div class="status-badge status-upcoming" style="background-color: #003366; color: white;">
                             <i class="bi bi-hourglass-split"></i>
                             <span>Upcoming</span>
                         </div>
@@ -239,19 +245,16 @@
 
                     <!-- Event Content -->
                     <div class="event-content">
-                        <!-- Event Title -->
                         <h3 class="event-title">
                             <a href="{{ route('events.show', $event) }}">
                                 {{ $event->title }}
                             </a>
                         </h3>
 
-                        <!-- Event Description -->
                         <p class="event-description">
                             {{ Str::limit($event->description, 100) }}
                         </p>
 
-                        <!-- Event Info Grid -->
                         <div class="event-info-grid">
                             <div class="info-item">
                                 <div class="info-icon">
@@ -308,7 +311,7 @@
                             </div>
                         </div>
                         <a href="{{ route('events.show', $event) }}" class="btn-details">
-                            Details
+                            View Details
                             <i class="bi bi-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -322,39 +325,109 @@
                     </div>
                     <h3 class="empty-title">No Events Found</h3>
                     <p class="empty-description">
-                        We couldn't find any events matching your criteria. 
-                        Try adjusting your filters or check back later.
+                        There are currently no events available. Check back later for upcoming events!
                     </p>
-                    @if(request()->hasAny(['search', 'category', 'fee_type', 'start_date']))
-                    <a href="{{ route('events.index') }}" class="btn-reset">
-                        <i class="bi bi-arrow-counterclockwise me-2"></i>
-                        Reset Filters
-                    </a>
-                    @endif
                 </div>
             </div>
             @endforelse
         </div>
 
         <!-- Pagination -->
-        @if($events->hasPages())
-        <div class="pagination-wrapper">
-            {{ $events->links() }}
+        <div class="pagination-wrapper" id="paginationContainer">
+            @if($events->hasPages())
+                {{ $events->links() }}
+            @endif
         </div>
-        @endif
     </div>
 </div>
 
 @push('styles')
 @vite('resources/css/events/events-index-modern.css')
+<style>
+/* Active Filters Display */
+.active-filters-display {
+    background: var(--bg-primary);
+    border-radius: 0.875rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filters-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.filter-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.filter-tag i {
+    font-size: 0.875rem;
+}
+
+.remove-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background-color: var(--primary);
+    color: white;
+    border-radius: 50%;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 0.25rem;
+    border: none;
+    padding: 0;
+}
+
+.remove-tag:hover {
+    background-color: var(--primary-hover);
+    transform: scale(1.1);
+}
+
+.remove-tag i {
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .active-filters-display {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
 @endpush
 
 @push('scripts')
 <script>
-    window.eventsConfig = {
-        fetchUrl: "{{ route('events.fetch') }}",
-        showUrl: "{{ route('events.show', ':id') }}"
-    };
+window.eventsConfig = {
+    fetchUrl: "{{ route('events.fetch') }}",
+    showUrl: "{{ route('events.show', ':id') }}",
+    clubs: @json($clubs)
+};
 </script>
 @vite('resources/js/events/events-index.js')
 @endpush

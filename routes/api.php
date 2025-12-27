@@ -16,22 +16,26 @@ use App\Http\Controllers\Api\AuthTokenController;
 |--------------------------------------------------------------------------
 */
 
-// Club API Routes (requires authentication)
-// Note: Using ['web','auth'] instead of 'auth:sanctum' for development/testing
-// This allows web session authentication to work with API routes
-// For production, consider using 'auth:sanctum' with proper token authentication
-Route::middleware(['web', 'auth'])->group(function () {
+// Public Club API Routes (guest can access)
+Route::prefix('clubs')->group(function () {
+    // Get all available clubs with join status (guest can access)
+    Route::get('/available', [ClubApiController::class, 'getAvailableClubs']);
+    
+    // Get single club with membership status (guest can access)
+    Route::prefix('{club}')->group(function () {
+        Route::get('/', [ClubApiController::class, 'show']);
+    });
+});
+
+// Using 'auth:sanctum' for Bearer token authentication
+Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('clubs')->group(function () {
-        // Get all available clubs with join status
-        Route::get('/available', [ClubApiController::class, 'getAvailableClubs']);
 
         // Create club
         Route::post('/', [ClubApiController::class, 'store']);
 
         // Club-specific routes
         Route::prefix('{club}')->group(function () {
-            // Get single club with membership status (must be before other routes)
-            Route::get('/', [ClubApiController::class, 'show']);
 
             // Update club
             Route::put('/', [ClubApiController::class, 'update']);
@@ -86,8 +90,8 @@ Route::middleware(['web', 'auth'])->group(function () {
 });
 
 // Club User API Routes (v1)
-// Note: Using ['web','auth'] for development/testing to allow web session authentication
-Route::middleware(['web', 'auth'])->prefix('v1')->group(function () {
+// Using 'auth:sanctum' for Bearer token authentication
+Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     // Create club user (with rate limiting: 10 requests per minute)
     Route::post('/club-users', [ClubUserController::class, 'store'])
         ->middleware('throttle:10,1')

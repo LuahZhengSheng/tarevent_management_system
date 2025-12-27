@@ -1,9 +1,21 @@
 .refund-management-page {
-    padding: 20px 0;
+    padding: 20px 100px;
 }
 
 .page-header {
+    padding: 20px;
     margin-bottom: 30px;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-back:hover {
+    transform: translateX(-5px);
 }
 
 .page-title {
@@ -28,6 +40,7 @@
     gap: 15px;
     transition: all 0.3s ease;
     border-left: 4px solid transparent;
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-card:hover {
@@ -76,6 +89,27 @@
     padding: 25px;
     margin-bottom: 20px;
     box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.controls-card .form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.controls-card .form-select,
+.controls-card .form-control {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.controls-card .form-select:focus,
+.controls-card .form-control:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary);
+    color: var(--text-primary);
 }
 
 /* Table Card */
@@ -84,6 +118,7 @@
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
     overflow: hidden;
+    border: 1px solid var(--border-color);
 }
 
 .table-header {
@@ -92,6 +127,7 @@
     align-items: center;
     padding: 20px 25px;
     border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
 }
 
 .table-header h3 {
@@ -149,7 +185,7 @@
 }
 
 .table thead th {
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-tertiary);
     color: var(--text-secondary);
     font-weight: 600;
     font-size: 13px;
@@ -163,6 +199,11 @@
     padding: 15px;
     vertical-align: middle;
     border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.table tbody tr:hover {
+    background-color: var(--bg-secondary);
 }
 
 .status-badge {
@@ -173,10 +214,46 @@
     font-weight: 600;
 }
 
-.status-pending { background-color: #fef3c7; color: #92400e; }
-.status-processing { background-color: #dbeafe; color: #1e40af; }
-.status-completed { background-color: #d1fae5; color: #065f46; }
-.status-rejected { background-color: #fee2e2; color: #991b1b; }
+.status-pending { 
+    background-color: #fef3c7; 
+    color: #92400e; 
+}
+
+.status-processing { 
+    background-color: #dbeafe; 
+    color: #1e40af; 
+}
+
+.status-completed { 
+    background-color: #d1fae5; 
+    color: #065f46; 
+}
+
+.status-rejected { 
+    background-color: #fee2e2; 
+    color: #991b1b; 
+}
+
+/* Dark Mode Status Badges */
+[data-theme="dark"] .status-pending {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+
+[data-theme="dark"] .status-processing {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .status-completed {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+[data-theme="dark"] .status-rejected {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
 
 .deadline-badge {
     display: inline-block;
@@ -186,9 +263,36 @@
     font-weight: 600;
 }
 
-.deadline-urgent { background-color: #fee2e2; color: #991b1b; }
-.deadline-warning { background-color: #fef3c7; color: #92400e; }
-.deadline-normal { background-color: #e5e7eb; color: #6b7280; }
+.deadline-urgent { 
+    background-color: #fee2e2; 
+    color: #991b1b; 
+}
+
+.deadline-warning { 
+    background-color: #fef3c7; 
+    color: #92400e; 
+}
+
+.deadline-normal { 
+    background-color: #e5e7eb; 
+    color: #6b7280; 
+}
+
+/* Dark Mode Deadline Badges */
+[data-theme="dark"] .deadline-urgent {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+[data-theme="dark"] .deadline-warning {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+
+[data-theme="dark"] .deadline-normal {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
 
 /* Action Buttons */
 .action-btn {
@@ -197,6 +301,7 @@
     font-size: 13px;
     font-weight: 500;
     transition: all 0.2s ease;
+    border: 1px solid transparent;
 }
 
 .action-btn:hover {
@@ -222,11 +327,36 @@
     margin: 0;
 }
 
+.pagination .page-link {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.pagination .page-link:hover {
+    background-color: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-tertiary);
+}
+
 /* Refund Details */
 .refund-details {
     background-color: var(--bg-secondary);
     padding: 20px;
     border-radius: 10px;
+    border: 1px solid var(--border-color);
 }
 
 .refund-details .detail-row {
@@ -250,8 +380,83 @@
     font-weight: 500;
 }
 
+/* Modal Styling */
+.modal-content {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+}
+
+.modal-header {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header .modal-title {
+    color: var(--text-primary);
+}
+
+.modal-header .btn-close {
+    filter: var(--bs-btn-close-filter, none);
+}
+
+[data-theme="dark"] .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.modal-body {
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Alert Styling in Modal */
+.modal .alert {
+    border-radius: 0.5rem;
+    border: none;
+}
+
+.modal .alert-info {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--info);
+    border-left: 4px solid var(--info);
+}
+
+.modal .alert-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border-left: 4px solid var(--warning);
+}
+
+/* Form Controls in Modal */
+.modal .form-control {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal .form-control:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.modal .form-text {
+    color: var(--text-tertiary);
+}
+
+.modal .invalid-feedback {
+    color: var(--error);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
+    .refund-management-page {
+        padding: 20px;
+    }
+    
     .table-responsive {
         overflow-x: auto;
     }
@@ -263,5 +468,19 @@
     .pagination-container {
         flex-direction: column;
         gap: 15px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+    }
+    
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    
+    .stat-value {
+        font-size: 24px;
     }
 }

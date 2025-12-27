@@ -446,8 +446,8 @@
         $.ajax({
             url: deleteUrl,
             type: 'DELETE',
-            data: {
-                _token: config.csrfToken
+            headers: {
+                'X-CSRF-TOKEN': config.csrfToken
             },
             dataType: 'json',
             success: function (response) {
@@ -462,8 +462,22 @@
                 fetchEvents();
             },
             error: function (xhr, status, error) {
-                console.error('Delete event error:', error);
-                showErrorToast('Failed to delete event. Please try again.');
+                // 1. 关闭 Modal
+                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                deleteModal.hide();
+
+                // 2. 尝试解析后端返回的 JSON 错误信息
+                let errorMessage = 'Failed to delete event. Please try again.';
+
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    // 如果后端返回了 { message: "Past events cannot be deleted..." }
+                    errorMessage = xhr.responseJSON.message;
+                }
+
+                // 3. 显示具体的错误信息给用户
+                showErrorToast(errorMessage);
+
+                console.error('Delete event error:', errorMessage);
             }
         });
     }

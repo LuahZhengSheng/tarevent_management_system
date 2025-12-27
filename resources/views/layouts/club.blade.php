@@ -19,6 +19,8 @@
 
     <!-- Club Dashboard CSS -->
     <link rel="stylesheet" href="{{ asset('css/club/club-dashboard.css') }}">
+    
+    @vite('resources/css/toast-notifications.css') 
 
     <!-- Custom Styles -->
     @stack('styles')

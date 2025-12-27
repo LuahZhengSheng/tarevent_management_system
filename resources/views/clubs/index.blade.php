@@ -59,6 +59,438 @@
         backdrop-filter: blur(10px);
     }
 
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.hero-description {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    opacity: 0.95;
+    line-height: 1.6;
+}
+
+.hero-stats {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    margin-top: 0.5rem;
+}
+
+.stat-divider {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.container-modern {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.filter-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.filter-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.search-wrapper {
+    width: 100%;
+}
+
+.search-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    color: #6c757d;
+    font-size: 1.25rem;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.875rem 1rem 0.875rem 3rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary, #4f46e5);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.clear-search {
+    position: absolute;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-pills {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-pill {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    display: flex;
+    align-items: center;
+}
+
+.filter-select, .filter-date {
+    padding: 0.625rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-select:focus, .filter-date:focus {
+    outline: none;
+    border-color: var(--primary, #4f46e5);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.filter-clear {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1rem;
+    color: #dc3545;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    border: 2px solid #dc3545;
+    border-radius: 6px;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.filter-clear:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.results-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.status-filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-tab {
+    padding: 0.625rem 1.25rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: white;
+    color: #6c757d;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-tab:hover {
+    border-color: var(--primary, #4f46e5);
+    color: var(--primary, #4f46e5);
+    background: var(--primary-light, #eef2ff);
+}
+
+.status-tab.active {
+    background: var(--primary, #4f46e5);
+    color: white;
+    border-color: var(--primary, #4f46e5);
+}
+
+.status-tab i {
+    font-size: 1rem;
+}
+
+.clubs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.club-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.club-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.club-card-header {
+    position: relative;
+    height: 180px;
+    background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.club-logo-wrapper {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.club-logo-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.club-logo-wrapper i {
+    font-size: 3rem;
+    color: var(--primary, #4f46e5);
+}
+
+.club-card-body {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.club-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.club-category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-light, #eef2ff);
+    color: var(--primary, #4f46e5);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.club-description {
+    color: #6c757d;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.club-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.club-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.club-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #212529;
+}
+
+.club-stat-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.club-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: auto;
+}
+
+.club-status-available {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.club-status-member {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.club-status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.club-status-rejected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.club-card-footer {
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-club-primary, .btn-club-secondary {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-club-primary {
+    background: var(--primary, #4f46e5);
+    color: white;
+}
+
+.btn-club-primary:hover {
+    background: var(--primary-hover, #6366f1);
+    color: white;
+}
+
+.btn-club-secondary {
+    background: white;
+    color: var(--primary, #4f46e5);
+    border: 2px solid var(--primary, #4f46e5);
+}
+
+.btn-club-secondary:hover {
+    background: var(--primary-light, #eef2ff);
+}
+
+.loading-state, .empty-state, .error-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.loading-state i, .empty-state i, .error-state i {
+    font-size: 4rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.loading-state h3, .empty-state h3, .error-state h3 {
+    font-size: 1.5rem;
+    color: #212529;
+    margin-bottom: 0.5rem;
+}
+
+.loading-state p, .empty-state p, .error-state p {
+    color: #6c757d;
+}
+
+@media (max-width: 768px) {
     .hero-title {
         font-size: 3rem;
         font-weight: 800;
@@ -576,6 +1008,21 @@
                 </h2>
                 <p class="text-muted mb-0" id="resultsCount"></p>
             </div>
+            <!-- Status Filter Tabs -->
+            <div class="status-filter-tabs" id="statusFilterTabs">
+                <button class="status-tab active" data-status="all" onclick="filterByStatus('all')">
+                    <i class="bi bi-grid"></i> All
+                </button>
+                <button class="status-tab" data-status="joined" onclick="filterByStatus('joined')">
+                    <i class="bi bi-check-circle"></i> Joined
+                </button>
+                <button class="status-tab" data-status="available" onclick="filterByStatus('available')">
+                    <i class="bi bi-plus-circle"></i> Available
+                </button>
+                <button class="status-tab" data-status="pending" onclick="filterByStatus('pending')">
+                    <i class="bi bi-clock"></i> Request Pending
+                </button>
+            </div>
         </div>
 
         <!-- Loading State -->
@@ -608,23 +1055,200 @@
 
 @push('scripts')
 <script>
-    (function () {
-        'use strict';
+// Define openJoinModal in global scope immediately so buttons can access it
+window.openJoinModal = function(clubId) {
+    console.log('openJoinModal called with clubId:', clubId);
+    
+    // Check if join modal is available
+    if (typeof window.openJoinClubModal === 'function') {
+        console.log('Calling window.openJoinClubModal');
+        window.openJoinClubModal(clubId, function(joinedClubId) {
+            console.log('Join modal callback triggered for club:', joinedClubId);
+            // Reload clubs data to refresh button status
+            if (typeof window.loadClubs === 'function') {
+                window.loadClubs();
+            } else {
+                // Fallback: reload page
+                window.location.reload();
+            }
+        });
+    } else {
+        console.warn('window.openJoinClubModal not available, waiting...');
+        // Wait a bit for modal to initialize, then try again
+        setTimeout(function() {
+            if (typeof window.openJoinClubModal === 'function') {
+                window.openJoinClubModal(clubId, function(joinedClubId) {
+                    console.log('Join modal callback triggered for club:', joinedClubId);
+                    if (typeof window.loadClubs === 'function') {
+                        window.loadClubs();
+                    } else {
+                        window.location.reload();
+                    }
+                });
+            } else {
+                console.error('Join modal still not available, redirecting...');
+                // Fallback: redirect to club detail page
+                window.location.href = `/clubs/${clubId}`;
+            }
+        }, 500);
+    }
+};
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        let allClubs = [];
-        let filteredClubs = [];
+(function() {
+    'use strict';
 
-        // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
-        function generateTimestamp() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    let allClubs = [];
+    let filteredClubs = [];
+    let currentStatusFilter = 'all'; // 'all', 'joined', 'available', 'pending'
+
+    // Generate timestamp in IFA format (YYYY-MM-DD HH:MM:SS)
+    function generateTimestamp() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // Load clubs from API
+    function loadClubs() {
+        const loadingState = document.getElementById('loadingState');
+        const errorState = document.getElementById('errorState');
+        const emptyState = document.getElementById('emptyState');
+        const clubsGrid = document.getElementById('clubsGrid');
+
+        loadingState.style.display = 'block';
+        errorState.style.display = 'none';
+        emptyState.style.display = 'none';
+        clubsGrid.innerHTML = '';
+
+        const timestamp = generateTimestamp();
+        const categoryFilter = document.getElementById('categoryFilter')?.value || '';
+        const url = `/api/clubs/available?timestamp=${encodeURIComponent(timestamp)}${categoryFilter ? `&category=${encodeURIComponent(categoryFilter)}` : ''}`;
+
+        // Get Bearer token from localStorage
+        const token = localStorage.getItem('api_token') || '';
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'same-origin',
+        })
+        .then(async response => {
+            const data = await response.json();
+            
+            if (!response.ok) {
+                // Handle authentication errors
+                if (response.status === 401) {
+                    throw new Error('Please login to view clubs. Your session may have expired.');
+                }
+                throw new Error(data.message || 'Failed to load clubs');
+            }
+
+            if (data.success && data.data && data.data.clubs) {
+                allClubs = data.data.clubs;
+                filterAndRenderClubs();
+                updateStats();
+            } else {
+                throw new Error('Invalid response format');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading clubs:', error);
+            loadingState.style.display = 'none';
+            errorState.style.display = 'block';
+            let errorMessage = error.message;
+            
+            // Provide more helpful error messages
+            if (errorMessage.includes('Unauthenticated') || errorMessage.includes('login')) {
+                errorMessage = 'Please login to view clubs. If you are already logged in, please refresh the page.';
+            }
+            
+            document.getElementById('errorMessage').textContent = errorMessage;
+        });
+    }
+
+    // Filter clubs based on search and status
+    function filterAndRenderClubs() {
+        const searchInput = document.getElementById('searchInput');
+        const searchTerm = (searchInput?.value || '').toLowerCase().trim();
+        
+        filteredClubs = allClubs.filter(club => {
+            // Apply status filter
+            if (currentStatusFilter !== 'all') {
+                if (currentStatusFilter === 'joined' && club.join_status !== 'member') {
+                    return false;
+                }
+                if (currentStatusFilter === 'available' && club.join_status !== 'available') {
+                    return false;
+                }
+                if (currentStatusFilter === 'pending' && club.join_status !== 'pending') {
+                    return false;
+                }
+            }
+            
+            // Apply search filter
+            if (searchTerm) {
+                return club.name.toLowerCase().includes(searchTerm) ||
+                       (club.description && club.description.toLowerCase().includes(searchTerm));
+            }
+            
+            return true;
+        });
+
+        // Sort: Put member clubs first, then others
+        filteredClubs.sort((a, b) => {
+            // If both are members or both are not members, maintain original order
+            const aIsMember = a.join_status === 'member';
+            const bIsMember = b.join_status === 'member';
+            
+            if (aIsMember && !bIsMember) return -1; // a comes first
+            if (!aIsMember && bIsMember) return 1;  // b comes first
+            return 0; // maintain order for others
+        });
+
+        renderClubs();
+    }
+
+    // Filter by status
+    function filterByStatus(status) {
+        currentStatusFilter = status;
+        
+        // Update active tab
+        document.querySelectorAll('.status-tab').forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.status === status) {
+                tab.classList.add('active');
+            }
+        });
+        
+        // Re-filter and render
+        filterAndRenderClubs();
+    }
+
+    // Render clubs grid
+    function renderClubs() {
+        const clubsGrid = document.getElementById('clubsGrid');
+        const loadingState = document.getElementById('loadingState');
+        const emptyState = document.getElementById('emptyState');
+        const resultsCount = document.getElementById('resultsCount');
+        const resultsTitle = document.getElementById('resultsTitle');
+
+        loadingState.style.display = 'none';
+
+        if (filteredClubs.length === 0) {
+            clubsGrid.innerHTML = '';
+            emptyState.style.display = 'block';
+            resultsCount.textContent = '0 clubs found';
+            return;
         }
 
         // Load clubs from API
@@ -639,9 +1263,19 @@
             emptyState.style.display = 'none';
             clubsGrid.innerHTML = '';
 
-            const timestamp = generateTimestamp();
-            const categoryFilter = document.getElementById('categoryFilter')?.value || '';
-            const url = `/api/clubs/available?timestamp=${encodeURIComponent(timestamp)}${categoryFilter ? `&category=${encodeURIComponent(categoryFilter)}` : ''}`;
+        clubsGrid.innerHTML = filteredClubs.map(club => {
+            // Handle logo URL - API already returns /storage/ prefix
+            let logoUrl = null;
+            if (club.logo) {
+                // If logo starts with http/https, use as is
+                // If logo starts with /storage/, use as is (API already includes it)
+                // Otherwise, prepend /storage/
+                if (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/')) {
+                    logoUrl = club.logo;
+                } else {
+                    logoUrl = `/storage/${club.logo}`;
+                }
+            }
 
             fetch(url, {
                 method: 'GET',
@@ -816,14 +1450,65 @@
           ${statusBadge}
         </div>
 
-        <div class="club-card-footer" onclick="event.stopPropagation();">
-          ${footerHtml}
-        </div>
-      </div>
-    `;
-            }).join('');
+        document.getElementById('totalClubsStat').textContent = totalClubs;
+        document.getElementById('availableClubsStat').textContent = availableClubs;
+        document.getElementById('memberClubsStat').textContent = memberClubs;
+        document.getElementById('totalClubsBadge').textContent = `${totalClubs} Clubs Available`;
+    }
+
+    // Update a single club's status in the list
+    function updateClubStatus(clubId, newStatus) {
+        console.log('Updating club status:', clubId, newStatus);
+        // Find the club in allClubs array
+        const club = allClubs.find(c => c.id === clubId);
+        if (club) {
+            console.log('Found club, updating status from', club.join_status, 'to', newStatus);
+            // Update the club's join_status
+            club.join_status = newStatus;
+            // Re-render the clubs grid immediately
+            filterAndRenderClubs();
+            console.log('Club status updated and rendered');
+        } else {
+            console.warn('Club not found in allClubs:', clubId);
         }
 
+    // Open join modal - Make sure it's available globally immediately
+    window.openJoinModal = function(clubId) {
+        console.log('openJoinModal called with clubId:', clubId);
+        
+        // Check if join modal is available
+        if (typeof window.openJoinClubModal === 'function') {
+            console.log('Calling window.openJoinClubModal');
+            window.openJoinClubModal(clubId, function(joinedClubId) {
+                console.log('Join modal callback triggered for club:', joinedClubId);
+                // Reload clubs data to refresh button status
+                loadClubs();
+            });
+        } else {
+            console.warn('window.openJoinClubModal not available, waiting...');
+            // Wait a bit for modal to initialize, then try again
+            setTimeout(function() {
+                        if (typeof window.openJoinClubModal === 'function') {
+                            window.openJoinClubModal(clubId, function(joinedClubId) {
+                                console.log('Join modal callback triggered for club:', joinedClubId);
+                                if (typeof window.loadClubs === 'function') {
+                                    window.loadClubs();
+                                } else {
+                                    window.location.reload();
+                                }
+                            });
+                } else {
+                    console.error('Join modal still not available, redirecting...');
+                    // Fallback: redirect to club detail page
+                    window.location.href = `/clubs/${clubId}`;
+                }
+            }, 500);
+        }
+    };
+
+    // Make other functions available globally
+    window.loadClubs = loadClubs;
+    window.filterByStatus = filterByStatus;
 
 //        function renderClubs() {
 //            const clubsGrid = document.getElementById('clubsGrid');

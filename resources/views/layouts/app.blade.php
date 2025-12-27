@@ -19,6 +19,8 @@
 
         <!-- Custom Theme CSS -->
         <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
+        
+        @vite('resources/css/toast-notifications.css') 
 
         <!-- Custom Styles -->
         @stack('styles')

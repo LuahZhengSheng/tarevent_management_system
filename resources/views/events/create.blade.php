@@ -9,9 +9,9 @@
         <div class="event-header mb-5">
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <div class="d-flex align-items-center gap-3">
-                    <a href="{{ route('events.index') }}" class="btn-back">
+                    <button onclick="window.history.back()" class="btn-back">
                         <i class="bi bi-arrow-left"></i>
-                    </a>
+                    </button>
                     <div>
                         <h1 class="page-title mb-1">Create New Event</h1>
                         <p class="page-subtitle mb-0">Let's bring your event to life ✨</p>
@@ -600,11 +600,11 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="action-card">
+                        <div class="action-card action-buttons-row">
                             <button type="submit" 
                                     name="status" 
                                     value="draft" 
-                                    class="btn-action btn-action-secondary w-100 mb-3" 
+                                    class="btn-action btn-action-secondary w-100" 
                                     id="saveDraftBtn">
                                 <i class="bi bi-save me-2"></i>
                                 Save as Draft

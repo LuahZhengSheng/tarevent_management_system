@@ -8,7 +8,7 @@ use App\Models\User;
 
 /**
  * ClubAuthorizationService - Handles authorization checks for club actions
- * 
+ *
  * This service is responsible for:
  * - Role-based access control
  * - Permission validation
@@ -17,20 +17,20 @@ class ClubAuthorizationService
 {
     /**
      * Ensure user can create a club.
-     * 
+     *
      * @param User $user The user to check
      * @throws \Exception If user cannot create clubs
      */
     public function ensureCanCreateClub(User $user): void
     {
-        if ($user->role !== 'admin') {
+        if (!$user->isAdministrator()) {
             throw new \Exception("Only administrators are allowed to create clubs.");
         }
     }
 
     /**
      * Ensure user can request to join a club.
-     * 
+     *
      * @param User $user The user to check
      * @throws \Exception If user cannot join clubs
      */
@@ -43,7 +43,7 @@ class ClubAuthorizationService
 
     /**
      * Ensure user can approve join requests.
-     * 
+     *
      * @param User $user The user to check
      * @throws \Exception If user cannot approve join requests
      */
@@ -56,7 +56,7 @@ class ClubAuthorizationService
 
     /**
      * Ensure user can reject join requests.
-     * 
+     *
      * @param User $user The user to check
      * @throws \Exception If user cannot reject join requests
      */
@@ -69,7 +69,7 @@ class ClubAuthorizationService
 
     /**
      * Ensure approver is provided.
-     * 
+     *
      * @param User|null $approver The approver to check
      * @throws \Exception If approver is not provided
      */
@@ -82,7 +82,7 @@ class ClubAuthorizationService
 
     /**
      * Ensure user can manage announcements for a club.
-     * 
+     *
      * @param User $user The user to check
      * @param Club $club The club
      * @throws \Exception If user cannot manage announcements
