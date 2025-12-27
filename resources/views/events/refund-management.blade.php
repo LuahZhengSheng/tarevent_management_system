@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.club')
 
 @section('title', 'Refund Management')
 
@@ -6,11 +6,24 @@
 <div class="refund-management-page">
     <div class="page-header">
         <div class="header-content">
+            <!-- Back Button -->
+            @if(isset($event))
+            <a href="{{ route('events.show', $event) }}" class="btn btn-outline-secondary btn-back mb-3">
+                <i class="bi bi-arrow-left me-2"></i>Back to Event
+            </a>
+            @endif
+            
             <h1 class="page-title">
                 <i class="bi bi-cash-coin me-2"></i>
                 Refund Management
             </h1>
-            <p class="page-subtitle">Review and process refund requests from participants</p>
+            <p class="page-subtitle">
+                @if(isset($event))
+                Managing refunds for: <strong>{{ $event->title }}</strong>
+                @else
+                Review and process refund requests from participants
+                @endif
+            </p>
         </div>
     </div>
 
@@ -67,7 +80,7 @@
         <div class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">Status</label>
-                <select class="form-select" id="statusFilter">
+                <select class="form-select auto-apply-filter" id="statusFilter">
                     <option value="">All Status</option>
                     <option value="pending" selected>Pending</option>
                     <option value="processing">Processing</option>
@@ -77,30 +90,20 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Date From</label>
-                <input type="date" class="form-control" id="dateFromFilter">
+                <input type="date" class="form-control auto-apply-filter" id="dateFromFilter" max="{{ date('Y-m-d') }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label">Date To</label>
-                <input type="date" class="form-control" id="dateToFilter">
+                <input type="date" class="form-control auto-apply-filter" id="dateToFilter" max="{{ date('Y-m-d') }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label">Sort By</label>
-                <select class="form-select" id="sortFilter">
+                <select class="form-select auto-apply-filter" id="sortFilter">
                     <option value="recent">Most Recent</option>
                     <option value="oldest">Oldest First</option>
                     <option value="amount_high">Amount: High to Low</option>
                     <option value="amount_low">Amount: Low to High</option>
                 </select>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col">
-                <button type="button" class="btn btn-primary" id="applyFilters">
-                    <i class="bi bi-funnel me-2"></i>Apply Filters
-                </button>
-                <button type="button" class="btn btn-outline-secondary" id="resetFilters">
-                    <i class="bi bi-arrow-clockwise me-2"></i>Reset
-                </button>
             </div>
         </div>
     </div>
@@ -166,6 +169,7 @@
     </div>
 </div>
 
+<!-- Modals remain the same -->
 <!-- Approve Refund Modal -->
 <div class="modal fade" id="approveModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -287,9 +291,12 @@
 <script>
     window.RefundConfig = {
         fetchUrl: "{{ route('events.refunds.fetch') }}",
-        approveUrl: "/events/refunds/:id/approve", // 这里用占位符，JS 里替换
+        approveUrl: "/events/refunds/:id/approve",
         rejectUrl: "/events/refunds/:id/reject",
-        csrfToken: "{{ csrf_token() }}"
+        csrfToken: "{{ csrf_token() }}",
+        @if(isset($event))
+        eventId: {{ $event->id }}
+        @endif
     };
 </script>
 @vite('resources/js/events/refund-management.js')

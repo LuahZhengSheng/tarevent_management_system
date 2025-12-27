@@ -171,9 +171,9 @@ class Event extends Model {
     public function canBeDeleted() {
         // 已经有 confirmed 或 pending_payment 的报名者，不能硬删除，建议 Cancel
         $hasRegistrants = $this->registrations()
-                ->whereIn('status', ['confirmed', 'pending_payment']) 
+                ->whereIn('status', ['confirmed', 'pending_payment'])
                 ->exists();
-        
+
         // 只有没结束且没人报名的，才能删
         return $this->end_time >= now() && !$hasRegistrants;
     }
@@ -194,6 +194,13 @@ class Event extends Model {
             'status' => 'cancelled',
             'cancelled_reason' => $reason,
         ]);
+    }
+
+    /**
+     * Get the payments for the event.
+     */
+    public function payments() {
+        return $this->hasMany(\App\Models\Payment::class, 'event_id', 'id');
     }
 
     /**

@@ -527,8 +527,10 @@ Route::middleware(['auth', 'club'])->prefix('events')->name('events.')->group(fu
             ->name('registrations.export');
 
     // Refund management (organizer/admin)
-    Route::get('/refunds/manage', [RefundController::class, 'manage'])
-            ->name('refunds.manage');
+//    Route::get('/refunds/manage', [RefundController::class, 'manage'])
+//            ->name('refunds.manage');
+    Route::get('/{event}/refunds/manage', [RefundController::class, 'manageEventRefunds'])
+            ->name('refunds.manage-event');
 
     Route::get('/refunds/fetch', [RefundController::class, 'fetchRequests'])
             ->name('refunds.fetch');

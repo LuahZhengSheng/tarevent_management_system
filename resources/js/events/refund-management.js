@@ -1,6 +1,30 @@
 $(function() {
     let currentPage = 1;
     let currentPaymentId = null;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Initialize date inputs max attribute
+    $('#dateFromFilter, #dateToFilter').attr('max', today);
+
+    // Date validation
+    $('#dateFromFilter, #dateToFilter').on('change', function() {
+        const fromDate = $('#dateFromFilter').val();
+        const toDate = $('#dateToFilter').val();
+
+        if (fromDate && toDate && fromDate > toDate) {
+            showToast('error', 'Date From cannot be later than Date To');
+            $(this).val('');
+            return;
+        }
+
+        // Auto-apply filter
+        fetchRefunds(1);
+    });
+
+    // Auto-apply filters when changed
+    $('.auto-apply-filter').on('change', function() {
+        fetchRefunds(1);
+    });
 
     // Fetch refunds
     function fetchRefunds(page = 1) {
@@ -14,8 +38,14 @@ $(function() {
             date_to: $('#dateToFilter').val(),
             sort: $('#sortFilter').val(),
             page: page,
-            per_page: 15
+            per_page: 15,
+            event_id: window.RefundConfig.eventId || null
         };
+
+        // Add event_id if managing specific event
+        if (window.RefundConfig.eventId) {
+            filters.event_id = window.RefundConfig.eventId;
+        }
 
         $.ajax({
             url: window.RefundConfig.fetchUrl,
@@ -27,15 +57,17 @@ $(function() {
                 if (response.success && response.refunds.length > 0) {
                     renderTable(response.refunds);
                     renderPagination(response.pagination);
-                    updateStats(filters.status);
+                    updateStats(response.stats || {});
                     $('#tableContent').removeClass('d-none');
                 } else {
                     $('#emptyState').removeClass('d-none');
+                    updateStats({});
                 }
             },
             error: function(xhr) {
                 $('#loadingState').addClass('d-none');
                 showToast('error', 'Failed to load refund requests.');
+                console.error(xhr);
             }
         });
     }
@@ -121,19 +153,16 @@ $(function() {
         
         let paginationHtml = '<nav><ul class="pagination mb-0">';
         
-        // Previous
         paginationHtml += `<li class="page-item ${pagination.current_page === 1 ? 'disabled' : ''}">
             <a class="page-link" href="#" data-page="${pagination.current_page - 1}">Previous</a>
         </li>`;
         
-        // Pages
         for (let i = 1; i <= pagination.last_page; i++) {
             paginationHtml += `<li class="page-item ${i === pagination.current_page ? 'active' : ''}">
                 <a class="page-link" href="#" data-page="${i}">${i}</a>
             </li>`;
         }
         
-        // Next
         paginationHtml += `<li class="page-item ${pagination.current_page === pagination.last_page ? 'disabled' : ''}">
             <a class="page-link" href="#" data-page="${pagination.current_page + 1}">Next</a>
         </li>`;
@@ -147,37 +176,44 @@ $(function() {
     }
 
     // Update stats
-    function updateStats(statusFilter) {
-        // Simplified - you can make separate API calls for accurate counts
-        $('#pendingCount').text(statusFilter === 'pending' ? currentPage : '-');
-        $('#processingCount').text(statusFilter === 'processing' ? currentPage : '-');
-        $('#completedCount').text(statusFilter === 'completed' ? currentPage : '-');
-        $('#rejectedCount').text(statusFilter === 'rejected' ? currentPage : '-');
+    function updateStats(stats) {
+        $('#pendingCount').text(stats.pending || 0);
+        $('#processingCount').text(stats.processing || 0);
+        $('#completedCount').text(stats.completed || 0);
+        $('#rejectedCount').text(stats.rejected || 0);
     }
 
     // Show toast notification
     function showToast(type, message) {
-        // Implement your toast notification here
-        alert(message);
+        // Simple alert for now - you can implement a better toast
+        const alertClass = type === 'success' ? 'alert-success' : 
+                          type === 'error' ? 'alert-danger' : 'alert-info';
+        
+        const toast = $(`
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" 
+                 style="z-index: 9999; min-width: 300px;" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+        
+        $('body').append(toast);
+        
+        setTimeout(() => {
+            toast.alert('close');
+        }, 5000);
     }
 
-    // Event handlers
-    $('#applyFilters, #refreshBtn').on('click', function() {
-        fetchRefunds(1);
+    // Refresh button
+    $('#refreshBtn').on('click', function() {
+        fetchRefunds(currentPage);
     });
 
-    $('#resetFilters').on('click', function() {
-        $('#statusFilter').val('pending');
-        $('#dateFromFilter').val('');
-        $('#dateToFilter').val('');
-        $('#sortFilter').val('recent');
-        fetchRefunds(1);
-    });
-
+    // Pagination click handler
     $(document).on('click', '.pagination a', function(e) {
         e.preventDefault();
         const page = $(this).data('page');
-        if (page && page !== currentPage) {
+        if (page && page !== currentPage && !$(this).parent().hasClass('disabled')) {
             fetchRefunds(page);
         }
     });
@@ -388,6 +424,11 @@ $(function() {
 
         $('#detailsContent').html(detailsHtml);
         $('#detailsModal').modal('show');
+    });
+
+    // Clear validation on input
+    $('#rejectionReason').on('input', function() {
+        $(this).removeClass('is-invalid');
     });
 
     // Initial load

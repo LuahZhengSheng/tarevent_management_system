@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(auth()->check() && auth()->user()->hasRole('club') ? 'layouts.club' : 'layouts.app')
 
 @section('title', $event->title . ' - Event Details')
 
@@ -355,9 +355,34 @@
                                 <i class="bi bi-calendar-range"></i>
                                 Event Date & Time
                             </div>
-                            <div class="detail-value event-time">
-                                <div class="date"><strong>{{ $event->start_time->format('l, d F Y') }}</strong></div>
-                                <div class="time">{{ $event->start_time->format('h:i A') }} - {{ $event->end_time->format('h:i A') }}</div>
+                            <!--                            <div class="detail-value event-time">
+                                                            <div class="date"><strong>{{ $event->start_time->format('l, d F Y') }}</strong></div>
+                                                            <div class="time">{{ $event->start_time->format('h:i A') }} - {{ $event->end_time->format('h:i A') }}</div>
+                                                        </div>-->
+                            <div class="detail-value">
+                                <div class="date">
+                                    <strong>
+                                        @if($event->start_time->isSameDay($event->end_time))
+                                        <!-- 同一天：只显示一次日期 -->
+                                        {{ $event->start_time->format('l, d F Y') }}
+                                        @else
+                                        <!-- 不同天：显示 Start Date - End Date -->
+                                        {{ $event->start_time->format('d M Y') }} - {{ $event->end_time->format('d M Y') }}
+                                        @endif
+                                    </strong>
+                                </div>
+
+                                <div class="time">
+                                    @if($event->start_time->isSameDay($event->end_time))
+                                    <!-- 同一天：显示 Start Time - End Time -->
+                                    {{ $event->start_time->format('h:i A') }} - {{ $event->end_time->format('h:i A') }}
+                                    @else
+                                    <!-- 不同天：显示 Start (Date+Time) 至 End (Date+Time) 的具体时间，或者只显示时间 -->
+                                    <span class="d-block text-muted small">
+                                        {{ $event->start_time->format('h:i A') }} (Start) &rarr; {{ $event->end_time->format('h:i A') }} (End)
+                                    </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
 
@@ -586,8 +611,8 @@
 
                         <div class="management-actions">
                             {{-- Edit Event --}}
-                            @if(in_array($stage, ['draft', 'pending', 'pre_registration', 'registration_open', 'registration_closed']))
-                            <a href="{{ route('events.edit', $event) }}" class="action-btn action-edit w-100 mb-3">
+                            @if(in_array($stage, ['draft', 'pending', 'pre_registration', 'registration_open', 'registration_closed', 'ongoing', 'past']))
+                            <a href="{{ route('events.edit', $event) }}" class="action-btn action-edit w-100">
                                 <i class="bi bi-pencil-square me-2"></i>
                                 <span>Edit Event</span>
                             </a>
@@ -596,7 +621,7 @@
                             {{-- Publish Event (for draft) --}}
                             @if($stage === 'draft')
                             <button type="button"
-                                    class="action-btn action-publish w-100 mb-3"
+                                    class="action-btn action-publish w-100"
                                     data-bs-toggle="modal"
                                     data-bs-target="#publishModal">
                                 <i class="bi bi-send-check me-2"></i>
@@ -607,7 +632,7 @@
                             {{-- Cancel Event Button --}}
                             @if(in_array($stage, ['pre_registration', 'registration_open', 'registration_closed']))
                             <button type="button"
-                                    class="action-btn action-cancel w-100 mb-3"
+                                    class="action-btn action-cancel w-100"
                                     data-bs-toggle="modal"
                                     data-bs-target="#cancelEventModal">
                                 <i class="bi bi-x-circle me-2"></i>
@@ -632,6 +657,19 @@
                                 <i class="bi bi-list-check me-2"></i>
                                 <span>
                                     View Registrations ({{ $event->registrations->where('status', 'confirmed')->count() }})
+                                </span>
+                            </a>
+                            @endif
+
+                            {{-- Manage Refund Button (only for paid & refundable events) --}}
+                            @if($event->is_paid && $event->refund_available && !in_array($stage, ['draft', 'pending']))
+                            <a href="{{ route('events.refunds.manage-event', $event) }}" class="action-btn action-refund w-100 mt-2">
+                                <i class="bi bi-cash-stack me-2"></i>
+                                <span>
+                                    Manage Refunds
+                                    @if(isset($pendingRefundsCount) && $pendingRefundsCount > 0)
+                                    <span class="badge bg-warning text-dark ms-2">{{ $pendingRefundsCount }} Pending</span>
+                                    @endif
                                 </span>
                             </a>
                             @endif
@@ -941,10 +979,10 @@
                         </div>
                         @if($event->organizer)
                         <button type="button" 
-                            class="btn btn-outline-primary w-100 mt-3" 
-                            onclick="window.openClubProfileModal({{ $event->organizer_id }})">
+                                class="btn btn-outline-primary w-100 mt-3" 
+                                onclick="window.openClubProfileModal({{ $event->organizer_id }})">
                             <i class="bi bi-building me-2"></i>
-                                View Profile
+                            View Profile
                         </button>
                         @endif
                     </div>

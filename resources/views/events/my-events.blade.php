@@ -162,7 +162,7 @@
             </div>
             <h3 class="empty-title">No Events Found</h3>
             <p class="empty-message">You haven't registered for any events yet.</p>
-            <a href="{{ route('events.index') }}" class="btn-primary">
+            <a href="{{ route('events.index') }}" class="btn-primary btn-browse-event">
                 <i class="bi bi-search"></i>
                 Browse Events
             </a>
@@ -175,7 +175,7 @@
             </div>
             <h3 class="empty-title">No Matching Events</h3>
             <p class="empty-message">Try adjusting your filters or search terms.</p>
-            <button type="button" id="clearFiltersBtn" class="btn-secondary">
+            <button type="button" id="clearFiltersBtn" class="btn-secondary btn-clear-filter">
                 <i class="bi bi-arrow-counterclockwise"></i>
                 Clear All Filters
             </button>

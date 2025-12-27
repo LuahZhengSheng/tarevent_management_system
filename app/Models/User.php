@@ -298,9 +298,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // 返回默认头像（基于角色）
         $defaultAvatars = [
-            'student' => 'images/default-student-avatar.png',
-            'club' => 'images/default-club-avatar.png',
-            'admin' => 'images/default-admin-avatar.png',
+            'student' => 'images/avatar/default-student-avatar.png',
+            'club' => 'images/avatar/default-club-avatar.png',
+            'admin' => 'images/avatar/default-student-avatar.png',
         ];
 
         return asset($defaultAvatars[$this->role] ?? $defaultAvatars['student']);

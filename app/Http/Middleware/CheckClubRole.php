@@ -41,7 +41,7 @@ class CheckClubRole {
         $user = auth()->user();
 
         // Check if user has club role or is admin
-        if (!$user->hasRole('club') && !$user->hasRole('admin')) {
+        if (!$user->hasRole('club') && !$user->isAdministrator()) {
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => false,
