@@ -869,70 +869,82 @@ window.openJoinModal = function(clubId) {
             'other': 'Other'
         };
 
-        clubsGrid.innerHTML = filteredClubs.map(club => {
-            // Handle logo URL - API already returns /storage/ prefix
-            let logoUrl = null;
-            if (club.logo) {
-                // If logo starts with http/https, use as is
-                // If logo starts with /storage/, use as is (API already includes it)
-                // Otherwise, prepend /storage/
-                if (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/')) {
-                    logoUrl = club.logo;
-                } else {
-                    logoUrl = `/storage/${club.logo}`;
-                }
-            }
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-            const logoHtml = logoUrl
-                ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
-                : '';
+        clubsGrid.innerHTML = filteredClubs.map((club) => {
+                // API already returns logo with /storage/ prefix
+                const logoUrl = club.logo
+                        ? (club.logo.startsWith('http://') || club.logo.startsWith('https://') || club.logo.startsWith('/storage/') 
+                           ? club.logo 
+                           : `/storage/${club.logo}`)
+                        : null;
 
-            const categoryBadge = club.category 
-                ? `<span class="club-category-badge">${categoryLabels[club.category] || club.category}</span>`
-                : '';
-
-            let statusBadge = '';
-            let actionButton = '';
-
-            switch (club.join_status) {
-                case 'available':
-                    statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
-                    actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
-                    break;
-                case 'member':
-                    statusBadge = '<span class="club-status-badge club-status-member">Member</span>';
-                    actionButton = '';
-                    break;
-                case 'pending':
-                    statusBadge = '<span class="club-status-badge club-status-pending">Request Pending</span>';
-                    actionButton = '';
-                    break;
-                case 'rejected':
-                    const cooldownText = club.cooldown_remaining_days !== null 
-                        ? ` (${club.cooldown_remaining_days} days left)`
+                const logoHtml = logoUrl
+                        ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
                         : '';
-                    statusBadge = `<span class="club-status-badge club-status-rejected">Rejected${cooldownText}</span>`;
-                    actionButton = '';
-                    break;
-                default:
-                    statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
-                    actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
-            }
 
-            return `
-                <div class="club-card" onclick="window.location.href='/clubs/${club.id}'">
-                    <div class="club-card-header">
-                        <div class="club-logo-wrapper">
-                            ${logoHtml}
-                            <i class="bi bi-people" style="display: ${logoUrl ? 'none' : 'flex'}"></i>
-                        </div>
-                    </div>
-                    <div class="club-card-body">
-                        <div class="club-name">
-                            ${escapeHtml(club.name)}
-                            ${categoryBadge}
-                        </div>
-                        <p class="club-description">${escapeHtml(club.description || 'No description available.')}</p>
+                const categoryBadge = club.category
+                        ? `<span class="club-category-badge">${categoryLabels[club.category] || club.category}</span>`
+                        : '';
+
+                let statusBadge = '';
+                let actionButton = '';
+
+                switch (club.join_status) {
+                    case 'available':
+                        statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
+                        actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+                        break;
+                    case 'member':
+                        statusBadge = '<span class="club-status-badge club-status-member">Member</span>';
+                        actionButton = '';
+                        break;
+                    case 'pending':
+                        statusBadge = '<span class="club-status-badge club-status-pending">Request Pending</span>';
+                        actionButton = '';
+                        break;
+                    case 'rejected':
+                    {
+                        const cooldownText = (club.cooldown_remaining_days != null || club.cooldownremainingdays != null) 
+                            ? ` (${(club.cooldown_remaining_days || club.cooldownremainingdays)} days left)` 
+                            : '';
+                        statusBadge = `<span class="club-status-badge club-status-rejected">Rejected${cooldownText}</span>`;
+                        actionButton = '';
+                        break;
+                    }
+                    default:
+                        statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
+                        actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+                        break;
+                }
+
+                // 用字符串拼接（不使用多行反引号模板），避免漏关反引号导致语法错
+                const viewDetailsHtml =
+                        '<form method="POST" action="/club/select" class="w-100">' +
+                        `<input type="hidden" name="_token" value="${csrf}">` +
+                        `<input type="hidden" name="club_id" value="${club.id}">` +
+                        '<button type="submit" class="btn-club-secondary w-100">View Details</button>' +
+                        '</form>';
+
+                const footerHtml = actionButton || viewDetailsHtml;
+
+                return `
+      <div class="club-card" onclick="window.location.href='/clubs/${club.id}'">
+        <div class="club-card-header">
+          <div class="club-logo-wrapper">
+            ${logoHtml}
+            <i class="bi bi-people" style="display:${logoUrl ? 'none' : 'flex'}"></i>
+          </div>
+        </div>
+
+        <div class="club-card-body">
+          <div class="club-name">
+            ${escapeHtml(club.name)}
+            ${categoryBadge}
+          </div>
+
+          <p class="club-description">${escapeHtml(club.description || 'No description available.')}</p>
+
                         <div class="club-stats">
                             <div class="club-stat">
                                 <div class="club-stat-value">${club.members_count || 0}</div>
@@ -959,10 +971,12 @@ window.openJoinModal = function(clubId) {
         const availableClubs = allClubs.filter(c => c.join_status === 'available').length;
         const memberClubs = allClubs.filter(c => c.join_status === 'member').length;
 
-        document.getElementById('totalClubsStat').textContent = totalClubs;
-        document.getElementById('availableClubsStat').textContent = availableClubs;
-        document.getElementById('memberClubsStat').textContent = memberClubs;
-        document.getElementById('totalClubsBadge').textContent = `${totalClubs} Clubs Available`;
+        <div class="club-card-footer" onclick="event.stopPropagation();">
+          ${footerHtml}
+        </div>
+      </div>
+                `;
+            }).join('');
     }
 
     // Update a single club's status in the list

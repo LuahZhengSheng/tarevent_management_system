@@ -1028,8 +1028,11 @@ class ClubController extends Controller
     {
         $club = $this->clubFacade->getClubForAccount(auth()->user());
 
+        // Allow club account to access even if club is not found
+        // This ensures club account can view the forum page
         if (!$club) {
-            abort(404, 'Club not found for this account.');
+            // Return view with null club, let the view handle the error display
+            return view('clubs.forum.index', ['club' => null]);
         }
 
         return view('clubs.forum.index', compact('club'));

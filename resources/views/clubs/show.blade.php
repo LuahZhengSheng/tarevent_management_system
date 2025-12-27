@@ -575,24 +575,24 @@
                 </div>
                 @endif
 
-                <!-- Forum Posts Section -->
-                @if($isMember)
-                <div class="content-section">
-                    <h2 class="section-title">
-                        <i class="bi bi-chat-dots"></i>
-                        Club Forum
-                    </h2>
-                    <x-post-feed
-                        api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
-                        :initial-posts="null"
-                        :show-filters="true"
-                    />
-                </div>
-                @endif
-            </div>
+            <!-- Forum Posts Section -->
+            @if($isMember)
+            <div class="content-section">
+                <h2 class="section-title"><i class="bi bi-chat-dots"></i> Club Forum</h2>
 
-            <!-- Action Buttons -->
-            <div class="col-lg-12">
+                @include('forums.partials.club_post_feed', [
+                'club' => $club,
+                'bearerToken' => $bearerToken ?? null,
+                ])
+            </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Action Buttons Sidebar -->
+    <div class="container club-content-container">
+        <div class="row g-4">
+            <div class="col-lg-3">
                 <div class="content-section">
                     <div class="action-buttons">
                     @if($isMember)
