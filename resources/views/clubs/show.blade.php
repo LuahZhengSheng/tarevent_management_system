@@ -465,7 +465,7 @@
     <div class="container club-content-container">
         <div class="row g-4">
             <!-- Main Content -->
-            <div class="col-lg-8">
+            <div class="col-lg-9">
                 <!-- About Section -->
                 @if($club->description)
                 <div class="content-section">
@@ -507,27 +507,25 @@
                     </div>
                 </div>
                 @endif
+
+                <!-- Forum Posts Section -->
+                @if($isMember)
+                <div class="content-section">
+                    <h2 class="section-title">
+                        <i class="bi bi-chat-dots"></i>
+                        Club Forum
+                    </h2>
+                    <x-post-feed
+                        api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
+                        :initial-posts="null"
+                        :show-filters="true"
+                    />
+                </div>
+                @endif
             </div>
 
-            <!-- Forum Posts Section -->
-            @if($isMember)
-            <div class="content-section">
-                <h2 class="section-title">
-                    <i class="bi bi-chat-dots"></i>
-                    Club Forum
-                </h2>
-                <x-post-feed
-                    api-url="{{ route('api.v1.clubs.posts', ['club' => $club->id]) }}"
-                    :initial-posts="null"
-                    :show-filters="true"
-                />
-            </div>
-            @endif
-        </div>
-
-        <div class="row g-4">
             <!-- Sidebar -->
-            <div class="col-lg-4">
+            <div class="col-lg-3">
                 <!-- Club Info -->
                 <div class="content-section">
                     <h2 class="section-title">
@@ -576,8 +574,13 @@
                         <div class="leadership-list">
                             @foreach($leadershipMembers as $leader)
                             <div class="leadership-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0;">
-                                <div class="leadership-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light, #eef2ff); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <i class="bi bi-person" style="color: var(--primary, #4f46e5);"></i>
+                                <div class="leadership-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light, #eef2ff); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative;">
+                                    @if(!empty($leader['profile_photo_url']))
+                                        <img src="{{ $leader['profile_photo_url'] }}" alt="{{ $leader['name'] }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <i class="bi bi-person" style="color: var(--primary, #4f46e5); display: none;"></i>
+                                    @else
+                                        <i class="bi bi-person" style="color: var(--primary, #4f46e5);"></i>
+                                    @endif
                                 </div>
                                 <div class="leadership-info" style="flex: 1;">
                                     <div style="font-weight: 600; color: #212529;">{{ $leader['name'] }}</div>
@@ -592,12 +595,7 @@
 
                 <!-- Action Buttons -->
                 <div class="action-buttons">
-                    @if($isMember)
-                        <a href="{{ route('club.dashboard') }}" class="btn-primary-lg">
-                            <i class="bi bi-speedometer2"></i>
-                            Go to Dashboard
-                        </a>
-                    @elseif($joinStatus && $joinStatus['status'] === 'pending')
+                    @if($joinStatus && $joinStatus['status'] === 'pending')
                         <button class="btn-secondary-lg" disabled>
                             <i class="bi bi-clock"></i>
                             Request Pending
