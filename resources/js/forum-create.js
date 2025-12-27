@@ -862,7 +862,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let createTagModalInstance = null;
 
     const availableTags = config.availableTags || [];
+    const pendingTags = config.pendingTags || [];
     const MAX_TAGS = config.maxTags || 10;
+
+    const pendingNameSet = new Set(
+            pendingTags.map(t => String(t.name || "").toLowerCase())
+            );
 
     // Initialize tags from hidden input (for old values)
     (function initSelectedTags() {
@@ -958,25 +963,35 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!tagSuggestions)
             return;
 
-        tagSuggestions.innerHTML = '';
+        tagSuggestions.innerHTML = "";
+
         tags.forEach(tag => {
-            const div = document.createElement('div');
-            div.className = 'tag-suggestion-item';
+            const div = document.createElement("div");
+            div.className = "tag-suggestion-item";
+
+            const name = String(tag.name || "");
+            const isPending = pendingNameSet.has(name.toLowerCase());
+
             div.innerHTML = `
-                <span>${tag.name}</span>
-                <small class="text-muted">${tag.usage_count || 0} uses</small>
-            `;
-            div.addEventListener('click', function () {
-                addTag(tag.name);
+      <span>${name}</span>
+      <small class="text-muted">
+        ${isPending ? "Waiting admin approval" : `${tag.usagecount || 0} uses`}
+      </small>
+    `;
+
+            div.addEventListener("click", function () {
+                addTag(name);
                 if (tagInput)
-                    tagInput.value = '';
-                tagSuggestions.classList.remove('show');
+                    tagInput.value = "";
+                tagSuggestions.classList.remove("show");
             });
+
             tagSuggestions.appendChild(div);
         });
 
-        tagSuggestions.classList.add('show');
+        tagSuggestions.classList.add("show");
     }
+
 
     function addTag(tagName) {
         if (selectedTags.length >= MAX_TAGS) {
@@ -1054,88 +1069,174 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (submitNewTagBtn) {
-        submitNewTagBtn.addEventListener('click', async function () {
-            const tagName = newTagName ? newTagName.value.trim().toLowerCase() : '';
-            const description = newTagDescription ? newTagDescription.value.trim() : '';
+        submitNewTagBtn.addEventListener("click", async function () {
+            const tagName = newTagName ? newTagName.value.trim().toLowerCase() : "";
+            const description = newTagDescription ? newTagDescription.value.trim() : "";
 
+            // Reset UI error state
+            if (newTagName)
+                newTagName.classList.remove("is-invalid");
+            if (newTagError) {
+                newTagError.textContent = "";
+                newTagError.style.display = "none";
+            }
+
+            // --- Frontend validations (保持你原来的规则/风格) ---
             if (!tagName) {
-                if (newTagName && newTagError) {
-                    newTagName.classList.add('is-invalid');
-                    newTagError.textContent = 'Tag name is required.';
-                    newTagError.style.display = 'block';
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent = "Tag name is required.";
+                    newTagError.style.display = "block";
                 }
                 return;
             }
 
             if (tagName.length < 2 || tagName.length > 50) {
-                if (newTagName && newTagError) {
-                    newTagName.classList.add('is-invalid');
-                    newTagError.textContent = 'Tag name must be between 2 and 50 characters.';
-                    newTagError.style.display = 'block';
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent = "Tag name must be between 2 and 50 characters.";
+                    newTagError.style.display = "block";
                 }
                 return;
             }
 
-            const existingTag = availableTags.find(t => t.name === tagName);
+            // Existing tag in availableTags (active) -> should not create
+            const existingTag = (availableTags || []).find(t => String(t.name || "").toLowerCase() === tagName);
             if (existingTag) {
-                if (newTagName && newTagError) {
-                    newTagName.classList.add('is-invalid');
-                    newTagError.textContent = 'This tag already exists. Please select it from the suggestions.';
-                    newTagError.style.display = 'block';
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent = "This tag already exists. Please select it from the suggestions.";
+                    newTagError.style.display = "block";
                 }
                 return;
             }
 
-            if (selectedTags.includes(tagName)) {
-                if (newTagName && newTagError) {
-                    newTagName.classList.add('is-invalid');
-                    newTagError.textContent = 'This tag is already selected.';
-                    newTagError.style.display = 'block';
+            // Already selected
+            if ((selectedTags || []).includes(tagName)) {
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent = "This tag is already selected.";
+                    newTagError.style.display = "block";
+                }
+                return;
+            }
+
+            const maxTags = Number(config.maxTags || 10);
+
+            // Max tags
+            if ((selectedTags || []).length >= maxTags) {
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent = `Maximum ${maxTags} tags allowed.`;
+                    newTagError.style.display = "block";
                 }
                 return;
             }
 
             submitNewTagBtn.disabled = true;
-            submitNewTagBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Submitting...';
+            submitNewTagBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Submitting...`;
 
             try {
-                const response = await fetch('/forums/tags/request', {
-                    method: 'POST',
+                const resp = await fetch(config.tagRequestUrl, {
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "X-CSRF-TOKEN": document
+                                .querySelector('meta[name="csrf-token"]')
+                                .getAttribute("content"),
                     },
-                    body: JSON.stringify({name: tagName, description: description}),
+                    credentials: "same-origin",
+                    body: JSON.stringify({name: tagName, description}),
                 });
 
-                const data = await response.json();
+                const contentType = resp.headers.get("content-type") || "";
+                const isJson = contentType.includes("application/json");
+                const data = isJson
+                        ? await resp.json()
+                        : {success: false, message: await resp.text()};
 
-                if (data.success) {
-                    selectedTags.push(tagName);
-                    renderTags();
-                    updateTagsInput();
+                // Handle non-2xx responses (409 / 422 / 500...)
+                if (!resp.ok) {
+                    // TAG_PENDING: system already has this tag pending, not allowed to use/create
+                    if (data && data.code === "TAG_PENDING") {
+                        if (newTagName)
+                            newTagName.classList.add("is-invalid");
+                        if (newTagError) {
+                            newTagError.textContent = data.message || "This tag is pending admin approval and cannot be used yet.";
+                            newTagError.style.display = "block";
+                        }
+                        return;
+                    }
 
-                    alert('Tag submitted for approval! You can use it in your post, but it will only appear publicly after admin approval.');
+                    // TAG_EXISTS: system already has this tag (active/others), should select it
+                    if (data && data.code === "TAG_EXISTS") {
+                        if (newTagName)
+                            newTagName.classList.add("is-invalid");
+                        if (newTagError) {
+                            newTagError.textContent =
+                                    "This tag already exists. Please select it from the suggestions.";
+                            newTagError.style.display = "block";
+                        }
+                        return;
+                    }
 
-                    createTagModalInstance.hide();
+                    // Generic error (including Laravel validation 422)
+                    if (newTagName)
+                        newTagName.classList.add("is-invalid");
+                    if (newTagError) {
+                        newTagError.textContent = (data && data.message)
+                                ? data.message
+                                : `Request failed (${resp.status})`;
+                        newTagError.style.display = "block";
+                    }
+                    return;
+                }
+
+                // Success (created but NOT usable until approved)
+                if (data && data.success) {
+                    // 不允许使用 pending tag：不要加入 selectedTags / pendingTags
+                    if (createTagModalInstance)
+                        createTagModalInstance.hide();
 
                     if (newTagName)
-                        newTagName.value = '';
+                        newTagName.value = "";
                     if (newTagDescription)
-                        newTagDescription.value = '';
-                } else {
-                    if (newTagName && newTagError) {
-                        newTagName.classList.add('is-invalid');
-                        newTagError.textContent = data.message || 'Failed to create tag.';
-                        newTagError.style.display = 'block';
-                    }
+                        newTagDescription.value = "";
+
+                    // 这里用 alert 或 modal 内提示都可以；先用 alert 最快
+                    alert("Tag submitted for approval. You cannot use it until an admin approves it.");
+
+                    return;
+                }
+
+
+                // Unexpected response shape
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent = (data && data.message)
+                            ? data.message
+                            : "Failed to create tag.";
+                    newTagError.style.display = "block";
                 }
             } catch (error) {
-                console.error('Error creating tag:', error);
-                alert('An error occurred while creating the tag. Please try again.');
+                console.error("Error creating tag:", error);
+                if (newTagName)
+                    newTagName.classList.add("is-invalid");
+                if (newTagError) {
+                    newTagError.textContent =
+                            "An error occurred while creating the tag. Please try again.";
+                    newTagError.style.display = "block";
+                }
             } finally {
                 submitNewTagBtn.disabled = false;
-                submitNewTagBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Submit for Approval';
+                submitNewTagBtn.innerHTML = `<i class="bi bi-check-circle me-1"></i> Submit for Approval`;
             }
         });
     }

@@ -9,9 +9,9 @@
         <div class="event-header mb-5">
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <div class="d-flex align-items-center gap-3">
-                    <a href="{{ route('events.show', $event) }}" class="btn-back">
+                    <button onclick="window.history.back()" class="btn-back">
                         <i class="bi bi-arrow-left"></i>
-                    </a>
+                    </button>
                     <div>
                         <h1 class="page-title mb-1">Edit Event</h1>
                         <p class="page-subtitle mb-0">Make changes to "{{ $event->title }}"</p>
@@ -246,7 +246,7 @@
                                            required
                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                    <small class="text-muted">🔒 Locked during/after registration</small>
+                                    <small class="text-muted d-block">🔒 Locked during / after registration</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -265,7 +265,7 @@
                                            required
                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                    <small class="text-muted">🔒 Locked during/after registration</small>
+                                    <small class="text-muted d-block">🔒 Locked during / after registration</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -284,7 +284,7 @@
                                            required
                                            {{ in_array($stage, ['registration', 'ongoing', 'past', 'cancelled']) ? 'readonly' : '' }}>
                                     @if(in_array($stage, ['registration', 'ongoing', 'past']))
-                                    <small class="text-muted">🔒 Cannot change after registration starts</small>
+                                    <small class="text-muted d-block">🔒 Cannot change after registration starts</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -305,7 +305,7 @@
                                     @if($stage === 'registration')
                                     <small class="text-info">✓ Can extend deadline during registration</small>
                                     @elseif(in_array($stage, ['ongoing', 'past']))
-                                    <small class="text-muted">🔒 Locked</small>
+                                    <small class="text-muted d-block">🔒 Locked</small>
                                     @endif
                                     <div class="invalid-feedback"></div>
                                 </div>
@@ -769,13 +769,13 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="action-card">
+                        <div class="action-card action-buttons-row">
                             @if($stage === 'draft')
                             <!-- Draft: Can save or publish -->
                             <button type="submit" 
                                     name="status" 
                                     value="draft" 
-                                    class="btn-action btn-action-secondary w-100 mb-3" 
+                                    class="btn-action btn-action-secondary w-100" 
                                     id="saveDraftBtn">
                                 <i class="bi bi-save me-2"></i>
                                 Save Changes
@@ -783,7 +783,7 @@
                             <button type="submit" 
                                     name="status" 
                                     value="published" 
-                                    class="btn-action btn-action-primary w-100 mb-3" 
+                                    class="btn-action btn-action-primary w-100" 
                                     id="publishBtn">
                                 <i class="bi bi-send me-2"></i>
                                 Publish Event
@@ -791,7 +791,7 @@
                             @else
                             <!-- Published/Other: Just update -->
                             <button type="submit" 
-                                    class="btn-action btn-action-primary w-100 mb-3" 
+                                    class="btn-action btn-action-primary w-100" 
                                     id="updateBtn">
                                 <i class="bi bi-save me-2"></i>
                                 Update Event
@@ -801,7 +801,7 @@
                             <!-- Cancel Event Button -->
                             @if($event->status === 'published' && !in_array($stage, ['ongoing', 'past', 'cancelled']))
                             <button type="button" 
-                                    class="btn-action btn-cancel-event w-100 mb-3" 
+                                    class="btn-action btn-cancel-event w-100" 
                                     onclick="showCancelModal()">
                                 <i class="bi bi-x-circle me-2"></i>
                                 Cancel Event

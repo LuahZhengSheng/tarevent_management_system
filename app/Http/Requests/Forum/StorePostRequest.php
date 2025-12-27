@@ -66,6 +66,70 @@ class StorePostRequest extends FormRequest
 
     public function rules(): array
     {
+        $status = $this->input('status', 'published');
+
+        $mediaRules = [
+            'nullable', 'array', 'max:10'
+        ];
+
+        $mediaItemRules = [
+            'file',
+            function ($attribute, $value, $fail) {
+                $mimeType = $value->getMimeType();
+
+                if (str_starts_with($mimeType, 'image/')) {
+                    $allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+                    if (!in_array($mimeType, $allowedImageTypes)) {
+                        $fail('The image must be JPEG, PNG, JPG, GIF, or WEBP.');
+                        return;
+                    }
+
+                    if ($value->getSize() > 10 * 1024 * 1024) {
+                        $fail('Image size must not exceed 10MB.');
+                        return;
+                    }
+                } elseif (str_starts_with($mimeType, 'video/')) {
+                    $allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/mpeg'];
+                    if (!in_array($mimeType, $allowedVideoTypes)) {
+                        $fail('The video must be MP4, MOV, AVI, or MPEG.');
+                        return;
+                    }
+
+                    if ($value->getSize() > 100 * 1024 * 1024) {
+                        $fail('Video size must not exceed 100MB.');
+                        return;
+                    }
+                } else {
+                    $fail('File must be an image or video.');
+                }
+            },
+        ];
+
+        // draft：只强制 title + status，其它都可空（tags/media 维持原样）
+        if ($status === 'draft') {
+            return [
+                'title' => ['required', 'string', 'min:5', 'max:100'],
+
+                'content' => ['nullable', 'string', 'min:1', 'max:500000'],
+                'category_id' => ['nullable', 'exists:categories,id'],
+
+                // draft 时允许不选 visibility；但如果有传，仍必须是合法值
+                'visibility' => ['nullable', 'string', Rule::in(['public', 'club_only'])],
+
+                // draft 时不强制 club_ids；但如果 visibility=club_only 且有传 club_ids，就继续检查 array/min/exists
+                'club_ids' => ['nullable', 'array', 'min:1'],
+                'club_ids.*' => ['exists:clubs,id'],
+
+                'status' => ['required', 'string', Rule::in(['draft', 'published'])],
+
+                'tags' => ['nullable', 'array', 'max:10'],
+                'tags.*' => ['string', 'max:50'],
+
+                'media' => $mediaRules,
+                'media.*' => $mediaItemRules,
+            ];
+        }
+
         return [
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'content' => ['required', 'string', 'min:1', 'max:500000'],
@@ -76,39 +140,8 @@ class StorePostRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(['draft', 'published'])],
             'tags' => ['nullable', 'array', 'max:10'],
             'tags.*' => ['string', 'max:50'],
-            'media' => ['nullable', 'array', 'max:10'],
-            'media.*' => [
-                'file',
-                function ($attribute, $value, $fail) {
-                    $mimeType = $value->getMimeType();
-
-                    if (str_starts_with($mimeType, 'image/')) {
-                        $allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
-                        if (!in_array($mimeType, $allowedImageTypes)) {
-                            $fail('The image must be JPEG, PNG, JPG, GIF, or WEBP.');
-                            return;
-                        }
-
-                        if ($value->getSize() > 10 * 1024 * 1024) {
-                            $fail('Image size must not exceed 10MB.');
-                            return;
-                        }
-                    } elseif (str_starts_with($mimeType, 'video/')) {
-                        $allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/mpeg'];
-                        if (!in_array($mimeType, $allowedVideoTypes)) {
-                            $fail('The video must be MP4, MOV, AVI, or MPEG.');
-                            return;
-                        }
-
-                        if ($value->getSize() > 100 * 1024 * 1024) {
-                            $fail('Video size must not exceed 100MB.');
-                            return;
-                        }
-                    } else {
-                        $fail('File must be an image or video.');
-                    }
-                },
-            ],
+            'media' => $mediaRules,
+            'media.*' => $mediaItemRules,
         ];
     }
 

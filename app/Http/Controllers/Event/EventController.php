@@ -24,11 +24,14 @@ class EventController extends Controller {
      */
     public function index(Request $request) {
         $query = Event::published()
-                ->upcoming()
                 ->with(['organizer', 'registrations']);
 
+        if (!$request->filled('sort')) {
+            $query->upcoming();
+        }
+
         // Filter by category
-        if ($request->filled('category')) {
+        if ($request->filled('category') && $request->category !== 'all') {
             $query->category($request->category);
         }
 
@@ -40,13 +43,22 @@ class EventController extends Controller {
             });
         }
 
-        // Filter by date range
-        if ($request->filled('start_date')) {
-            $query->whereDate('start_time', '>=', $request->start_date);
+        // 1. Filter by Organizer (Club)
+        if ($request->filled('organizer') && $request->organizer !== 'all') {
+            $query->where('organizer_id', $request->organizer);
+        }
+
+        // 2. Filter by Visibility (Public/Private)
+        if ($request->filled('visibility') && $request->visibility !== 'all') {
+            if ($request->visibility === 'public') {
+                $query->where('is_public', true);
+            } elseif ($request->visibility === 'private') {
+                $query->where('is_public', false);
+            }
         }
 
         // Filter by fee type
-        if ($request->filled('fee_type')) {
+        if ($request->filled('fee_type') && $request->fee_type !== 'all') {
             if ($request->fee_type === 'free') {
                 $query->where('is_paid', false);
             } elseif ($request->fee_type === 'paid') {
@@ -54,12 +66,32 @@ class EventController extends Controller {
             }
         }
 
-        $events = $query->orderBy('start_time')
-                ->paginate(12);
+        // 3. Sort Logic
+        $sort = $request->get('sort', 'date_asc'); // 默认按日期升序 (Upcoming)
 
+        switch ($sort) {
+            case 'date_desc':
+                $query->orderBy('start_time', 'desc');
+                break;
+            case 'title_asc':
+                $query->orderBy('title', 'asc');
+                break;
+            case 'title_desc':
+                $query->orderBy('title', 'desc');
+                break;
+            case 'date_asc':
+            default:
+                $query->orderBy('start_time', 'asc');
+                break;
+        }
+
+        $events = $query->paginate(12)->withQueryString(); // 保持筛选参数
         $categories = EventCategory::values();
 
-        return view('events.index', compact('events', 'categories'));
+        // 获取所有举办过活动的 Club (或者所有 Club)
+        $clubs = \App\Models\Club::has('events')->pluck('name', 'id');
+
+        return view('events.index', compact('events', 'categories', 'clubs'));
     }
 
     /**
@@ -163,6 +195,15 @@ class EventController extends Controller {
             }
         }
 
+        $pendingRefundsCount = 0;
+        if ($canManageEvent && $event->is_paid && $event->refund_available) {
+            $pendingRefundsCount = \App\Models\Payment::whereHas('registration', function ($q) use ($event) {
+                        $q->where('event_id', $event->id);
+                    })
+                    ->where('refund_status', 'pending')
+                    ->count();
+        }
+
         return view('events.show', compact(
                         'event',
                         'isRegistered',
@@ -172,7 +213,8 @@ class EventController extends Controller {
                         'canRegister',
                         'registrationBlockReason',
                         'stage',
-                        'timeInfo'
+                        'timeInfo',
+                        'pendingRefundsCount'
         ));
     }
 
@@ -326,17 +368,16 @@ class EventController extends Controller {
 
     /**
      * Fetch public events via AJAX
+     * Supports: search, category, organizer, visibility, fee_type, sort
      */
     public function fetchPublic(Request $request) {
         try {
-            // Start query with published and upcoming events
-            $query = Event::published()
-                    ->upcoming()
-                    ->with(['organizer', 'registrations']);
+            // Start query with published events
+            $query = Event::published()->with(['organizer', 'registrations']);
 
-            // Apply category filter
-            if ($request->filled('category')) {
-                $query->category($request->category);
+            // Only apply upcoming() if no sort specified or using default sort
+            if (!$request->filled('sort') || $request->sort === 'date_asc') {
+                $query->upcoming();
             }
 
             // Apply search filter
@@ -348,13 +389,27 @@ class EventController extends Controller {
                 });
             }
 
-            // Apply date filter
-            if ($request->filled('start_date')) {
-                $query->whereDate('start_time', '>=', $request->start_date);
+            // Apply category filter
+            if ($request->filled('category') && $request->category !== 'all') {
+                $query->category($request->category);
+            }
+
+            // Apply organizer (club) filter
+            if ($request->filled('organizer') && $request->organizer !== 'all') {
+                $query->where('organizer_id', $request->organizer);
+            }
+
+            // Apply visibility filter
+            if ($request->filled('visibility') && $request->visibility !== 'all') {
+                if ($request->visibility === 'public') {
+                    $query->where('is_public', true);
+                } elseif ($request->visibility === 'private') {
+                    $query->where('is_public', false);
+                }
             }
 
             // Apply fee type filter
-            if ($request->filled('fee_type')) {
+            if ($request->filled('fee_type') && $request->fee_type !== 'all') {
                 if ($request->fee_type === 'free') {
                     $query->where('is_paid', false);
                 } elseif ($request->fee_type === 'paid') {
@@ -365,15 +420,16 @@ class EventController extends Controller {
             // Apply sorting
             $sort = $request->input('sort', 'date_asc');
             switch ($sort) {
-                case 'date_asc':
-                    $query->orderBy('start_time', 'asc');
-                    break;
                 case 'date_desc':
                     $query->orderBy('start_time', 'desc');
                     break;
-                case 'title':
+                case 'title_asc':
                     $query->orderBy('title', 'asc');
                     break;
+                case 'title_desc':
+                    $query->orderBy('title', 'desc');
+                    break;
+                case 'date_asc':
                 default:
                     $query->orderBy('start_time', 'asc');
                     break;
@@ -385,13 +441,15 @@ class EventController extends Controller {
 
             // Format events for response
             $formattedEvents = $events->map(function ($event) {
+                // Calculate registrations count
                 $registrationsCount = $event->registrations()
-                        ->where('status', ['confirmed', 'pending_payment'])
+                        ->whereIn('status', ['confirmed', 'pending_payment'])
                         ->count();
 
+                // Calculate remaining seats
                 $remainingSeats = null;
                 if ($event->max_participants) {
-                    $remainingSeats = $event->max_participants - $registrationsCount;
+                    $remainingSeats = max(0, $event->max_participants - $registrationsCount);
                 }
 
                 return [
@@ -408,9 +466,11 @@ class EventController extends Controller {
             'max_participants' => $event->max_participants,
             'remaining_seats' => $remainingSeats,
             'poster_path' => $event->poster_path,
-            'is_full' => $event->is_full,
-            'is_registration_open' => $event->is_registration_open,
-            'registration_start_time' => $event->registration_start_time->toIso8601String(), 
+            'is_full' => $event->max_participants && $registrationsCount >= $event->max_participants,
+            'is_registration_open' => $event->registration_start_time <= now() &&
+            $event->registration_end_time >= now() &&
+            (!$event->max_participants || $registrationsCount < $event->max_participants),
+            'registration_start_time' => $event->registration_start_time->toIso8601String(),
             'start_time_formatted' => $event->start_time->format('d M Y'),
             'start_time_time' => $event->start_time->format('h:i A'),
             'organizer_name' => $event->organizer->name ?? 'TARCampus',
@@ -431,6 +491,7 @@ class EventController extends Controller {
             ]);
         } catch (\Exception $e) {
             \Log::error('Fetch public events error: ' . $e->getMessage());
+
             return response()->json([
                         'success' => false,
                         'message' => 'Failed to fetch events.',

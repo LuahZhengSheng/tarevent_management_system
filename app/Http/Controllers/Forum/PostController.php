@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PostController extends Controller {
 
@@ -149,7 +150,13 @@ class PostController extends Controller {
         $categories = Category::active()->ordered()->get();
         $activeTags = Tag::active()->orderBy('name')->get();
 
-        return view('forums.create', compact('categories', 'activeTags'));
+        $pendingTags = Tag::query()
+                ->where('status', 'pending')
+                ->where('created_by', auth()->id())
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug', 'status']);
+
+        return view('forums.create', compact('categories', 'activeTags', 'pendingTags'));
     }
 
     /**
@@ -189,7 +196,7 @@ class PostController extends Controller {
                 $post->syncTagsWithCount($tagIds, auth()->id());
             }
 
-            // === 新增：写入 club_posts 中间表 ===
+            // === 写入 club_posts 中间表 ===
             if ($processedData['visibility'] === 'club_only' && $request->filled('club_ids')) {
                 $clubIds = $request->input('club_ids'); // array
                 // 构建 pivot 数据：默认 pinned=false, status=active
@@ -216,23 +223,39 @@ class PostController extends Controller {
                 'has_media' => isset($processedData['media_paths']),
             ]);
 
-            // Return JSON for AJAX requests
+            $redirectUrl = $post->status === 'draft' ? url('/forums/my-posts?tab=drafts') : route('forums.posts.show', $post->slug);
+
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => true,
                             'message' => $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!',
-                            'redirect' => route('forums.posts.show', $post->slug),
+                            'redirect' => $redirectUrl,
                             'post' => $post->load(['category', 'tags', 'clubs']),
                 ]);
             }
 
-            // Redirect for normal form submissions
-            return redirect()
-                            ->route('forums.posts.show', $post->slug)
-                            ->with(
-                                    'success',
-                                    $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!'
+            return redirect($redirectUrl)->with(
+                            'success',
+                            $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!'
             );
+
+//            // Return JSON for AJAX requests
+//            if ($request->expectsJson()) {
+//                return response()->json([
+//                            'success' => true,
+//                            'message' => $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!',
+//                            'redirect' => route('forums.posts.show', $post->slug),
+//                            'post' => $post->load(['category', 'tags', 'clubs']),
+//                ]);
+//            }
+//
+//            // Redirect for normal form submissions
+//            return redirect()
+//                            ->route('forums.posts.show', $post->slug)
+//                            ->with(
+//                                    'success',
+//                                    $post->status === 'draft' ? 'Post saved as draft successfully!' : 'Post published successfully!'
+//            );
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
 
@@ -276,10 +299,17 @@ class PostController extends Controller {
      * Display the specified post
      */
     public function show(Request $request, Post $post) {
+        // 1) 草稿一律当作不存在（404）
+        if ($post->status === 'draft') {
+            abort(404);
+        }
+
+        // 2) 其它再走你原来的可见性逻辑
         if (!$post->canBeViewedBy(auth()->user())) {
             abort(403, 'You do not have permission to view this post.');
         }
 
+        // 后面保持原样
         $post->load([
             'user',
             'category',
@@ -308,7 +338,6 @@ class PostController extends Controller {
                 ->limit(3)
                 ->get();
 
-        // 只有显式 ?format=json 才回 JSON（避免误触发）
         if ($request->query('format') === 'json') {
             return response()->json([
                         'success' => true,
@@ -357,14 +386,186 @@ class PostController extends Controller {
             $tagIds = $processedData['tag_ids'] ?? [];
             unset($processedData['tag_ids']);
 
+            $incomingStatus = $processedData['status'] ?? $post->status;
+
+            /**
+             * CASE A:
+             * 编辑的是 published，但这次点击 Save Draft（incomingStatus=draft）
+             * => 删除旧 draft（若存在）=> 创建新 draft（original_post_id 指向该 published）
+             * => 然后把本次内容写进 draft
+             */
+            if ($post->status === 'published' && $incomingStatus === 'draft') {
+                // 旧 draft（同一篇 original 只能一个）
+                $existingDraft = Post::where('original_post_id', $post->id)
+                        ->where('status', 'draft')
+                        ->first();
+
+                if ($existingDraft) {
+                    // 软删旧 draft（你 model 用 SoftDeletes）[file:7]
+                    $existingDraft->delete();
+                }
+
+                // 创建新 draft：从 original 复制一份
+                $draft = $post->replicate();
+
+                $draft->original_post_id = $post->id;
+                $draft->status = 'draft';
+                $draft->published_at = null;
+
+                // draft slug 唯一
+                $draft->slug = $post->slug . '-draft-' . now()->timestamp;
+
+                // views/likes/comments 不继承
+                $draft->views_count = 0;
+                $draft->likes_count = 0;
+                $draft->comments_count = 0;
+
+                // 把本次修改写入 draft（包含 title/content/category/visibility/media_paths 等）
+                $draft->fill($processedData);
+                $draft->status = 'draft';
+                $draft->published_at = null;
+                $draft->save();
+
+                // 同步 tags
+                if (!empty($tagIds)) {
+                    $draft->syncTagsWithCount($tagIds, auth()->id());
+                } else {
+                    $draft->tags()->detach();
+                }
+
+                // 同步 clubs
+                if (($processedData['visibility'] ?? $draft->visibility) === 'club_only' && $request->filled('club_ids')) {
+                    $clubIds = $request->input('club_ids');
+
+                    $pivotData = collect($clubIds)
+                            ->unique()
+                            ->mapWithKeys(function ($id) {
+                                return [$id => ['pinned' => false, 'status' => 'active']];
+                            })
+                            ->toArray();
+
+                    $draft->clubs()->sync($pivotData);
+                } else {
+                    $draft->clubs()->detach();
+                }
+
+                DB::commit();
+
+                $redirectUrl = url('/forums/my-posts?tab=drafts');
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                                'success' => true,
+                                'message' => 'Draft version created successfully!',
+                                'redirect' => $redirectUrl,
+                    ]);
+                }
+
+                return redirect($redirectUrl)->with('success', 'Draft version created successfully!');
+            }
+
+            /**
+             * CASE B:
+             * 编辑的是 draft（post.status=draft）
+             * - 如果 draft 还是 draft：只更新 draft
+             * - 如果 draft 要 publish：把 draft 内容覆盖到 original post，然后删除 draft
+             */
+            if ($post->status === 'draft') {
+                // draft -> publish：覆盖 original
+                if ($incomingStatus === 'published') {
+                    // 必须有 original_post_id
+                    if (empty($post->original_post_id)) {
+                        throw new \Exception('Draft has no original_post_id. Cannot publish draft.');
+                    }
+
+                    $original = Post::findOrFail($post->original_post_id);
+
+                    // 把 draft 的内容覆盖 original（你可以按需增减字段）
+                    $fieldsToCopy = [
+                        'title',
+                        'content',
+                        'category_id',
+                        'visibility',
+                        'media_paths',
+                    ];
+
+                    $updateOriginal = [];
+                    foreach ($fieldsToCopy as $f) {
+                        if (array_key_exists($f, $processedData)) {
+                            $updateOriginal[$f] = $processedData[$f];
+                        } else {
+                            // 若这次请求没传该字段，用 draft 自己的当前值覆盖
+                            $updateOriginal[$f] = $post->{$f};
+                        }
+                    }
+
+                    // 原文发布信息
+                    $updateOriginal['status'] = 'published';
+                    $updateOriginal['published_at'] = $original->published_at ?? now();
+
+                    // 先按你现有逻辑处理 media 合并/迁移等：这里简单用 draft 的最终 media_paths 覆盖
+                    $original->update($updateOriginal);
+
+                    // tags 覆盖 original（按本次提交 tagIds；若没传则用 draft 当前 tags）
+                    if (!empty($tagIds)) {
+                        $original->syncTagsWithCount($tagIds, auth()->id());
+                    } else {
+                        $originalTagIds = $post->tags()->pluck('tags.id')->toArray();
+                        if (!empty($originalTagIds)) {
+                            $original->syncTagsWithCount($originalTagIds, auth()->id());
+                        } else {
+                            $original->tags()->detach();
+                        }
+                    }
+
+                    // clubs 覆盖 original
+                    if (($processedData['visibility'] ?? $post->visibility) === 'club_only' && $request->filled('club_ids')) {
+                        $clubIds = $request->input('club_ids');
+
+                        $pivotData = collect($clubIds)
+                                ->unique()
+                                ->mapWithKeys(function ($id) {
+                                    return [$id => ['pinned' => false, 'status' => 'active']];
+                                })
+                                ->toArray();
+
+                        $original->clubs()->sync($pivotData);
+                    } else {
+                        $original->clubs()->detach();
+                    }
+
+                    // 发布后删除 draft
+                    $post->delete();
+
+                    DB::commit();
+
+                    $redirectUrl = route('forums.posts.show', $original->slug);
+
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                                    'success' => true,
+                                    'message' => 'Draft published successfully!',
+                                    'redirect' => $redirectUrl,
+                        ]);
+                    }
+
+                    return redirect($redirectUrl)->with('success', 'Draft published successfully!');
+                }
+
+                // draft -> draft：走下面的“正常 update”，更新 draft 自己
+            }
+
+            /**
+             * CASE C:
+             * 其它情况（published->published、draft->draft）：
+             * 走你原本逻辑，更新当前 $post
+             */
             // ===== Media 处理：保留你现有逻辑 =====
             if ($request->boolean('replace_media', false)) {
                 if ($post->hasMedia()) {
                     PostMediaHelper::deletePostMedia($post->media_paths);
                 }
-                // replace_media=true: 旧的删掉，新的 media_paths 用 decorator 产物
             } elseif (isset($processedData['media_paths'])) {
-                // 合并旧 media 和新增 media
                 $existingMedia = $post->media_paths ?? [];
                 $processedData['media_paths'] = array_merge($existingMedia, $processedData['media_paths']);
 
@@ -395,9 +596,7 @@ class PostController extends Controller {
 
                 $migratedMedia = [];
                 foreach (($post->media_paths ?? []) as $media) {
-                    // 只处理你当前格式：array 结构（disk/path/type/...)
                     if (!is_array($media)) {
-                        // 避免猜“老数据字符串路径”怎么处理：直接原样保留
                         $migratedMedia[] = $media;
                         continue;
                     }
@@ -410,7 +609,6 @@ class PostController extends Controller {
                         continue;
                     }
 
-                    // already correct disk
                     if ($srcDisk === $targetDisk) {
                         $media['disk'] = $targetDisk;
                         $migratedMedia[] = $media;
@@ -436,15 +634,12 @@ class PostController extends Controller {
                         throw new \Exception("Failed to write media stream: disk={$targetDisk}, path={$path}");
                     }
 
-                    // copy success -> delete old
                     Storage::disk($srcDisk)->delete($path);
 
                     $media['disk'] = $targetDisk;
                     $migratedMedia[] = $media;
                 }
 
-                // 如果本次 update 没有提交新 media，则把迁移后的 media_paths 写回
-                // 如果本次有新 media_paths（合并/替换），则把其中“旧路径”对应的 disk 更新为 targetDisk
                 if (!isset($processedData['media_paths'])) {
                     $processedData['media_paths'] = $migratedMedia;
                 } else {
@@ -474,7 +669,7 @@ class PostController extends Controller {
                 $post->tags()->detach();
             }
 
-            // ===== 更新 club_posts 中间表 =====
+            // 更新 clubs
             if (($processedData['visibility'] ?? $post->visibility) === 'club_only' && $request->filled('club_ids')) {
                 $clubIds = $request->input('club_ids');
 
@@ -492,22 +687,21 @@ class PostController extends Controller {
 
             DB::commit();
 
-            Log::info('Post updated successfully', [
-                'post_id' => $post->id,
-                'user_id' => auth()->id(),
-            ]);
+            // draft：去 drafts tab；published：回 show
+            $redirectUrl = ($post->status === 'draft') ? url('/forums/my-posts?tab=drafts') : route('forums.posts.show', $post->slug);
 
             if ($request->expectsJson()) {
                 return response()->json([
                             'success' => true,
-                            'message' => 'Post updated successfully!',
-                            'redirect' => route('forums.posts.show', $post->slug),
+                            'message' => $post->status === 'draft' ? 'Draft saved successfully!' : 'Post updated successfully!',
+                            'redirect' => $redirectUrl,
                 ]);
             }
 
-            return redirect()
-                            ->route('forums.posts.show', $post->slug)
-                            ->with('success', 'Post updated successfully!');
+            return redirect($redirectUrl)->with(
+                            'success',
+                            $post->status === 'draft' ? 'Draft saved successfully!' : 'Post updated successfully!'
+            );
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
 
@@ -526,7 +720,7 @@ class PostController extends Controller {
             Log::error('Post update failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'post_id' => $post->id,
+                'post_id' => $post->id ?? null,
                 'user_id' => auth()->id(),
                 'exception_class' => get_class($e),
             ]);
@@ -541,9 +735,7 @@ class PostController extends Controller {
                                 ], 422);
             }
 
-            return back()
-                            ->withInput()
-                            ->withErrors(['error' => $userMessage]);
+            return back()->withInput()->withErrors(['error' => $userMessage]);
         }
     }
 
@@ -609,9 +801,8 @@ class PostController extends Controller {
      * Request a new tag (requires admin approval)
      */
     public function requestTag(Request $request) {
-        // Validate input
         $validated = $request->validate([
-            'name' => 'required|string|min:2|max:50|unique:tags,name',
+            'name' => 'required|string|min:2|max:50',
             'description' => 'nullable|string|max:200',
         ]);
 
@@ -620,6 +811,38 @@ class PostController extends Controller {
             $tagName = strtolower(trim($validated['name']));
             $tagName = preg_replace('/[^a-z0-9\s\-_]/u', '', $tagName);
             $tagName = preg_replace('/\s+/', ' ', $tagName);
+
+            // ✅ 关键：如果系统里已经有同名 tag 且为 pending，禁止其它人再提交，并提示等待审批
+            $existing = Tag::query()
+                    ->where('name', $tagName)
+                    ->first();
+
+            if ($existing) {
+                if ($existing->status === 'pending') {
+                    return response()->json([
+                                'success' => false,
+                                'code' => 'TAG_PENDING',
+                                'message' => 'This tag is pending admin approval and cannot be used yet.',
+                                'tag' => [
+                                    'id' => $existing->id,
+                                    'name' => $existing->name,
+                                    'status' => $existing->status,
+                                ],
+                                    ], 409);
+                }
+
+                // 其它状态（例如 active）：让前端走“选择已有 tag”，这里用 409 也可以
+                return response()->json([
+                            'success' => false,
+                            'code' => 'TAG_EXISTS',
+                            'message' => 'This tag already exists. Please select it from the suggestions.',
+                            'tag' => [
+                                'id' => $existing->id,
+                                'name' => $existing->name,
+                                'status' => $existing->status,
+                            ],
+                                ], 409);
+            }
 
             // Generate unique slug
             $slug = Str::slug($tagName);
@@ -631,12 +854,11 @@ class PostController extends Controller {
                 $count++;
             }
 
-            // Create tag with pending status
             $tag = Tag::create([
                         'name' => $tagName,
                         'slug' => $slug,
                         'type' => 'community',
-                        'status' => 'pending', // Requires admin approval
+                        'status' => 'pending',
                         'description' => $validated['description'] ?? null,
                         'created_by' => auth()->id(),
             ]);
@@ -648,14 +870,15 @@ class PostController extends Controller {
             ]);
 
             return response()->json([
-                        'success' => true,
-                        'message' => 'Tag submitted for approval! It will be reviewed by an admin shortly.',
+                        'success' => false,
+                        'code' => 'TAG_PENDING',
+                        'message' => 'Tag submitted for approval. You cannot use it until an admin approves it.',
                         'tag' => [
                             'id' => $tag->id,
                             'name' => $tag->name,
                             'status' => $tag->status,
                         ],
-            ]);
+                            ], 409);
         } catch (\Exception $e) {
             Log::error('Tag request failed', [
                 'error' => $e->getMessage(),

@@ -30,9 +30,8 @@
   // ---- utils ----
   const nowReqId = () => {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-      return window.crypto.randomUUID(); // UUID v4
+      return window.crypto.randomUUID();
     }
-    // fallback：至少保证唯一
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const y = d.getFullYear();
@@ -43,6 +42,8 @@
     const ss = pad(d.getSeconds());
     return `REQ-${y}${m}${day}-${hh}${mm}${ss}-${Math.random().toString(16).slice(2, 10)}`;
   };
+
+  const nowIso = () => new Date().toISOString();
 
   const showLoading = (show) => {
     if (!loadingEl) return;
@@ -58,6 +59,22 @@
     const msg = message || 'Request failed.';
     console.error(msg);
     alert(msg);
+  }
+
+  function getApiToken() {
+    return (localStorage.getItem('api_token') || '').trim();
+  }
+
+  function buildAuthHeaders() {
+    const headers = {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json',
+    };
+
+    const token = getApiToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    return headers;
   }
 
   async function safeReadJson(res) {
@@ -113,12 +130,12 @@
     const params = new URLSearchParams();
 
     for (const [k, v] of fd.entries()) {
-      if (k === 'tags[]') continue; // managed by JS
+      if (k === 'tags[]') continue;
       if (v !== null && String(v).trim() !== '') params.set(k, String(v));
     }
 
     state.selectedTags.forEach((slug) => params.append('tags[]', slug));
-    params.delete('tag'); // unify on tags[]
+    params.delete('tag');
 
     Object.entries(extra).forEach(([k, v]) => {
       if (v === null || v === undefined || String(v).trim() === '') params.delete(k);
@@ -144,9 +161,6 @@
   }
 
   function normalizeResponse(payload) {
-    // supports:
-    // 1) forum: { success: true, posts_html, summary_html, trending_html, meta }
-    // 2) club api: { status:'S', data:{ posts_html, summary_html, trending_html, meta } }
     if (!payload) return null;
 
     if (payload.success) {
@@ -178,7 +192,6 @@
   }
 
   function applyRender(data, { append, page }) {
-    // Replace/append posts
     if (!append) {
       postsGrid.innerHTML = data.posts_html || '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -188,11 +201,9 @@
       Array.from(tmp.children).forEach((ch) => postsGrid.appendChild(ch));
     }
 
-    // Replace summary + trending
     if (resultsSummary && data.summary_html !== undefined) resultsSummary.innerHTML = data.summary_html || '';
     if (trendingTags && data.trending_html !== undefined) trendingTags.innerHTML = data.trending_html || '';
 
-    // Replace categories options (from API)
     const catSel = form.querySelector('select[name="category_id"]');
     if (catSel && Array.isArray(data.categories)) {
       const current = catSel.value;
@@ -213,7 +224,6 @@
       catSel.value = current;
     }
 
-    // Meta
     state.page = Number(data?.meta?.current_page || page);
     state.lastPage = Number(data?.meta?.last_page || state.lastPage);
 
@@ -231,34 +241,47 @@
     state.aborter = new AbortController();
 
     // keep URL clean (no ajax=1 in URL)
-    const paramsForFetch = buildQuery({ ajax: 1, page, requestId: nowReqId() });
+    const paramsForFetch = buildQuery({
+      ajax: 1,
+      page,
+      requestId: nowReqId(),
+      timeStamp: nowIso(), // satisfy controller validation if needed
+    });
+
     const paramsForUrl = buildQuery({ page });
 
     if (pushUrl) updateUrl(paramsForUrl, false);
     else updateUrl(paramsForUrl, true);
 
     try {
-      // Bearer token from localStorage
-      const token = localStorage.getItem('api_token'); 
-      const headers = { 'X-Requested-With': 'XMLHttpRequest' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const res = await fetch(`${ajaxUrl}?${paramsForFetch.toString()}`, {
-        headers,
+        method: 'GET',
+        headers: buildAuthHeaders(),
+        credentials: 'same-origin',
         signal: state.aborter.signal,
       });
 
       const raw = await safeReadJson(res);
 
-      // 401 (auth:sanctum)
+      // 401: missing/expired token (auth)
       if (res.status === 401) {
-        // 可选：清掉 token，逼用户重新拿 token
-        // localStorage.removeItem('api_token');
         showApiError('Unauthorized (401). Missing/expired token. Please login again.');
         return;
       }
 
-      // 非 JSON（例如后端返回 HTML）
+      // 403: logged in but not club member (authz)
+      if (res.status === 403) {
+        showApiError(raw?.message || 'Forbidden (403). Only club members can view club posts.');
+        return;
+      }
+
+      // 422: usually missing requestId/timeStamp
+      if (res.status === 422) {
+        showApiError(raw?.message || 'Validation failed (422).');
+        return;
+      }
+
+      // Non-JSON (e.g., HTML error page)
       if (!raw) {
         showApiError(`Unexpected response (${res.status}). Not JSON.`);
         return;
@@ -296,7 +319,6 @@
         return;
       }
 
-      // Unknown format
       showApiError(raw.message || `Unknown response (${res.status}).`);
     } catch (e) {
       if (e.name !== 'AbortError') console.error(e);
@@ -307,7 +329,6 @@
   }
 
   function bindDynamicHandlers() {
-    // Tag chips (trending) - multi select
     document.querySelectorAll('.js-tag-chip').forEach((btn) => {
       if (btn.dataset.bound === '1') return;
       btn.dataset.bound = '1';
@@ -326,7 +347,6 @@
       });
     });
 
-    // Clear filters (from summary UI)
     document.querySelectorAll('.js-clear-filter').forEach((a) => {
       if (a.dataset.bound === '1') return;
       a.dataset.bound = '1';
@@ -351,7 +371,6 @@
       });
     });
 
-    // Remove single tag (from summary UI)
     document.querySelectorAll('.js-remove-tag').forEach((a) => {
       if (a.dataset.bound === '1') return;
       a.dataset.bound = '1';
@@ -424,7 +443,6 @@
     if (legacy) state.selectedTags.add(legacy);
     syncSelectedTagsInputs();
 
-    // Sync form fields
     const s = url.searchParams.get('search') || '';
     if (searchInput) searchInput.value = s;
 

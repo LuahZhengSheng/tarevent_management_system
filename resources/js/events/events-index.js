@@ -29,11 +29,11 @@
         search: '',
         category: '',
         fee_type: '',
-        start_date: '',
+        organizer: '',
+        visibility: '',
         sort: 'date_asc',
         view: 'grid'
     };
-
     let searchTimeout = null;
 
     /**
@@ -50,69 +50,85 @@
      */
     function bindEvents() {
         // Search input with debounce
-        $('#searchInput, .search-input').on('input', function () {
+        $('#searchInput').on('input', function () {
             clearTimeout(searchTimeout);
             const value = $(this).val().trim();
+            const clearBtn = $(this).siblings('.clear-search');
 
-            const $clearBtn = $(this).siblings('.clear-search');
             if (value) {
-                $clearBtn.show();
+                clearBtn.show();
             } else {
-                $clearBtn.hide();
+                clearBtn.hide();
             }
 
-            searchTimeout = setTimeout(function () {
+            searchTimeout = setTimeout(() => {
                 currentFilters.search = value;
                 currentPage = 1;
                 fetchEvents();
             }, 500);
         });
 
-        // Clear search
+        // Clear search button
         $('.clear-search').on('click', function () {
-            const $input = $(this).siblings('input');
-            $input.val('');
+            const input = $(this).siblings('input');
+            input.val('');
             $(this).hide();
             currentFilters.search = '';
             currentPage = 1;
             fetchEvents();
         });
 
-        // Filter selects
-        $('select[name="category"], .filter-select[name="category"]').on('change', function () {
-            currentFilters.category = $(this).val();
+        // 统一处理所有 Filter Select (Category, Organizer, Visibility, Price, Sort)
+        $('.filter-select, #sortSelect').on('change', function () {
+            const id = $(this).attr('id');
+            const value = $(this).val();
+
+            // Map IDs to currentFilters keys
+            if (id === 'categoryFilter')
+                currentFilters.category = value;
+            if (id === 'organizerFilter')
+                currentFilters.organizer = value;
+            if (id === 'visibilityFilter')
+                currentFilters.visibility = value;
+            if (id === 'feeTypeFilter')
+                currentFilters.fee_type = value;
+            if (id === 'sortSelect')
+                currentFilters.sort = value; // 确保 Sort ID 对应
+
             currentPage = 1;
             fetchEvents();
         });
 
-        $('select[name="fee_type"], .filter-select[name="fee_type"]').on('change', function () {
-            currentFilters.fee_type = $(this).val();
-            currentPage = 1;
-            fetchEvents();
+        // Clear all filters button
+        $('#clearAllFilters').on('click', function (e) {
+            e.preventDefault();
+            resetAllFilters();
         });
 
-        $('input[name="start_date"], .filter-date[name="start_date"]').on('change', function () {
-            currentFilters.start_date = $(this).val();
-            currentPage = 1;
-            fetchEvents();
-        });
-
-        // Sort select
-        $('.form-select-modern, #sortSelect').on('change', function () {
-            currentFilters.sort = $(this).val();
-            fetchEvents();
-        });
-
-        // View toggle
+        // View Toggle
         $('.view-btn').on('click', function () {
             const view = $(this).data('view');
             switchView(view);
         });
 
-        // Clear all filters
-        $('.filter-clear').on('click', function (e) {
-            e.preventDefault();
-            resetAllFilters();
+        // Remove individual filter tag
+        $(document).on('click', '.remove-tag', function () {
+            const key = $(this).data('key');
+
+            // Reset specific filter
+            if (key === 'search') {
+                $('#searchInput').val('');
+                $('.clear-search').hide();
+                currentFilters.search = '';
+            } else {
+                // Find the select and reset it to first option
+                const selectId = key === 'fee_type' ? 'feeTypeFilter' : key + 'Filter';
+                $(`#${selectId}`).val('all'); // 或者 prop('selectedIndex', 0)
+                currentFilters[key] = 'all'; // Reset state value
+            }
+
+            currentPage = 1;
+            fetchEvents();
         });
     }
 
@@ -135,6 +151,7 @@
                     renderEvents(response.events);
                     renderPagination(response.pagination);
                     updateResultsCount(response.pagination.total);
+                    updateActiveFiltersUI();
                     hideLoading();
                 } else {
                     showError('Failed to load events');
@@ -417,21 +434,100 @@
         switchView(savedView);
     }
 
+    function checkActiveFilters() {
+        // 检查是否有任何 Filter 被设置了 (不包括默认值)
+        const hasActiveFilters =
+                currentFilters.search !== '' ||
+                (currentFilters.category !== '' && currentFilters.category !== 'all') ||
+                (currentFilters.organizer !== '' && currentFilters.organizer !== 'all') ||
+                (currentFilters.visibility !== '' && currentFilters.visibility !== 'all') ||
+                (currentFilters.fee_type !== '' && currentFilters.fee_type !== 'all');
+
+        if (hasActiveFilters) {
+            $('#clearAllFilters').show(); // 显示 Clear All 按钮
+            $('#activeFilters').show();   // 显示 Active Filters 区域
+        } else {
+            $('#clearAllFilters').hide();
+            $('#activeFilters').hide();
+        }
+    }
+
+    function updateActiveFiltersUI() {
+        const container = $('#filterTags');
+        const wrapper = $('#activeFilters');
+        container.empty();
+
+        let hasFilters = false;
+
+        // Helper to add tag
+        const addTag = (label, key, defaultValue = 'all') => {
+            const value = currentFilters[key];
+            if (value && value !== '' && value !== defaultValue) {
+                // Get readable label for dropdowns
+                let displayValue = value;
+                if (key === 'organizer') {
+                    displayValue = $(`#organizerFilter option[value="${value}"]`).text();
+                } else if (key === 'visibility') {
+                    displayValue = $(`#visibilityFilter option[value="${value}"]`).text();
+                } else if (key === 'fee_type') {
+                    displayValue = $(`#feeTypeFilter option[value="${value}"]`).text();
+                }
+
+                const tag = `
+                <div class="filter-tag">
+                    ${label}: ${displayValue}
+                    <button type="button" class="remove-tag" data-key="${key}">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `;
+                container.append(tag);
+                hasFilters = true;
+        }
+        };
+
+        // Check Search
+        if (currentFilters.search) {
+            addTag('Search', 'search');
+        }
+
+        // Check other filters
+        addTag('Category', 'category');
+        addTag('Organizer', 'organizer');
+        addTag('Visibility', 'visibility');
+        addTag('Price', 'fee_type');
+
+        // Toggle visibility of the filter bar
+        if (hasFilters) {
+            wrapper.show();
+            $('#clearAllFilters').show();
+        } else {
+            wrapper.hide();
+            $('#clearAllFilters').hide();
+        }
+    }
+
     /**
      * Reset all filters
      */
     function resetAllFilters() {
-        $('input[type="text"], input[type="date"]').val('');
-        $('select').prop('selectedIndex', 0);
+        // Reset Inputs
+        $('#searchInput').val('');
         $('.clear-search').hide();
 
+        // Reset Selects to first option (usually "All ...")
+        $('.filter-select').prop('selectedIndex', 0);
+        $('#sortSelect').val('date_asc'); // Reset sort to default
+
+        // Reset State
         currentFilters = {
             search: '',
             category: '',
+            organizer: '',
+            visibility: '',
             fee_type: '',
-            start_date: '',
-            sort: currentFilters.sort,
-            view: currentFilters.view
+            sort: 'date_asc',
+            view: currentFilters.view // Keep view preference
         };
 
         currentPage = 1;

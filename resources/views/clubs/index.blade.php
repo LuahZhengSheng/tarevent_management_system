@@ -3,61 +3,61 @@
 @section('title', 'Campus Clubs')
 
 @push('styles')
-@include('clubs.join_modal')
+@include('clubs.join-modal')
 <style>
-.clubs-page-modern {
-    min-height: 100vh;
-    background: var(--bg-primary, #f8f9fa);
-}
+    .clubs-page-modern {
+        min-height: 100vh;
+        background: var(--bg-primary, #f8f9fa);
+    }
 
-.hero-section-modern {
-    position: relative;
-    padding: 4rem 0 3rem;
-    background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
-    color: white;
-    overflow: hidden;
-}
+    .hero-section-modern {
+        position: relative;
+        padding: 4rem 0 3rem;
+        background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
+        color: white;
+        overflow: hidden;
+    }
 
-.hero-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 0;
-}
+    .hero-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 0;
+    }
 
-.hero-pattern {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    opacity: 0.1;
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
+    .hero-pattern {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
 
-.hero-gradient {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 100%);
-}
+    .hero-gradient {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 100%);
+    }
 
-.hero-content {
-    position: relative;
-    z-index: 1;
-}
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
 
-.hero-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    backdrop-filter: blur(10px);
-}
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(10px);
+    }
 
 .hero-title {
     font-size: 3rem;
@@ -492,18 +492,413 @@
 
 @media (max-width: 768px) {
     .hero-title {
-        font-size: 2rem;
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        line-height: 1.2;
     }
-    
-    .clubs-grid {
-        grid-template-columns: 1fr;
+
+    .hero-description {
+        font-size: 1.25rem;
+        margin-bottom: 2rem;
+        opacity: 0.95;
+        line-height: 1.6;
     }
-    
-    .filter-pills {
+
+    .hero-stats {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-item {
+        display: flex;
         flex-direction: column;
-        align-items: stretch;
     }
-}
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-top: 0.5rem;
+    }
+
+    .stat-divider {
+        width: 1px;
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .container-modern {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .filter-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .search-wrapper {
+        width: 100%;
+    }
+
+    .search-input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        color: #6c757d;
+        font-size: 1.25rem;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.875rem 1rem 0.875rem 3rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary, #4f46e5);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .clear-search {
+        position: absolute;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .filter-pills {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-pill {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #495057;
+        display: flex;
+        align-items: center;
+    }
+
+    .filter-select, .filter-date {
+        padding: 0.625rem 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 0.9375rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-select:focus, .filter-date:focus {
+        outline: none;
+        border-color: var(--primary, #4f46e5);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .filter-clear {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.625rem 1rem;
+        color: #dc3545;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        border: 2px solid #dc3545;
+        border-radius: 6px;
+        transition: all 0.2s;
+        margin-left: auto;
+    }
+
+    .filter-clear:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .results-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #212529;
+        margin: 0;
+    }
+
+    .clubs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .club-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .club-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .club-card-header {
+        position: relative;
+        height: 180px;
+        background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, var(--primary-hover, #6366f1) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .club-logo-wrapper {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .club-logo-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .club-logo-wrapper i {
+        font-size: 3rem;
+        color: var(--primary, #4f46e5);
+    }
+
+    .club-card-body {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .club-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #212529;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .club-category-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: var(--primary-light, #eef2ff);
+        color: var(--primary, #4f46e5);
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .club-description {
+        color: #6c757d;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .club-stats {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .club-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .club-stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #212529;
+    }
+
+    .club-stat-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .club-status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-top: auto;
+    }
+
+    .club-status-available {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .club-status-member {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .club-status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .club-status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .club-card-footer {
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-club-primary, .btn-club-secondary {
+        flex: 1;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-club-primary {
+        background: var(--primary, #4f46e5);
+        color: white;
+    }
+
+    .btn-club-primary:hover {
+        background: var(--primary-hover, #6366f1);
+        color: white;
+    }
+
+    .btn-club-secondary {
+        background: white;
+        color: var(--primary, #4f46e5);
+        border: 2px solid var(--primary, #4f46e5);
+    }
+
+    .btn-club-secondary:hover {
+        background: var(--primary-light, #eef2ff);
+    }
+
+    .loading-state, .empty-state, .error-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .loading-state i, .empty-state i, .error-state i {
+        font-size: 4rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+
+    .loading-state h3, .empty-state h3, .error-state h3 {
+        font-size: 1.5rem;
+        color: #212529;
+        margin-bottom: 0.5rem;
+    }
+
+    .loading-state p, .empty-state p, .error-state p {
+        color: #6c757d;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2rem;
+        }
+
+        .clubs-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-pills {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
 </style>
 @endpush
 
@@ -856,18 +1251,17 @@ window.openJoinModal = function(clubId) {
             return;
         }
 
-        emptyState.style.display = 'none';
-        resultsCount.textContent = `${filteredClubs.length} club${filteredClubs.length !== 1 ? 's' : ''} found`;
+        // Load clubs from API
+        function loadClubs() {
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const emptyState = document.getElementById('emptyState');
+            const clubsGrid = document.getElementById('clubsGrid');
 
-        const categoryLabels = {
-            'academic': 'Academic',
-            'sports': 'Sports',
-            'cultural': 'Cultural',
-            'social': 'Social',
-            'volunteer': 'Volunteer',
-            'professional': 'Professional',
-            'other': 'Other'
-        };
+            loadingState.style.display = 'block';
+            errorState.style.display = 'none';
+            emptyState.style.display = 'none';
+            clubsGrid.innerHTML = '';
 
         clubsGrid.innerHTML = filteredClubs.map(club => {
             // Handle logo URL - API already returns /storage/ prefix
@@ -883,56 +1277,165 @@ window.openJoinModal = function(clubId) {
                 }
             }
 
-            const logoHtml = logoUrl
-                ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
-                : '';
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+            })
+                    .then(async response => {
+                        const data = await response.json();
 
-            const categoryBadge = club.category 
-                ? `<span class="club-category-badge">${categoryLabels[club.category] || club.category}</span>`
-                : '';
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Failed to load clubs');
+                        }
 
-            let statusBadge = '';
-            let actionButton = '';
+                        if (data.success && data.data && data.data.clubs) {
+                            allClubs = data.data.clubs;
+                            filterAndRenderClubs();
+                            updateStats();
+                        } else {
+                            throw new Error('Invalid response format');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading clubs:', error);
+                        loadingState.style.display = 'none';
+                        errorState.style.display = 'block';
+                        document.getElementById('errorMessage').textContent = error.message;
+                    });
+        }
 
-            switch (club.join_status) {
-                case 'available':
-                    statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
-                    actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
-                    break;
-                case 'member':
-                    statusBadge = '<span class="club-status-badge club-status-member">Member</span>';
-                    actionButton = '';
-                    break;
-                case 'pending':
-                    statusBadge = '<span class="club-status-badge club-status-pending">Request Pending</span>';
-                    actionButton = '';
-                    break;
-                case 'rejected':
-                    const cooldownText = club.cooldown_remaining_days !== null 
-                        ? ` (${club.cooldown_remaining_days} days left)`
-                        : '';
-                    statusBadge = `<span class="club-status-badge club-status-rejected">Rejected${cooldownText}</span>`;
-                    actionButton = '';
-                    break;
-                default:
-                    statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
-                    actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+        // Filter clubs based on search
+        function filterAndRenderClubs() {
+            const searchInput = document.getElementById('searchInput');
+            const searchTerm = (searchInput?.value || '').toLowerCase().trim();
+
+            filteredClubs = allClubs.filter(club => {
+                if (!searchTerm)
+                    return true;
+                return club.name.toLowerCase().includes(searchTerm) ||
+                        (club.description && club.description.toLowerCase().includes(searchTerm));
+            });
+
+            // Sort: Put member clubs first, then others
+            filteredClubs.sort((a, b) => {
+                // If both are members or both are not members, maintain original order
+                const aIsMember = a.join_status === 'member';
+                const bIsMember = b.join_status === 'member';
+
+                if (aIsMember && !bIsMember)
+                    return -1; // a comes first
+                if (!aIsMember && bIsMember)
+                    return 1;  // b comes first
+                return 0; // maintain order for others
+            });
+
+            renderClubs();
+        }
+
+        // Render clubs grid
+        function renderClubs() {
+            const clubsGrid = document.getElementById('clubsGrid');
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+            const resultsCount = document.getElementById('resultsCount');
+
+            loadingState.style.display = 'none';
+
+            if (!filteredClubs || filteredClubs.length === 0) {
+                clubsGrid.innerHTML = '';
+                emptyState.style.display = 'block';
+                resultsCount.textContent = '0 clubs found';
+                return;
             }
 
-            return `
-                <div class="club-card" onclick="window.location.href='/clubs/${club.id}'">
-                    <div class="club-card-header">
-                        <div class="club-logo-wrapper">
-                            ${logoHtml}
-                            <i class="bi bi-people" style="display: ${logoUrl ? 'none' : 'flex'}"></i>
-                        </div>
-                    </div>
-                    <div class="club-card-body">
-                        <div class="club-name">
-                            ${escapeHtml(club.name)}
-                            ${categoryBadge}
-                        </div>
-                        <p class="club-description">${escapeHtml(club.description || 'No description available.')}</p>
+            emptyState.style.display = 'none';
+            resultsCount.textContent = `${filteredClubs.length} club${filteredClubs.length !== 1 ? 's' : ''} found`;
+
+            const categoryLabels = {
+                academic: 'Academic',
+                sports: 'Sports',
+                cultural: 'Cultural',
+                social: 'Social',
+                volunteer: 'Volunteer',
+                professional: 'Professional',
+                other: 'Other',
+            };
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            clubsGrid.innerHTML = filteredClubs.map((club) => {
+                const logoUrl = club.logo
+                        ? (club.logo.startsWith('http') ? club.logo : `/storage/${club.logo}`)
+                        : null;
+
+                const logoHtml = logoUrl
+                        ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+                        : '';
+
+                const categoryBadge = club.category
+                        ? `<span class="club-category-badge">${categoryLabels[club.category] || club.category}</span>`
+                        : '';
+
+                let statusBadge = '';
+                let actionButton = '';
+
+                switch (club.join_status) {
+                    case 'available':
+                        statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
+                        actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+                        break;
+                    case 'member':
+                        statusBadge = '<span class="club-status-badge club-status-member">Member</span>';
+                        actionButton = '';
+                        break;
+                    case 'pending':
+                        statusBadge = '<span class="club-status-badge club-status-pending">Request Pending</span>';
+                        actionButton = '';
+                        break;
+                    case 'rejected':
+                    {
+                        const cooldownText = club.cooldownremainingdays != null ? ` (${club.cooldownremainingdays} days left)` : '';
+                        statusBadge = `<span class="club-status-badge club-status-rejected">Rejected${cooldownText}</span>`;
+                        actionButton = '';
+                        break;
+                    }
+                    default:
+                        statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
+                        actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+                        break;
+                }
+
+                // 用字符串拼接（不使用多行反引号模板），避免漏关反引号导致语法错
+                const viewDetailsHtml =
+                        '<form method="POST" action="/club/select" class="w-100">' +
+                        `<input type="hidden" name="_token" value="${csrf}">` +
+                        `<input type="hidden" name="club_id" value="${club.id}">` +
+                        '<button type="submit" class="btn-club-secondary w-100">View Details</button>' +
+                        '</form>';
+
+                const footerHtml = actionButton || viewDetailsHtml;
+
+                return `
+      <div class="club-card" onclick="window.location.href='/clubs/${club.id}'">
+        <div class="club-card-header">
+          <div class="club-logo-wrapper">
+            ${logoHtml}
+            <i class="bi bi-people" style="display:${logoUrl ? 'none' : 'flex'}"></i>
+          </div>
+        </div>
+
+        <div class="club-card-body">
+          <div class="club-name">
+            ${escapeHtml(club.name)}
+            ${categoryBadge}
+          </div>
+
+          <p class="club-description">${escapeHtml(club.description || 'No description available.')}</p>
+
                         <div class="club-stats">
                             <div class="club-stat">
                                 <div class="club-stat-value">${club.members_count || 0}</div>
@@ -943,21 +1446,9 @@ window.openJoinModal = function(clubId) {
                                 <div class="club-stat-label">Events</div>
                             </div>
                         </div>
-                        ${statusBadge}
-                    </div>
-                    <div class="club-card-footer" onclick="event.stopPropagation();">
-                        ${actionButton || `<a href="/clubs/${club.id}" class="btn-club-secondary">View Details</a>`}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
 
-    // Update statistics
-    function updateStats() {
-        const totalClubs = allClubs.length;
-        const availableClubs = allClubs.filter(c => c.join_status === 'available').length;
-        const memberClubs = allClubs.filter(c => c.join_status === 'member').length;
+          ${statusBadge}
+        </div>
 
         document.getElementById('totalClubsStat').textContent = totalClubs;
         document.getElementById('availableClubsStat').textContent = availableClubs;
@@ -980,7 +1471,6 @@ window.openJoinModal = function(clubId) {
         } else {
             console.warn('Club not found in allClubs:', clubId);
         }
-    }
 
     // Open join modal - Make sure it's available globally immediately
     window.openJoinModal = function(clubId) {
@@ -1020,47 +1510,195 @@ window.openJoinModal = function(clubId) {
     window.loadClubs = loadClubs;
     window.filterByStatus = filterByStatus;
 
-    // Escape HTML
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+//        function renderClubs() {
+//            const clubsGrid = document.getElementById('clubsGrid');
+//            const loadingState = document.getElementById('loadingState');
+//            const emptyState = document.getElementById('emptyState');
+//            const resultsCount = document.getElementById('resultsCount');
+//            const resultsTitle = document.getElementById('resultsTitle');
+//
+//            loadingState.style.display = 'none';
+//
+//            if (filteredClubs.length === 0) {
+//                clubsGrid.innerHTML = '';
+//                emptyState.style.display = 'block';
+//                resultsCount.textContent = '0 clubs found';
+//                return;
+//            }
+//
+//            emptyState.style.display = 'none';
+//            resultsCount.textContent = `${filteredClubs.length} club${filteredClubs.length !== 1 ? 's' : ''} found`;
+//
+//            const categoryLabels = {
+//                'academic': 'Academic',
+//                'sports': 'Sports',
+//                'cultural': 'Cultural',
+//                'social': 'Social',
+//                'volunteer': 'Volunteer',
+//                'professional': 'Professional',
+//                'other': 'Other'
+//            };
+//
+//            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+//
+//            const viewDetailsHtml = `
+//  <form method="POST" action="/club/select" class="w-100">
+//    <input type="hidden" name="_token" value="${csrf}">
+//    <input type="hidden" name="club_id" value="${club.id}">
+//    <button type="submit" class="btn-club-secondary w-100">View Details</button>
+//  </form>
+//`;
+//
+//
+//            clubsGrid.innerHTML = filteredClubs.map(club => {
+//                const logoUrl = club.logo
+//                        ? (club.logo.startsWith('http') ? club.logo : `/storage/${club.logo}`)
+//                        : null;
+//
+//                const logoHtml = logoUrl
+//                        ? `<img src="${logoUrl}" alt="${escapeHtml(club.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+//                        : '';
+//
+//                const categoryBadge = club.category
+//                        ? `<span class="club-category-badge">${categoryLabels[club.category] || club.category}</span>`
+//                        : '';
+//
+//                let statusBadge = '';
+//                let actionButton = '';
+//
+//                switch (club.join_status) {
+//                    case 'available':
+//                        statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
+//                        actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+//                        break;
+//                    case 'member':
+//                        statusBadge = '<span class="club-status-badge club-status-member">Member</span>';
+//                        actionButton = '';
+//                        break;
+//                    case 'pending':
+//                        statusBadge = '<span class="club-status-badge club-status-pending">Request Pending</span>';
+//                        actionButton = '';
+//                        break;
+//                    case 'rejected':
+//                        const cooldownText = club.cooldown_remaining_days !== null
+//                                ? ` (${club.cooldown_remaining_days} days left)`
+//                                : '';
+//                        statusBadge = `<span class="club-status-badge club-status-rejected">Rejected${cooldownText}</span>`;
+//                        actionButton = '';
+//                        break;
+//                    default:
+//                        statusBadge = '<span class="club-status-badge club-status-available">Available</span>';
+//                        actionButton = `<button class="btn-club-primary" onclick="openJoinModal(${club.id})">Join Club</button>`;
+//                }
+//
+//                return `
+//                <div class="club-card" onclick="window.location.href='/clubs/${club.id}'">
+//                    <div class="club-card-header">
+//                        <div class="club-logo-wrapper">
+//                            ${logoHtml}
+//                            <i class="bi bi-people" style="display: ${logoUrl ? 'none' : 'flex'}"></i>
+//                        </div>
+//                    </div>
+//                    <div class="club-card-body">
+//                        <div class="club-name">
+//                            ${escapeHtml(club.name)}
+//                            ${categoryBadge}
+//                        </div>
+//                        <p class="club-description">${escapeHtml(club.description || 'No description available.')}</p>
+//                        <div class="club-stats">
+//                            <div class="club-stat">
+//                                <div class="club-stat-value">${club.members_count || 0}</div>
+//                                <div class="club-stat-label">Members</div>
+//                            </div>
+//                            <div class="club-stat">
+//                                <div class="club-stat-value">${club.events_count || 0}</div>
+//                                <div class="club-stat-label">Events</div>
+//                            </div>
+//                        </div>
+//                        ${statusBadge}
+//                    </div>
+////                    <div class="club-card-footer" onclick="event.stopPropagation();">
+////                        ${actionButton || `<a href="/clubs/${club.id}" class="btn-club-secondary">View Details</a>`}
+////                    </div>
+//                      <div class="club-card-footer" onclick="event.stopPropagation();">
+//                          ${actionButton || viewDetailsHtml}
+//                      </div>
+//
+//                </div>
+//            `;
+//            }).join('');
+//        }
 
-    // Event listeners
-    document.addEventListener('DOMContentLoaded', function() {
-        loadClubs();
+        // Update statistics
+        function updateStats() {
+            const totalClubs = allClubs.length;
+            const availableClubs = allClubs.filter(c => c.join_status === 'available').length;
+            const memberClubs = allClubs.filter(c => c.join_status === 'member').length;
 
-        // Search input
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            let searchTimeout;
-            searchInput.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
+            document.getElementById('totalClubsStat').textContent = totalClubs;
+            document.getElementById('availableClubsStat').textContent = availableClubs;
+            document.getElementById('memberClubsStat').textContent = memberClubs;
+            document.getElementById('totalClubsBadge').textContent = `${totalClubs} Clubs Available`;
+        }
+
+        // Open join modal
+        function openJoinModal(clubId) {
+            if (typeof window.openJoinClubModal === 'function') {
+                window.openJoinClubModal(clubId, function (joinedClubId) {
+                    // Reload clubs after successful join
+                    loadClubs();
+                });
+            } else {
+                // Fallback: redirect to club detail page
+                window.location.href = `/clubs/${clubId}`;
+            }
+        }
+
+        // Make loadClubs available globally
+        window.loadClubs = loadClubs;
+        window.openJoinModal = openJoinModal;
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function () {
+            loadClubs();
+
+            // Search input
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                let searchTimeout;
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        filterAndRenderClubs();
+                    }, 300);
+                });
+            }
+
+            // Category filter
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', function () {
+                    loadClubs();
+                });
+            }
+
+            // Clear search
+            const clearSearch = document.getElementById('clearSearch');
+            if (clearSearch) {
+                clearSearch.addEventListener('click', function () {
+                    searchInput.value = '';
                     filterAndRenderClubs();
-                }, 300);
-            });
-        }
-
-        // Category filter
-        const categoryFilter = document.getElementById('categoryFilter');
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', function() {
-                loadClubs();
-            });
-        }
-
-        // Clear search
-        const clearSearch = document.getElementById('clearSearch');
-        if (clearSearch) {
-            clearSearch.addEventListener('click', function() {
-                searchInput.value = '';
-                filterAndRenderClubs();
-            });
-        }
-    });
-})();
+                });
+            }
+        });
+    })();
 </script>
 @endpush
 

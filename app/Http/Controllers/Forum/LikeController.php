@@ -20,7 +20,7 @@ class LikeController extends Controller {
     /**
      * Toggle like on a post
      */
-    public function toggle(Post $post) {
+    public function toggle(Request $request, Post $post) {
         if (!$post->canBeViewedBy($request->user())) {
             return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
         }

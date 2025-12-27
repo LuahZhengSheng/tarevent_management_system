@@ -117,9 +117,6 @@
                                     <button type="button" class="toolbar-btn" id="linkBtn" title="Insert Link">
                                         <i class="bi bi-link-45deg"></i>
                                     </button>
-                                    <button type="button" class="toolbar-btn" data-command="insertImage" title="Insert Image">
-                                        <i class="bi bi-image"></i>
-                                    </button>
                                     <button type="button" class="toolbar-btn" data-command="code" title="Code">
                                         <i class="bi bi-code-slash"></i>
                                     </button>
@@ -495,6 +492,7 @@
     console.log(123);
     window.forumConfig = {
     availableTags: @json($activeTags ?? []),
+            pendingTags: @json($pendingTags ?? []),
             maxTags: 10,
             maxMediaFiles: 10,
             maxImageSize: 10 * 1024 * 1024,
@@ -502,6 +500,7 @@
             currentUserId: {{ auth()->id() }},
             clubsApiUrl: '{{ url('/api/users/' . auth()->id() . '/clubs') }}',
             joinClubModalId: 'selectClubModal',
+            tagRequestUrl: "{{ route('forums.tags.request') }}",
     };
 </script>
 @vite(['resources/js/forum-create.js', 'resources/js/media-lightbox.js'])

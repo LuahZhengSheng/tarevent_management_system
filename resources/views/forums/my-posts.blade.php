@@ -272,21 +272,21 @@
 
 @push('scripts')
 <script>
-    window.AJAX_CONFIG = {!! json_encode([
-            'baseUrl' => route('forums.my-posts'),
-            'csrfToken' => csrf_token()
-    ]) !!}
-    ;
+  window.AJAX_CONFIG = {!! json_encode([
+    'baseUrl' => route('forums.my-posts'),
+    'csrfToken' => csrf_token(),
+    'quickDeleteUrl' => route('forums.my-posts.quick-delete'),
+  ]) !!};
 
-    window.currentState = {!! json_encode([
-            'tab' => $activeTab,
-            'search' => is_array($search) ? ($search['q'] ?? '') : ($search ?? ''),
-            'status' => $filters['status'] ?? '',
-            'visibility' => $filters['visibility'] ?? '',
-            'sort' => $sort ?? 'latest'
-    ]) !!}
-    ;
+  window.currentState = {!! json_encode([
+    'tab' => $activeTab,
+    'search' => is_array($search) ? ($search['q'] ?? '') : ($search ?? ''),
+    'status' => $filters['status'] ?? '',
+    'visibility' => $filters['visibility'] ?? '',
+    'sort' => $sort ?? 'latest',
+  ]) !!};
 </script>
+
 
 @vite('resources/js/my-posts.js')
 @vite('resources/js/media-lightbox.js')
